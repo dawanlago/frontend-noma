@@ -84,7 +84,7 @@ export default function AppointmentsPage() {
       const day = date.getDate();
       map.set(day, [...(map.get(day) || []), task]);
     }
-    for (const [day, dayTasks] of map) {
+    for (const [day, dayTasks] of Array.from(map.entries())) {
       map.set(
         day,
         dayTasks.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()),
