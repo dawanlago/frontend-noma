@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import Head from "next/head";
 import FormField from "@/components/ui/FormField";
 import ListWorkspace from "@/components/ui/ListWorkspace";
@@ -8,26 +8,19 @@ import { useAsyncData } from "@/hooks/useAsyncData";
 import { LEADS_BASE_TABS } from "@/lib/leadsTabs";
 import { resources } from "@/lib/resources";
 import { getInitials } from "@/utils/format";
-import type { Company, Contact, NPSInvite } from "@/types";
+import type { Company, Contact } from "@/types";
 
 const emptyForm = { name: "", email: "", phone: "", companyId: "" };
 
 export default function ContactsPage() {
   const { data: contacts, isLoading, error, reload } = useAsyncData(() => resources.contacts.list());
   const { data: companies } = useAsyncData(() => resources.companies.list());
-  const { data: surveys } = useAsyncData(() => resources.nps.surveys.list());
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [npsContact, setNpsContact] = useState<Contact | null>(null);
-  const [selectedSurveyId, setSelectedSurveyId] = useState("");
-  const [invite, setInvite] = useState<NPSInvite | null>(null);
-  const [npsError, setNpsError] = useState("");
-  const [isCreatingInvite, setIsCreatingInvite] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const companiesById = useMemo(
     () => new Map((companies || []).map((company) => [company._id, company.name])),
@@ -96,52 +89,6 @@ export default function ContactsPage() {
     await reload();
   }
 
-  const activeSurveys = useMemo(
-    () => (surveys || []).filter((survey) => survey.isActive),
-    [surveys],
-  );
-
-  useEffect(() => {
-    if (npsContact && !selectedSurveyId && activeSurveys[0]) {
-      setSelectedSurveyId(activeSurveys[0]._id);
-    }
-  }, [npsContact, selectedSurveyId, activeSurveys]);
-
-  function openNps(contact: Contact) {
-    setNpsContact(contact);
-    setSelectedSurveyId(activeSurveys[0]?._id || "");
-    setInvite(null);
-    setNpsError("");
-    setCopied(false);
-  }
-
-  async function handleCreateInvite(event: FormEvent) {
-    event.preventDefault();
-    if (!npsContact || !selectedSurveyId) return;
-    setIsCreatingInvite(true);
-    setNpsError("");
-    try {
-      const created = await resources.nps.createInvite({
-        surveyId: selectedSurveyId,
-        contactId: npsContact._id,
-      });
-      setInvite(created);
-    } catch (inviteError) {
-      setNpsError(
-        (inviteError as { response?: { data?: { error?: string } } }).response?.data?.error ||
-          "Não foi possível gerar o link de NPS.",
-      );
-    } finally {
-      setIsCreatingInvite(false);
-    }
-  }
-
-  async function copyInviteLink() {
-    if (!invite?.url) return;
-    await navigator.clipboard.writeText(invite.url);
-    setCopied(true);
-  }
-
   return (
     <>
       <Head>
@@ -178,9 +125,6 @@ export default function ContactsPage() {
             </td>
             <td className="px-4 py-3">
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="text-sm font-medium text-gold" onClick={() => openNps(contact)}>
-                  Enviar NPS
-                </button>
                 <button type="button" className="text-sm text-tan" onClick={() => openEdit(contact)}>
                   Editar
                 </button>
@@ -224,51 +168,6 @@ export default function ContactsPage() {
         </form>
       </Modal>
 
-      <Modal
-        open={Boolean(npsContact)}
-        title="Enviar NPS"
-        description={npsContact ? `Gere um link exclusivo para ${npsContact.name}. A resposta entra vinculada a este contato.` : undefined}
-        onClose={() => setNpsContact(null)}
-        footer={
-          invite ? (
-            <button type="button" className="btn-gold" onClick={() => void copyInviteLink()}>
-              {copied ? "Link copiado" : "Copiar link"}
-            </button>
-          ) : (
-            <button type="submit" form="nps-invite-form" className="btn-gold" disabled={isCreatingInvite || !selectedSurveyId}>
-              {isCreatingInvite ? "Gerando..." : "Gerar link"}
-            </button>
-          )
-        }
-      >
-        {activeSurveys.length === 0 ? (
-          <p className="text-sm text-charcoal/55">
-            Nenhuma pesquisa NPS ativa. Crie uma em NPS antes de enviar o link.
-          </p>
-        ) : invite ? (
-          <div>
-            <p className="text-sm text-charcoal/55">
-              Pesquisa <span className="font-semibold text-charcoal">{invite.survey.name}</span> pronta para {invite.contact.name}.
-            </p>
-            <input className="input-search mt-4" value={invite.url} readOnly />
-            <p className="mt-2 text-xs text-charcoal/45">
-              Este identificador vincula a resposta ao cliente automaticamente.
-            </p>
-          </div>
-        ) : (
-          <form id="nps-invite-form" onSubmit={handleCreateInvite}>
-            <FormField label="Pesquisa">
-              <Select
-                value={selectedSurveyId}
-                onChange={setSelectedSurveyId}
-                placeholder="Selecione a pesquisa"
-                options={activeSurveys.map((survey) => ({ value: survey._id, label: survey.name }))}
-              />
-            </FormField>
-            {npsError ? <p className="text-sm text-burgundy">{npsError}</p> : null}
-          </form>
-        )}
-      </Modal>
     </>
   );
 }

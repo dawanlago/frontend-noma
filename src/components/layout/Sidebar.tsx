@@ -12,17 +12,21 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import AccountBalanceOutlined from "@mui/icons-material/AccountBalanceOutlined";
+import AccountBalanceWalletOutlined from "@mui/icons-material/AccountBalanceWalletOutlined";
+import AssignmentOutlined from "@mui/icons-material/AssignmentOutlined";
 import BusinessOutlined from "@mui/icons-material/BusinessOutlined";
-import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
+import CalculateOutlined from "@mui/icons-material/CalculateOutlined";
 import CloseRounded from "@mui/icons-material/CloseRounded";
+import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
+import GavelOutlined from "@mui/icons-material/GavelOutlined";
 import GroupOutlined from "@mui/icons-material/GroupOutlined";
 import HomeOutlined from "@mui/icons-material/HomeOutlined";
 import Inventory2Outlined from "@mui/icons-material/Inventory2Outlined";
-import NotesOutlined from "@mui/icons-material/NotesOutlined";
+import LibraryMusicOutlined from "@mui/icons-material/LibraryMusicOutlined";
 import PeopleOutlined from "@mui/icons-material/PeopleOutlined";
+import ReplayOutlined from "@mui/icons-material/ReplayOutlined";
 import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
-import StarOutlined from "@mui/icons-material/StarOutlined";
+import TravelExploreOutlined from "@mui/icons-material/TravelExploreOutlined";
 import ViewKanbanOutlined from "@mui/icons-material/ViewKanbanOutlined";
 import LogoMark from "@/components/ui/LogoMark";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,30 +37,44 @@ import { DRAWER_WIDTH } from "@/theme";
 const groups = [
   {
     label: "Visão geral",
-    items: [{ href: "/", label: "Dashboard", icon: HomeOutlined }],
+    items: [{ href: "/", label: "Início", icon: HomeOutlined }],
   },
   {
     label: "Comercial",
     items: [
-      { href: "/funis", label: "Funis", icon: ViewKanbanOutlined },
-      { href: "/compromissos", label: "Compromissos", icon: CalendarMonthOutlined },
-      { href: "/contatos", label: "Contatos", icon: PeopleOutlined },
-      { href: "/empresas", label: "Empresas", icon: BusinessOutlined },
+      { href: "/crm", label: "CRM Comercial", icon: ViewKanbanOutlined },
+      { href: "/propostas", label: "Gerador de Propostas", icon: DescriptionOutlined },
+      { href: "/prospeccao", label: "Gerador de Prospecção", icon: TravelExploreOutlined },
+      { href: "/follow-up", label: "Gerador de Follow-up", icon: ReplayOutlined },
     ],
   },
   {
-    label: "Growth",
+    label: "Precificação e operação",
     items: [
+      { href: "/orcamento", label: "Calculadora de Orçamento", icon: CalculateOutlined },
+      { href: "/contratos", label: "Gerador de Contratos", icon: GavelOutlined },
+      { href: "/briefing", label: "Gerador de Briefing", icon: AssignmentOutlined },
+    ],
+  },
+  {
+    label: "Gestão",
+    items: [
+      { href: "/financeiro", label: "Financeiro", icon: AccountBalanceWalletOutlined },
+      { href: "/biblioteca", label: "Biblioteca Audiovisual", icon: LibraryMusicOutlined },
+    ],
+  },
+  {
+    label: "Cadastros",
+    items: [
+      { href: "/contatos", label: "Contatos", icon: PeopleOutlined },
+      { href: "/empresas", label: "Empresas", icon: BusinessOutlined },
       { href: "/produtos", label: "Produtos", icon: Inventory2Outlined },
-      { href: "/financeiro", label: "Financeiro", icon: AccountBalanceOutlined, adminOnly: true },
-      { href: "/nps", label: "NPS", icon: StarOutlined },
     ],
   },
   {
     label: "Workspace",
     items: [
-      { href: "/anotacoes", label: "Anotações", icon: NotesOutlined },
-      { href: "/usuarios", label: "Usuários", icon: GroupOutlined },
+      { href: "/usuarios", label: "Usuários", icon: GroupOutlined, adminOnly: true },
       { href: "/configuracoes", label: "Configurações", icon: SettingsOutlined },
     ],
   },

@@ -40,3 +40,19 @@ export function getInitials(name?: string): string {
   const parts = (name || "N").trim().split(/\s+/).slice(0, 2);
   return parts.map((part) => part.charAt(0).toUpperCase()).join("") || "N";
 }
+
+/** Formata uma data "YYYY-MM-DD" sem passar por fuso horário. */
+export function formatDateOnly(value?: string): string {
+  if (!value) return "";
+  const [year, month, day] = value.slice(0, 10).split("-");
+  return day && month && year ? `${day}/${month}/${year}` : "";
+}
+
+export function todayISO(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+export function currentMonthISO(): string {
+  return todayISO().slice(0, 7);
+}
