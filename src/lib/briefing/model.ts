@@ -19,6 +19,18 @@ export interface BriefingData {
     avoid: string;
     notes: string;
   };
+  /** Dados da gravação. */
+  production: {
+    date: string;
+    time: string;
+    location: string;
+    notes: string;
+  };
+  /** Aparência do PDF: cor (vazio = cor padrão da identidade) e logo. */
+  style: {
+    color: string;
+    showLogo: boolean;
+  };
   delivery: {
     format: string;
     deadline: string;
@@ -42,6 +54,8 @@ export function defaultData(): BriefingData {
     goal: { mainGoal: "", audience: "" },
     specific: defaultSpecificAll(),
     creative: { references: "", avoid: "", notes: "" },
+    production: { date: "", time: "", location: "", notes: "" },
+    style: { color: "", showLogo: true },
     delivery: { format: "Vertical 9:16", deadline: "", revisions: "2", channel: "Instagram", portfolio: true },
   };
 }
@@ -58,6 +72,8 @@ export function normalize(partial: Partial<BriefingData>): BriefingData {
     goal: { ...base.goal, ...(partial.goal || {}) },
     specific,
     creative: { ...base.creative, ...(partial.creative || {}) },
+    production: { ...base.production, ...(partial.production || {}) },
+    style: { ...base.style, ...(partial.style || {}) },
     delivery: { ...base.delivery, ...(partial.delivery || {}) },
   };
 }

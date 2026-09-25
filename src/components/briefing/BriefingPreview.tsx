@@ -1,13 +1,15 @@
 import { EMPTY_LABEL, type BriefingSummary } from "@/lib/briefing/format";
 
 /** Visualização ao vivo do briefing, organizada por blocos. */
-export default function BriefingPreview({ summary }: { summary: BriefingSummary }) {
+export default function BriefingPreview({ summary, color }: { summary: BriefingSummary; color: string }) {
   const percent = summary.total ? Math.round((summary.filled / summary.total) * 100) : 0;
 
   return (
     <div className="card overflow-hidden">
-      <div className="border-b border-charcoal/[0.08] bg-beige/60 px-5 py-4">
-        <p className="eyebrow">Briefing de produção</p>
+      <div className="border-b border-charcoal/[0.08] bg-beige/60 px-5 py-4" style={{ borderTop: `4px solid ${color}` }}>
+        <p className="eyebrow" style={{ color }}>
+          Briefing de produção
+        </p>
         <h3 className="mt-1 truncate text-lg font-semibold text-charcoal">{summary.title}</h3>
         <span className="chip mt-2 bg-tan/10 text-tan">{summary.typeLabel}</span>
         <div className="mt-4">

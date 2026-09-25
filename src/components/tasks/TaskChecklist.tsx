@@ -1,0 +1,130 @@
+import Link from "next/link";
+import { useState } from "react";
+import { HiOutlineTrash } from "react-icons/hi2";
+import { apiError } from "@/lib/errors";
+import { resources } from "@/lib/resources";
+import type { Task } from "@/types";
+import { formatDateOnly, todayISO } from "@/utils/format";
+
+interface TaskChecklistProps {
+  tasks: Task[];
+  onChange: (tasks: Task[]) => void;
+  /** Vincula as atividades novas a esta negociação. */
+  leadId?: string;
+  /** Mostra o nome da negociação em cada item. */
+  showLead?: boolean;
+  showOwner?: boolean;
+  /** Esconde o campo de nova atividade (prévia do início). */
+  readOnly?: boolean;
+  emptyText?: string;
+}
+
+function dueTone(task: Task, today: string) {
+  if (task.done || !task.dueDate) return "text-charcoal/45";
+  if (task.dueDate < today) return "font-semibold text-burgundy";
+  if (task.dueDate === today) return "font-semibold text-gold";
+  return "text-charcoal/50";
+}
+
+/** Checklist de atividades: marcar como feita, criar e excluir. */
+export default function TaskChecklist({ tasks, onChange, leadId, showLead, showOwner, readOnly, emptyText }: TaskChecklistProps) {
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [error, setError] = useState("");
+  const today = todayISO();
+
+  async function run(action: () => Promise<void>) {
+    setError("");
+    try {
+      await action();
+    } catch (err) {
+      setError(apiError(err, "Não foi possível salvar a atividade."));
+    }
+  }
+
+  function toggle(task: Task) {
+    onChange(tasks.map((item) => (item._id === task._id ? { ...item, done: !task.done } : item)));
+    void run(async () => {
+      const saved = await resources.tasks.update(task._id, { done: !task.done });
+      onChange(tasks.map((item) => (item._id === task._id ? { ...item, ...saved, ownerName: item.ownerName } : item)));
+    });
+  }
+
+  function add() {
+    if (!title.trim()) return;
+    void run(async () => {
+      const saved = await resources.tasks.create({ title: title.trim(), dueDate, leadId });
+      onChange([...tasks, saved]);
+      setTitle("");
+      setDueDate("");
+    });
+  }
+
+  function remove(task: Task) {
+    if (!window.confirm(`Excluir a atividade "${task.title}"?`)) return;
+    void run(async () => {
+      await resources.tasks.remove(task._id);
+      onChange(tasks.filter((item) => item._id !== task._id));
+    });
+  }
+
+  return (
+    <div>
+      {!readOnly ? (
+        <form
+          className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_auto]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            add();
+          }}
+        >
+          <input className="input-search" value={title} placeholder="Nova atividade" onChange={(e) => setTitle(e.target.value)} />
+          <input className="input-search" type="date" value={dueDate} aria-label="Prazo" onChange={(e) => setDueDate(e.target.value)} />
+          <button type="submit" className="btn-primary" disabled={!title.trim()}>
+            Adicionar
+          </button>
+        </form>
+      ) : null}
+      {error ? <p className="mb-2 text-sm text-burgundy">{error}</p> : null}
+      {tasks.length === 0 ? (
+        <p className="text-sm text-charcoal/50">{emptyText || "Nenhuma atividade por aqui."}</p>
+      ) : (
+        <ul className="divide-y divide-charcoal/[0.06]">
+          {tasks.map((task) => (
+            <li key={task._id} className="group flex items-start gap-3 py-2.5">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[hsl(120,44%,53%)]"
+                checked={task.done}
+                aria-label={`Concluir ${task.title}`}
+                onChange={() => toggle(task)}
+              />
+              <div className="min-w-0 flex-1">
+                <p className={`text-sm ${task.done ? "text-charcoal/40 line-through" : "text-charcoal"}`}>{task.title}</p>
+                <p className="flex flex-wrap gap-x-3 text-xs">
+                  {task.dueDate ? <span className={dueTone(task, today)}>{task.dueDate < today && !task.done ? "Atrasada · " : ""}{formatDateOnly(task.dueDate)}</span> : null}
+                  {showLead && task.leadId ? (
+                    <Link href={`/crm/${task.leadId}`} className="text-tan hover:underline">
+                      {task.leadName || "Negociação"}
+                    </Link>
+                  ) : null}
+                  {showOwner && task.ownerName ? <span className="text-charcoal/45">{task.ownerName}</span> : null}
+                </p>
+              </div>
+              {!readOnly ? (
+                <button
+                  type="button"
+                  className="btn-ghost h-8 w-8 opacity-0 transition group-hover:opacity-100 hover:text-burgundy focus:opacity-100"
+                  aria-label="Excluir atividade"
+                  onClick={() => remove(task)}
+                >
+                  <HiOutlineTrash className="h-4 w-4" />
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

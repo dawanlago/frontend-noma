@@ -45,7 +45,7 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Entrar | Noma CRM</title>
+        <title>Entrar | Noma</title>
       </Head>
 
       <Box

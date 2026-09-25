@@ -1,3 +1,4 @@
+import OptionSelect from "@/components/options/OptionSelect";
 import Field from "@/components/tools/Field";
 import ToolSection from "@/components/tools/ToolSection";
 import Select from "@/components/ui/Select";
@@ -6,9 +7,7 @@ import {
   MARGIN_OPTIONS,
   MARGIN_SHORTCUTS,
   OPERATIONAL_OPTIONS,
-  PROJECT_TYPES,
   type BudgetData,
-  type ProjectType,
 } from "@/lib/budget/model";
 import { formatCurrencyBRL } from "@/utils/format";
 import ExternalCostsEditor from "./ExternalCostsEditor";
@@ -59,11 +58,7 @@ export default function BudgetForm({ data, result, onChange }: BudgetFormProps) 
       <ToolSection step={1} title="Tipo de trabalho" description="O que você vai produzir e como quer identificar este orçamento.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Tipo de projeto">
-            <Select
-              value={data.projectType}
-              onChange={(value) => onChange({ projectType: value as ProjectType })}
-              options={PROJECT_TYPES.map((type) => ({ value: type, label: type }))}
-            />
+            <OptionSelect list="budgetProjectType" value={data.projectType} onChange={(projectType) => onChange({ projectType })} />
           </Field>
           <Field label="Nome do projeto" hint="Opcional. Se vazio, o tipo de projeto vira o título.">
             <input

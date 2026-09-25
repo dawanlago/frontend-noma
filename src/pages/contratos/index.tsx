@@ -1,19 +1,24 @@
 import { useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import ContractEditor from "@/components/contracts/ContractEditor";
+import ImportedContracts from "@/components/contracts/ImportedContracts";
 import OwnerFilter from "@/components/tools/OwnerFilter";
 import SavedDocuments from "@/components/tools/SavedDocuments";
 import PageHeader from "@/components/ui/PageHeader";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { contractsApi } from "@/lib/contracts/api";
 import { defaultData, titleOf } from "@/lib/contracts/model";
+import { resources } from "@/lib/resources";
 
 function apiError(err: unknown, fallback: string) {
   return (err as { response?: { data?: { error?: string } } }).response?.data?.error || fallback;
 }
 
 function ContractList({ onOpen }: { onOpen: (id: string) => void }) {
+  const { can } = useAuth();
   const [ownerId, setOwnerId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -24,6 +29,9 @@ function ContractList({ onOpen }: { onOpen: (id: string) => void }) {
     setActionError("");
     try {
       const initial = defaultData();
+      // Com o contrato da produtora cadastrado, ele é o ponto de partida.
+      const templates = await resources.contractTemplates.list().catch(() => []);
+      if (templates.length) initial.type = "custom";
       const doc = await contractsApi.create({ title: titleOf(initial), data: initial });
       onOpen(doc._id);
     } catch (err) {
@@ -56,16 +64,23 @@ function ContractList({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <>
       <Head>
-        <title>Gerador de Contratos | Noma CRM</title>
+        <title>Gerador de Contratos | Noma</title>
       </Head>
       <PageHeader
         eyebrow="Ferramenta operacional"
         title="Gerador de Contratos"
-        description="Contratos de projeto fechado, recorrentes, de serviço tomado e de uso de imagem, com cláusulas que você liga e desliga."
+        description="Gere contratos a partir do modelo da produtora ou dos modelos prontos, e guarde contratos avulsos importados."
         actions={
-          <button type="button" className="btn-primary" disabled={isCreating} onClick={() => void handleCreate()}>
-            {isCreating ? "Criando…" : "Criar novo contrato"}
-          </button>
+          <>
+            {can("configuracoes") ? (
+              <Link href="/configuracoes/contratos" className="btn-secondary">
+                Modelos de contrato
+              </Link>
+            ) : null}
+            <button type="button" className="btn-primary" disabled={isCreating} onClick={() => void handleCreate()}>
+              {isCreating ? "Criando…" : "Criar novo contrato"}
+            </button>
+          </>
         }
       />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -82,6 +97,9 @@ function ContractList({ onOpen }: { onOpen: (id: string) => void }) {
         onDuplicate={(id) => void handleDuplicate(id)}
         onDelete={(id) => void handleDelete(id)}
       />
+      <div className="mt-6">
+        <ImportedContracts ownerId={ownerId} />
+      </div>
     </>
   );
 }

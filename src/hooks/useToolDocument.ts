@@ -19,7 +19,7 @@ interface Options<T> {
 
 /**
  * Carrega um documento de ferramenta e salva automaticamente cada alteração
- * (com debounce), como no Box: não existe botão "salvar" obrigatório.
+ * (com debounce), sem botão de salvar: não existe botão "salvar" obrigatório.
  */
 export function useToolDocument<T>({ api, id, normalize, titleOf, delay = 700 }: Options<T>) {
   const [data, setDataState] = useState<T | null>(null);

@@ -29,7 +29,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             py: { xs: 3, sm: 4 },
           }}
         >
-          <Box key={router.asPath} sx={{ mx: "auto", width: "100%", maxWidth: 1280 }}>
+          {/* Remonta ao trocar de página, mas não quando só a query muda (ex.: /crm?novo=1 abre o modal e limpa a URL). */}
+          <Box key={router.pathname} sx={{ mx: "auto", width: "100%", maxWidth: 1280 }}>
             {children}
           </Box>
         </Box>

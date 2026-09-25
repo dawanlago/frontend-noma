@@ -1,4 +1,5 @@
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, MONTH_NAMES, PAYMENT_METHODS } from "@/lib/constants";
+import type { Lead } from "@/types";
 import type { FinanceEntryPayload } from "@/lib/resources";
 import type { FinanceEntry, FinanceStatus, TransactionType } from "@/types";
 import { currentMonthISO, maskCurrencyBRL, parseCurrencyBRL, todayISO } from "@/utils/format";
@@ -13,6 +14,22 @@ export interface EntryForm {
   status: FinanceStatus;
   payment: string;
   recurring: boolean;
+  leadId: string;
+  /** "contact:<id>" ou "company:<id>" (cliente da base). */
+  clientRef: string;
+}
+
+export function clientRefOf(entry: Pick<FinanceEntry, "contactId" | "companyId">) {
+  if (entry.companyId) return `company:${entry.companyId}`;
+  if (entry.contactId) return `contact:${entry.contactId}`;
+  return "";
+}
+
+/** Categoria padrão de cada tipo: a primeira da lista configurada (ou a padrão do sistema). */
+export interface CategoryDefaults {
+  income?: string;
+  expense?: string;
+  payment?: string;
 }
 
 /** Data padrão: hoje se o mês visto é o atual, senão o dia 1 do mês visto. */
@@ -20,25 +37,40 @@ export function defaultEntryDate(month: string): string {
   return month === currentMonthISO() ? todayISO() : `${month}-01`;
 }
 
-export function defaultCategory(type: TransactionType): string {
-  return type === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
+export function defaultCategory(type: TransactionType, defaults: CategoryDefaults = {}): string {
+  return type === "income" ? defaults.income || INCOME_CATEGORIES[0] : defaults.expense || EXPENSE_CATEGORIES[0];
 }
 
 export function defaultStatus(type: TransactionType): FinanceStatus {
   return type === "income" ? "received" : "paid";
 }
 
-export function emptyEntryForm(month: string, type: TransactionType = "income"): EntryForm {
+export function emptyEntryForm(month: string, type: TransactionType = "income", defaults: CategoryDefaults = {}): EntryForm {
   return {
     type,
     description: "",
     client: "",
-    category: defaultCategory(type),
+    category: defaultCategory(type, defaults),
     value: "",
     date: defaultEntryDate(month),
     status: defaultStatus(type),
-    payment: PAYMENT_METHODS[0],
+    payment: defaults.payment || PAYMENT_METHODS[0],
     recurring: false,
+    leadId: "",
+    clientRef: "",
+  };
+}
+
+/** Entrada pré-preenchida a partir de uma venda feita no CRM. */
+export function entryFromLead(lead: Lead, month: string, defaults: CategoryDefaults = {}): EntryForm {
+  return {
+    ...emptyEntryForm(month, "income", defaults),
+    description: lead.name,
+    client: lead.company || lead.contactName || "",
+    value: lead.value ? maskCurrencyBRL(lead.value) : "",
+    status: "pending",
+    leadId: lead._id,
+    clientRef: lead.companyId ? `company:${lead.companyId}` : lead.contactId ? `contact:${lead.contactId}` : "",
   };
 }
 
@@ -53,16 +85,18 @@ export function entryToForm(entry: FinanceEntry): EntryForm {
     status: entry.status,
     payment: entry.payment || PAYMENT_METHODS[0],
     recurring: Boolean(entry.recurringId),
+    leadId: entry.leadId || "",
+    clientRef: clientRefOf(entry),
   };
 }
 
 /** Troca o tipo mantendo o que faz sentido e reajustando categoria/status. */
-export function switchEntryType(form: EntryForm, type: TransactionType): EntryForm {
+export function switchEntryType(form: EntryForm, type: TransactionType, defaults: CategoryDefaults = {}): EntryForm {
   if (form.type === type) return form;
   return {
     ...form,
     type,
-    category: defaultCategory(type),
+    category: defaultCategory(type, defaults),
     status: defaultStatus(type),
     recurring: type === "expense" ? form.recurring : false,
   };
@@ -78,6 +112,9 @@ export function formToEntryPayload(form: EntryForm): FinanceEntryPayload {
     date: form.date,
     status: form.status,
     payment: form.payment,
+    leadId: form.leadId,
+    contactId: form.clientRef.startsWith("contact:") ? form.clientRef.slice(8) : "",
+    companyId: form.clientRef.startsWith("company:") ? form.clientRef.slice(8) : "",
   };
   if (form.type === "expense") base.recurring = form.recurring;
   return base;

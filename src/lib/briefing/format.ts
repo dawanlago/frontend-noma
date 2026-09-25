@@ -55,6 +55,15 @@ export function buildBriefing(data: BriefingData): BriefingSummary {
       ),
     },
     {
+      title: "Produção",
+      items: [
+        item("Data da gravação", formatDateOnly(data.production.date)),
+        item("Horário", data.production.time),
+        item("Local", data.production.location, true),
+        item("Informações da gravação", data.production.notes, true),
+      ],
+    },
+    {
       title: "Direção criativa",
       items: [
         item("Referências", data.creative.references, true),
@@ -102,12 +111,21 @@ export function briefingToText(summary: BriefingSummary): string {
   return lines.join("\n").trim();
 }
 
-export function briefingToHtml(summary: BriefingSummary): string {
+export interface BriefingBrand {
+  /** Cor principal (#RRGGBB). */
+  color: string;
+  /** Logo em data URL (vazio = sem logo). */
+  logo: string;
+  companyName: string;
+}
+
+export function briefingToHtml(summary: BriefingSummary, brand: BriefingBrand): string {
   const value = (text: string) =>
     text ? escapeHtml(text).replace(/\n/g, "<br />") : `<span class="empty">${EMPTY_LABEL}</span>`;
 
   return `
     <header>
+      ${brand.logo ? `<img class="logo" src="${brand.logo}" alt="" />` : ""}
       <p class="eyebrow">Briefing de produção · ${escapeHtml(summary.typeLabel)}</p>
       <h1>${escapeHtml(summary.title)}</h1>
       <p class="progress">Campos preenchidos: ${summary.filled} / ${summary.total}</p>
@@ -125,19 +143,24 @@ export function briefingToHtml(summary: BriefingSummary): string {
       </section>`,
       )
       .join("")}
-    <footer>Documento de uso interno da produção.</footer>`;
+    <footer>${escapeHtml(brand.companyName)} · documento de uso interno da produção.</footer>`;
 }
 
-export const BRIEFING_PRINT_CSS = `
-  header { border-bottom: 2px solid #0a74f0; padding-bottom: 12px; margin-bottom: 8px; }
-  .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #0a74f0; margin: 0 0 4px; text-align: left; }
+/** CSS do PDF com a cor escolhida no briefing. */
+export function briefingPrintCss(color: string) {
+  const safe = /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#111111";
+  return `
+  header { border-bottom: 3px solid ${safe}; padding-bottom: 12px; margin-bottom: 8px; }
+  .logo { display: block; max-height: 48px; max-width: 180px; object-fit: contain; margin: 0 0 12px; }
+  .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: ${safe}; margin: 0 0 4px; text-align: left; }
   h1 { text-align: left; font-size: 22px; margin: 0 0 4px; }
   .progress { font-size: 11px; color: #666; margin: 0; text-align: left; }
   section { break-inside: avoid; margin-top: 16px; }
-  h2 { font-size: 11px; color: #0a74f0; margin: 0 0 6px; }
+  h2 { font-size: 11px; color: ${safe}; margin: 0 0 6px; }
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid #e6e8ec; font-size: 12px; }
   th { width: 34%; color: #555; font-weight: 600; background: #f7f8fa; }
   .empty { color: #aaa; font-style: italic; }
   footer { margin-top: 24px; font-size: 10px; color: #999; text-align: center; }
 `;
+}

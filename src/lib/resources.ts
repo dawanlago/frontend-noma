@@ -1,13 +1,27 @@
 import { api } from "./api";
 import type {
+  AppSettings,
+  CaptureForm,
   Company,
+  CompanyProfile,
   Contact,
+  ContactProfile,
+  ContractTemplate,
+  CustomField,
   FinanceEntry,
   FinanceMonthSummary,
+  FormResponse,
+  Funnel,
   Label,
   Lead,
+  LeadStatus,
   LibraryCategory,
+  Note,
+  NoteGroup,
+  OptionItem,
   Product,
+  StoredFile,
+  Task,
   ToolDocument,
   ToolKey,
   User,
@@ -28,11 +42,19 @@ export interface DashboardData {
   wonValue: number;
   leadsDueToday: number;
   month: string;
-  monthReceived: number;
-  monthExpenses: number;
-  monthResult: number;
-  monthPending: number;
+  /** null quando o usuário não tem acesso ao financeiro. */
+  finance: {
+    monthReceived: number;
+    monthExpenses: number;
+    monthResult: number;
+    monthPending: number;
+  } | null;
   documents: Partial<Record<ToolKey, number>>;
+  tasks: {
+    pending: number;
+    overdue: number;
+    preview: Task[];
+  };
 }
 
 /** Parâmetros de listagem; o admin pode filtrar por `ownerId`. */
@@ -90,19 +112,84 @@ function toolDocuments<T>(tool: ToolKey) {
 }
 
 export type FinanceEntryPayload = Partial<FinanceEntry> & { recurring?: boolean };
+export type LeadPayload = Partial<Omit<Lead, "nextActionDate">> & { nextActionDate?: string | null };
 
 export const resources = {
   dashboard: (params?: ListParams) => getOne<DashboardData>("/dashboard", params),
+  settings: {
+    get: () => getOne<AppSettings>("/settings"),
+    update: (payload: Partial<AppSettings>) => update<AppSettings>("/settings", payload),
+  },
+  options: {
+    list: (lists?: string[]) => listData<OptionItem>("/options", { lists: lists?.join(",") }),
+    create: (payload: Pick<OptionItem, "list" | "label"> & Partial<Pick<OptionItem, "color" | "meta">>) =>
+      create<OptionItem>("/options", payload),
+    update: (id: string, payload: Partial<Pick<OptionItem, "label" | "color" | "meta">>) =>
+      update<OptionItem>(`/options/${id}`, payload),
+    remove: (id: string) => remove(`/options/${id}`),
+    reorder: async (list: string, ids: string[]) => {
+      await api.put("/options/reorder", { list, ids });
+    },
+  },
+  customFields: crud<CustomField>("/custom-fields"),
   users: {
     ...crud<User>("/users"),
     create: (payload: Partial<User> & { password?: string }) => create<User>("/users", payload),
     update: (id: string, payload: Partial<User> & { password?: string }) => update<User>(`/users/${id}`, payload),
   },
-  contacts: crud<Contact>("/contacts"),
-  companies: crud<Company>("/companies"),
+  contacts: {
+    ...crud<Contact>("/contacts"),
+    profile: (id: string) => getOne<ContactProfile>(`/contacts/${id}/profile`),
+  },
+  companies: {
+    ...crud<Company>("/companies"),
+    profile: (id: string) => getOne<CompanyProfile>(`/companies/${id}/profile`),
+  },
   products: crud<Product>("/products"),
   labels: crud<Label>("/labels"),
-  leads: crud<Lead>("/leads"),
+  funnels: crud<Funnel>("/funnels"),
+  leads: {
+    list: (params?: ListParams) => listData<Lead>("/leads", params),
+    get: (id: string) => getOne<Lead>(`/leads/${id}`),
+    create: (payload: LeadPayload) => create<Lead>("/leads", payload),
+    update: (id: string, payload: LeadPayload) => update<Lead>(`/leads/${id}`, payload),
+    remove: (id: string) => remove(`/leads/${id}`),
+    setStatus: (id: string, status: LeadStatus) => create<Lead>(`/leads/${id}/status`, { status }),
+    addComment: (id: string, text: string) => create<Lead>(`/leads/${id}/comments`, { text }),
+    updateComment: (id: string, commentId: string, text: string) =>
+      update<Lead>(`/leads/${id}/comments/${commentId}`, { text }),
+    removeComment: async (id: string, commentId: string) => {
+      const { data } = await api.delete<ApiItemResponse<Lead>>(`/leads/${id}/comments/${commentId}`);
+      return data.data;
+    },
+  },
+  tasks: crud<Task>("/tasks"),
+  notes: {
+    board: () => getOne<{ groups: NoteGroup[]; notes: Note[] }>("/notes/board"),
+    create: (payload: Partial<Note>) => create<Note>("/notes", payload),
+    update: (id: string, payload: Partial<Note>) => update<Note>(`/notes/${id}`, payload),
+    remove: (id: string) => remove(`/notes/${id}`),
+    move: async (noteId: string, groupId: string, orderedIds: string[]) => {
+      await api.put("/notes/move", { noteId, groupId, orderedIds });
+    },
+    createGroup: (payload: Partial<NoteGroup>) => create<NoteGroup>("/note-groups", payload),
+    updateGroup: (id: string, payload: Partial<NoteGroup>) => update<NoteGroup>(`/note-groups/${id}`, payload),
+    removeGroup: (id: string) => remove(`/note-groups/${id}`),
+    reorderGroups: async (ids: string[]) => {
+      await api.put("/note-groups/reorder", { ids });
+    },
+  },
+  forms: {
+    ...crud<CaptureForm>("/forms"),
+    responses: (id: string) => listData<FormResponse>(`/forms/${id}/responses`),
+    removeResponse: (id: string, responseId: string) => remove(`/forms/${id}/responses/${responseId}`),
+  },
+  publicForms: {
+    get: (publicId: string) =>
+      getOne<Pick<CaptureForm, "name" | "description" | "fields" | "successMessage">>(`/public/forms/${publicId}`),
+    submit: (publicId: string, answers: Record<string, unknown>, website = "") =>
+      create<{ message: string }>(`/public/forms/${publicId}/responses`, { answers, website }),
+  },
   finance: {
     entries: async (month: string, params?: ListParams) => {
       const { data } = await api.get<ApiListResponse<FinanceEntry>>("/finance/entries", {
@@ -110,6 +197,7 @@ export const resources = {
       });
       return { entries: data.data, goal: Number(data.meta?.goal) || 0 };
     },
+    yearEntries: (year: string, params?: ListParams) => listData<FinanceEntry>("/finance/entries", { ...params, year }),
     createEntry: (payload: FinanceEntryPayload) => create<FinanceEntry>("/finance/entries", payload),
     updateEntry: (id: string, payload: FinanceEntryPayload) => update<FinanceEntry>(`/finance/entries/${id}`, payload),
     /** `scope: "series"` encerra a recorrência; sem ele, só pula o mês. */
@@ -126,6 +214,18 @@ export const resources = {
     contracts: toolDocuments("contract"),
     budgets: toolDocuments("budget"),
     briefings: toolDocuments("briefing"),
+  },
+  contractTemplates: crud<ContractTemplate>("/contract-templates"),
+  files: {
+    list: (params?: ListParams) => listData<StoredFile>("/files", params),
+    start: (payload: Partial<StoredFile>) => create<StoredFile>("/files", payload),
+    putChunk: async (id: string, n: number, data: string) => {
+      await api.put(`/files/${id}/chunks/${n}`, { data });
+    },
+    complete: (id: string) => create<StoredFile>(`/files/${id}/complete`, {}),
+    getChunk: (id: string, n: number) => getOne<string>(`/files/${id}/chunks/${n}`),
+    update: (id: string, payload: Partial<StoredFile>) => update<StoredFile>(`/files/${id}`, payload),
+    remove: (id: string) => remove(`/files/${id}`),
   },
   library: {
     list: () => listData<LibraryCategory>("/library"),

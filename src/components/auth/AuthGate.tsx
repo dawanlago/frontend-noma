@@ -6,14 +6,16 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useAuth } from "@/contexts/AuthContext";
 import LogoMark from "@/components/ui/LogoMark";
+import { moduleForPath } from "@/lib/modules";
 import { isAdminRoute, isPublicRoute } from "@/lib/routes";
 
 export default function AuthGate({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, can } = useAuth();
   const isPublic = isPublicRoute(router.pathname);
   const needsAdmin = isAdminRoute(router.pathname);
-  const isAdmin = user?.role === "admin";
+  const requiredModule = moduleForPath(router.pathname);
+  const blocked = isAuthenticated && ((needsAdmin && !isAdmin) || (requiredModule !== null && !can(requiredModule)));
 
   useEffect(() => {
     if (isLoading) return;
@@ -28,16 +30,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (isAuthenticated && needsAdmin && !isAdmin) {
+    if (blocked) {
       void router.replace("/");
     }
-  }, [isAdmin, isAuthenticated, isLoading, isPublic, needsAdmin, router]);
+  }, [blocked, isAuthenticated, isLoading, isPublic, router]);
 
   if (isPublic) {
     return <>{children}</>;
   }
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading || !isAuthenticated || blocked) {
     return (
       <Stack spacing={2.5} sx={{ minHeight: "100vh", alignItems: "center", justifyContent: "center" }}>
         <LogoMark size="md" withWordmark />

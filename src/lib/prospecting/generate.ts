@@ -1,22 +1,23 @@
-import { clean, firstName, paragraphs, sentence } from "@/lib/followup/text";
+import { clean, firstName, lowerFirst, paragraphs, sentence } from "@/lib/followup/text";
 import {
   CHANNEL_LABELS,
-  GOAL_OPTIONS,
-  OPPORTUNITY_OPTIONS,
-  labelOf,
+  DEFAULT_GOAL_CTA,
+  DEFAULT_OPPORTUNITY_MESSAGES,
+  GENERIC_GOAL_CTA,
+  GENERIC_OPPORTUNITY_MESSAGES,
+  STYLES,
+  styleTexts,
   type ProspectChannel,
   type ProspectForm,
-  type ProspectGoal,
-  type ProspectOpportunity,
-  type ProspectSegment,
-  type ProspectSource,
+  type ProspectStyle,
+  type StyleTexts,
 } from "./options";
 
 /* -------------------------------------------------------------------------- */
 /* Tipos do resultado                                                          */
 /* -------------------------------------------------------------------------- */
 
-export type ProspectStyle = "natural" | "direct" | "consultive";
+export type { ProspectStyle } from "./options";
 export type BaseQuality = "missing" | "generic" | "good";
 
 export interface ProspectMessage {
@@ -80,7 +81,7 @@ export function assessObservation(observation: string): BaseQuality {
 /* Conteúdo por segmento                                                       */
 /* -------------------------------------------------------------------------- */
 
-interface SegmentCopy {
+export interface SegmentCopy {
   /** O que o vídeo pode mostrar desse negócio. */
   angle: string;
   /** Frase de abertura quando não há observação específica. */
@@ -91,7 +92,7 @@ interface SegmentCopy {
   business: string;
 }
 
-const SEGMENTS: Record<ProspectSegment, SegmentCopy> = {
+export const DEFAULT_SEGMENTS: Record<string, SegmentCopy> = {
   restaurant: {
     angle: "os pratos e o clima da casa",
     hook: "Em gastronomia, muita gente decide onde comer pelo que vê nas redes antes de sair de casa.",
@@ -143,80 +144,6 @@ const SEGMENTS: Record<ProspectSegment, SegmentCopy> = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* Oportunidade × estilo                                                       */
-/* -------------------------------------------------------------------------- */
-
-const OPPORTUNITY: Record<ProspectOpportunity, (a: string) => Record<ProspectStyle, string>> = {
-  recurring_content: (a) => ({
-    natural: `Fiquei pensando que um conteúdo em vídeo mais constante mostraria muito bem ${a}.`,
-    direct: `Trabalho com conteúdo recorrente em vídeo para redes sociais e vejo espaço para mostrar mais ${a}.`,
-    consultive: `Um calendário de vídeos recorrentes poderia dar mais constância ao perfil e destacar ${a}.`,
-  }),
-  institutional: (a) => ({
-    natural: `Fiquei imaginando um vídeo institucional contando a história de vocês e mostrando ${a}.`,
-    direct: `Produzo vídeos institucionais, e um vídeo apresentando ${a} funcionaria muito bem para vocês.`,
-    consultive: `Um vídeo institucional bem construído ajudaria a apresentar ${a} para quem ainda não conhece vocês — no site, nas redes e em reuniões.`,
-  }),
-  event_coverage: () => ({
-    natural: "Fiquei pensando em como uma cobertura em vídeo dos eventos de vocês renderia conteúdo por muito tempo.",
-    direct: "Faço cobertura de eventos em vídeo, e os próximos eventos de vocês renderiam um material muito bom.",
-    consultive: "Um evento bem registrado vira conteúdo para semanas: aftermovie, cortes para as redes e material para divulgar a próxima edição.",
-  }),
-  product: (a) => ({
-    natural: `Fiquei imaginando vídeos curtos mostrando ${a} de um jeito mais vivo do que a foto.`,
-    direct: `Produzo conteúdo de produto em vídeo e dá para valorizar muito ${a}.`,
-    consultive: `Vídeo de produto costuma converter melhor do que foto parada, principalmente quando mostra detalhe, uso e textura — e isso combina com ${a}.`,
-  }),
-  testimonials: (a) => ({
-    natural: `Fiquei pensando que depoimentos em vídeo de clientes de vocês seriam uma forma muito verdadeira de mostrar ${a}.`,
-    direct: `Produzo vídeos de depoimento de clientes, e esse formato funcionaria muito bem para mostrar ${a}.`,
-    consultive: `Depoimento em vídeo é um dos formatos que mais geram confiança, porque quem fala é o cliente — seria uma forma forte de mostrar ${a}.`,
-  }),
-  photo_video: (a) => ({
-    natural: `Fiquei imaginando uma produção de foto e vídeo juntos, mostrando ${a}, que já resolvesse o conteúdo de algumas semanas.`,
-    direct: `Trabalho com foto e vídeo na mesma produção, e dá para registrar ${a} de uma vez só.`,
-    consultive: `Uma diária de foto e vídeo costuma render material para vários meses — seria uma boa forma de registrar ${a}.`,
-  }),
-  unsure: () => ({
-    natural: "Fiquei com vontade de saber como vocês pensam o vídeo na comunicação da empresa.",
-    direct: "Queria entender se vídeo faz parte dos planos de vocês para os próximos meses.",
-    consultive: "Antes de sugerir qualquer coisa, queria entender melhor como vocês usam vídeo hoje.",
-  }),
-};
-
-/* -------------------------------------------------------------------------- */
-/* Objetivo × estilo                                                           */
-/* -------------------------------------------------------------------------- */
-
-const CTA: Record<ProspectGoal, Record<ProspectStyle, string>> = {
-  start_conversation: {
-    natural: "Faz sentido para vocês pensar em algo assim?",
-    direct: "Isso está nos planos de vocês para os próximos meses?",
-    consultive: "Se fizer sentido, te conto como eu estruturaria isso.",
-  },
-  meeting: {
-    natural: "Topa uma conversa rápida essa semana? Uns 15 minutos já bastam.",
-    direct: "Consegue 15 minutos esta semana para eu te mostrar como funcionaria?",
-    consultive: "Se fizer sentido, podemos marcar 15 minutos para eu entender o momento de vocês e mostrar alguns caminhos?",
-  },
-  present_idea: {
-    natural: "Posso te mandar a ideia com um pouco mais de detalhe?",
-    direct: "Posso te enviar a ideia resumida em tópicos?",
-    consultive: "Se quiser, monto a ideia em uma página, com formato e frequência, para vocês avaliarem com calma.",
-  },
-  portfolio: {
-    natural: "Posso te mandar alguns trabalhos parecidos que já fiz?",
-    direct: "Posso te enviar 2 ou 3 trabalhos parecidos para você ter uma referência?",
-    consultive: "Posso te enviar alguns trabalhos feitos para negócios parecidos com o de vocês, para ver se o estilo combina?",
-  },
-  marketing_contact: {
-    natural: "Você saberia me dizer quem cuida do marketing aí? Queria falar com a pessoa certa.",
-    direct: "Quem é a pessoa responsável pelo marketing? Posso falar direto com ela.",
-    consultive: "Para não tomar seu tempo, quem seria a melhor pessoa para conversar sobre a comunicação de vocês?",
-  },
-};
-
-/* -------------------------------------------------------------------------- */
 /* Montagem por canal                                                          */
 /* -------------------------------------------------------------------------- */
 
@@ -226,14 +153,20 @@ interface Ctx {
   company: string;
   senderFirst: string;
   senderFull: string;
-  source: ProspectSource;
+  producer: string;
+  source: string;
   quality: BaseQuality;
   observation: string;
   idea: string;
   segment: SegmentCopy;
-  opportunity: Record<ProspectStyle, string>;
-  opportunityKey: ProspectOpportunity;
-  goal: ProspectGoal;
+  /** Frase da oportunidade principal (já com as variáveis preenchidas). */
+  opportunity: StyleTexts;
+  opportunityLabel: string;
+  opportunityKey: string;
+  /** Oportunidades adicionais, em texto. */
+  extras: string[];
+  cta: StyleTexts;
+  goalKey: string;
 }
 
 function greeting(c: Ctx) {
@@ -254,25 +187,26 @@ function sourceSentence(c: Ctx) {
     case "event":
       return "Conheci vocês em um evento recente.";
     case "local":
-      return "Também trabalho aqui na região.";
+      return "Também estamos aqui na região.";
     default:
       return "";
   }
 }
 
-function selfIntro(c: Ctx, style: ProspectStyle) {
+/** Apresentação como parte do time da produtora ("Sou Ana, da Produtora Noma."). */
+function selfIntro(c: Ctx) {
+  const from = `da ${c.producer}`;
   switch (c.channel) {
     case "instagram":
-      // No Direct, a apresentação é mínima; na versão natural só aparece com indicação.
-      return style === "natural" && c.source !== "referral" ? "" : "Sou videomaker.";
+      return c.senderFirst ? `Sou ${c.senderFirst}, ${from}.` : `Aqui é ${from}.`;
     case "whatsapp":
-      return c.senderFirst ? `Aqui é ${c.senderFirst}, sou videomaker.` : "Sou videomaker.";
+      return c.senderFirst ? `Aqui é ${c.senderFirst}, ${from}.` : `Aqui é ${from}.`;
     case "email":
-      return c.senderFull ? `Meu nome é ${c.senderFull} e sou videomaker.` : "Sou videomaker.";
+      return c.senderFull ? `Meu nome é ${c.senderFull} e faço parte do time ${from}.` : `Falo ${from}.`;
     case "linkedin":
       return c.senderFull
-        ? `Me chamo ${c.senderFull} e trabalho com produção de vídeo para empresas.`
-        : "Trabalho com produção de vídeo para empresas.";
+        ? `Me chamo ${c.senderFull} e faço parte ${from}, produtora audiovisual.`
+        : `Falo ${from}, produtora audiovisual.`;
   }
 }
 
@@ -286,6 +220,12 @@ function observationLine(c: Ctx, style: ProspectStyle) {
   return `${frames[style]} ${c.observation}`;
 }
 
+function extrasLine(c: Ctx) {
+  if (!c.extras.length) return "";
+  const list = c.extras.length === 1 ? c.extras[0] : `${c.extras.slice(0, -1).join(", ")} e ${c.extras[c.extras.length - 1]}`;
+  return `Também podemos ajudar com ${list}.`;
+}
+
 function ideaLine(c: Ctx, style: ProspectStyle) {
   if (!c.idea) return "";
   const frames: Record<ProspectStyle, string> = {
@@ -297,39 +237,27 @@ function ideaLine(c: Ctx, style: ProspectStyle) {
 }
 
 function emailSubject(c: Ctx, style: ProspectStyle) {
-  const opportunity = labelOf(OPPORTUNITY_OPTIONS, c.opportunityKey);
   if (style === "natural") return c.company ? `Uma ideia para ${c.company}` : "Uma ideia de vídeo para vocês";
   if (style === "direct") {
-    const topic = c.opportunityKey === "unsure" ? "Produção de vídeo" : opportunity;
+    const topic = c.opportunityKey === "unsure" ? "Produção de vídeo" : c.opportunityLabel;
     return c.company ? `${topic} para ${c.company}` : topic;
   }
   return c.company ? `${c.company}: uma observação sobre o conteúdo em vídeo` : "Uma observação sobre o conteúdo de vocês";
 }
 
 function compose(c: Ctx, style: ProspectStyle): { subject?: string; text: string } {
-  const intro = [selfIntro(c, style), sourceSentence(c)].filter(Boolean).join(" ");
+  const intro = [selfIntro(c), sourceSentence(c)].filter(Boolean).join(" ");
   const obs = observationLine(c, style);
-  const opp = c.opportunity[style];
+  const opp = [c.opportunity[style], extrasLine(c)].filter(Boolean).join(" ");
   const idea = ideaLine(c, style);
   const question = style === "consultive" ? c.segment.question : "";
-  const cta = CTA[c.goal][style];
+  const cta = c.cta[style];
   const hello = greeting(c);
 
   switch (c.channel) {
     case "instagram":
-      return {
-        text: paragraphs([
-          intro ? `${hello} ${intro}` : hello,
-          `${obs} ${opp}`,
-          idea,
-          question,
-          cta,
-        ]),
-      };
     case "whatsapp":
-      return {
-        text: paragraphs([`${hello} ${intro}`, `${obs} ${opp}`, idea, question, cta]),
-      };
+      return { text: paragraphs([`${hello} ${intro}`, `${obs} ${opp}`, idea, question, cta]) };
     case "linkedin":
       return {
         text: paragraphs([
@@ -342,8 +270,8 @@ function compose(c: Ctx, style: ProspectStyle): { subject?: string; text: string
         ]),
       };
     case "email": {
-      const signature = c.senderFull || "[seu nome]";
-      const portfolioLine = c.goal === "portfolio" ? "Portfólio: [link do seu portfólio]" : "";
+      const signature = c.senderFull ? `${c.senderFull}\n${c.producer}` : c.producer;
+      const portfolioLine = c.goalKey === "portfolio" ? "Portfólio: [link do portfólio]" : "";
       return {
         subject: emailSubject(c, style),
         text: paragraphs([
@@ -365,7 +293,7 @@ function compose(c: Ctx, style: ProspectStyle): { subject?: string; text: string
 /* Dicas                                                                       */
 /* -------------------------------------------------------------------------- */
 
-const AVOID_BY_GOAL: Record<ProspectGoal, string> = {
+const AVOID_BY_GOAL: Record<string, string> = {
   start_conversation:
     "Mandar tabela de preços ou pacote fechado logo de cara. O objetivo aqui é abrir conversa, não vender na primeira mensagem.",
   meeting: "Pedir uma reunião longa ou sem pauta. Ofereça 15 minutos e diga o que vai mostrar.",
@@ -381,7 +309,7 @@ const AVOID_BY_CHANNEL: Record<ProspectChannel, string> = {
   linkedin: "Enviar a proposta comercial junto com o pedido de conexão.",
 };
 
-const NEXT_BY_GOAL: Record<ProspectGoal, string> = {
+const NEXT_BY_GOAL: Record<string, string> = {
   start_conversation:
     "Se responder, faça perguntas sobre o momento da empresa antes de falar de preço. Registre o lead no CRM para não perder o fio.",
   meeting:
@@ -419,31 +347,86 @@ function sequenceFor(channel: ProspectChannel): ProspectStep[] {
 /* API pública                                                                 */
 /* -------------------------------------------------------------------------- */
 
-const STYLES: { id: ProspectStyle; label: string; hint: string }[] = [
-  { id: "natural", label: "Mais natural / Conversa", hint: "Soa como uma conversa, sem cara de venda." },
-  { id: "direct", label: "Mais direta / Objetiva", hint: "Diz logo o que você faz e o que propõe." },
-  { id: "consultive", label: "Mais consultiva / Diagnóstico", hint: "Mostra repertório e abre com uma pergunta." },
-];
+/** Dados configuráveis que o gerador precisa (vindos de Configurações). */
+export interface ProspectSettings {
+  senderName: string;
+  /** Nome da produtora, usado na apresentação. */
+  producer: string;
+  labelOf: (list: string, value: string) => string;
+  metaOf: (list: string, value: string) => Record<string, unknown> | undefined;
+  /** Respostas dos campos personalizados, prontas para exibir, por chave. */
+  customText: Record<string, string>;
+}
+
+/** Troca {variavel} pelos valores; variáveis desconhecidas ficam como estão. */
+export function fillTemplate(template: string, vars: Record<string, string>) {
+  return template.replace(/\{([a-z0-9_]+)\}/gi, (match, key: string) => {
+    const value = vars[key.toLowerCase()];
+    return value === undefined ? match : value;
+  });
+}
+
+function segmentCopy(settings: ProspectSettings, segment: string): SegmentCopy {
+  const base = DEFAULT_SEGMENTS[segment] || DEFAULT_SEGMENTS.other;
+  const meta = (settings.metaOf("prospectSegment", segment)?.copy || {}) as Partial<SegmentCopy>;
+  return {
+    angle: meta.angle?.trim() || base.angle,
+    hook: meta.hook?.trim() || base.hook,
+    question: meta.question?.trim() || base.question,
+    business: meta.business?.trim() || base.business,
+  };
+}
+
+export function opportunityTexts(settings: Pick<ProspectSettings, "metaOf">, value: string): StyleTexts {
+  return styleTexts(
+    settings.metaOf("prospectOpportunity", value),
+    "messages",
+    DEFAULT_OPPORTUNITY_MESSAGES[value] || GENERIC_OPPORTUNITY_MESSAGES,
+  );
+}
+
+export function goalTexts(settings: Pick<ProspectSettings, "metaOf">, value: string): StyleTexts {
+  return styleTexts(settings.metaOf("prospectGoal", value), "cta", DEFAULT_GOAL_CTA[value] || GENERIC_GOAL_CTA);
+}
 
 /** Gera avaliação, mensagens e dicas a partir do formulário (função pura). */
-export function generateProspecting(form: ProspectForm, senderName = ""): ProspectResult {
+export function generateProspecting(form: ProspectForm, settings: ProspectSettings): ProspectResult {
   const quality = assessObservation(form.observation);
-  const segment = SEGMENTS[form.segment];
+  const segment = segmentCopy(settings, form.segment);
+  const [primary = "unsure", ...others] = form.opportunities;
+  const opportunityLabel = settings.labelOf("prospectOpportunity", primary);
+  const vars: Record<string, string> = {
+    ...Object.fromEntries(Object.entries(settings.customText).map(([key, value]) => [key.toLowerCase(), value])),
+    angulo: segment.angle,
+    empresa: clean(form.company) || "vocês",
+    pessoa: firstName(form.person),
+    produtora: settings.producer,
+    oportunidade: lowerFirst(opportunityLabel),
+  };
+  const fill = (texts: StyleTexts): StyleTexts => ({
+    natural: fillTemplate(texts.natural, vars),
+    direct: fillTemplate(texts.direct, vars),
+    consultive: fillTemplate(texts.consultive, vars),
+  });
 
   const ctx: Ctx = {
     channel: form.channel,
     person: firstName(form.person),
     company: clean(form.company),
-    senderFirst: firstName(senderName),
-    senderFull: clean(senderName),
+    senderFirst: firstName(settings.senderName),
+    senderFull: clean(settings.senderName),
+    producer: settings.producer,
     source: form.source,
     quality,
     observation: sentence(form.observation),
     idea: sentence(form.idea),
     segment,
-    opportunity: OPPORTUNITY[form.opportunity](segment.angle),
-    opportunityKey: form.opportunity,
-    goal: form.goal,
+    opportunity: fill(opportunityTexts(settings, primary)),
+    opportunityLabel,
+    opportunityKey: primary,
+    extras: others.filter((value) => value !== "unsure").map((value) => lowerFirst(settings.labelOf("prospectOpportunity", value))),
+    cta: fill(goalTexts(settings, form.goal)),
+    goalKey: form.goal,
   };
 
   const assessmentCopy: Record<BaseQuality, { title: string; text: string }> = {
@@ -457,7 +440,7 @@ export function generateProspecting(form: ProspectForm, senderName = ""): Prospe
     },
     good: {
       title: "Boa base para abordar",
-      text: "Sua observação é específica: mostra que você olhou para o negócio antes de oferecer seu trabalho, e isso aumenta muito a chance de resposta.",
+      text: "Sua observação é específica: mostra que você olhou para o negócio antes de oferecer o trabalho da produtora, e isso aumenta muito a chance de resposta.",
     },
   };
 
@@ -467,17 +450,22 @@ export function generateProspecting(form: ProspectForm, senderName = ""): Prospe
       : quality === "generic"
         ? { label: "Observação genérica", tone: "gold" }
         : { label: "Sem observação", tone: "burgundy" },
-    { label: labelOf(GOAL_OPTIONS, form.goal), tone: "tan" },
+    { label: settings.labelOf("prospectGoal", form.goal), tone: "tan" },
     { label: CHANNEL_LABELS[form.channel], tone: "tan" },
   ];
   if (form.source === "referral") chips.push({ label: "Menciona a indicação", tone: "sage" });
   if (clean(form.idea)) chips.push({ label: "Com ideia própria", tone: "sage" });
+  if (others.length) chips.push({ label: `${form.opportunities.length} oportunidades`, tone: "tan" });
 
   return {
     assessment: { quality, ...assessmentCopy[quality], chips },
     messages: STYLES.map((style) => ({ ...style, ...compose(ctx, style.id) })),
-    avoid: [AVOID_BY_GOAL[form.goal], AVOID_BY_CHANNEL[form.channel], "Começar com “gostei do perfil” ou elogios que servem para qualquer empresa."],
-    next: NEXT_BY_GOAL[form.goal],
+    avoid: [
+      AVOID_BY_GOAL[form.goal] || AVOID_BY_GOAL.start_conversation,
+      AVOID_BY_CHANNEL[form.channel],
+      "Começar com “gostei do perfil” ou elogios que servem para qualquer empresa.",
+    ],
+    next: NEXT_BY_GOAL[form.goal] || NEXT_BY_GOAL.start_conversation,
     sequence: sequenceFor(form.channel),
   };
 }

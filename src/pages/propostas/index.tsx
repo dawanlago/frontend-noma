@@ -102,7 +102,7 @@ export default function ProposalsPage() {
     return (
       <>
         <Head>
-          <title>Gerador de Propostas | Noma CRM</title>
+          <title>Gerador de Propostas | Noma</title>
         </Head>
         <ProposalEditor
           key={id}
@@ -118,7 +118,7 @@ export default function ProposalsPage() {
     return (
       <>
         <Head>
-          <title>Gerador de Propostas | Noma CRM</title>
+          <title>Gerador de Propostas | Noma</title>
         </Head>
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-tan/20 border-t-tan" />
@@ -132,7 +132,7 @@ export default function ProposalsPage() {
   return (
     <>
       <Head>
-        <title>Gerador de Propostas | Noma CRM</title>
+        <title>Gerador de Propostas | Noma</title>
       </Head>
       <PageHeader
         eyebrow="Ferramenta comercial"

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import Head from "next/head";
+import OptionSelect from "@/components/options/OptionSelect";
 import CopyButton from "@/components/tools/CopyButton";
 import Field from "@/components/tools/Field";
 import OptionCards from "@/components/tools/OptionCards";
@@ -8,18 +9,14 @@ import ToolSection from "@/components/tools/ToolSection";
 import PageHeader from "@/components/ui/PageHeader";
 import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompanyName, useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToolDocument } from "@/hooks/useToolDocument";
 import { briefingsApi } from "@/lib/briefing/api";
-import { BRIEFING_PRINT_CSS, briefingToHtml, briefingToText, buildBriefing } from "@/lib/briefing/format";
+import { briefingPrintCss, briefingToHtml, briefingToText, buildBriefing } from "@/lib/briefing/format";
 import { defaultData, normalize, titleOf, type BriefingData } from "@/lib/briefing/model";
-import {
-  BRIEFING_TEMPLATES,
-  BRIEFING_TYPES,
-  DELIVERY_FORMATS,
-  PUBLISH_CHANNELS,
-  REVISION_OPTIONS,
-  type BriefingField,
-} from "@/lib/briefing/templates";
+import { BRIEFING_TEMPLATES, BRIEFING_TYPES, type BriefingField } from "@/lib/briefing/templates";
+import { apiError } from "@/lib/errors";
+import { resources } from "@/lib/resources";
 import { printDocument } from "@/utils/document";
 import BriefingPreview from "./BriefingPreview";
 
@@ -77,14 +74,88 @@ function DynamicField({ field, value, onChange }: { field: BriefingField; value:
   if (field.kind === "textarea") {
     return <TextArea value={value} onChange={onChange} placeholder={field.placeholder} rows={field.key === "questions" ? 5 : 3} />;
   }
+  if (field.kind === "select" && field.optionList) {
+    return <OptionSelect list={field.optionList} value={value} onChange={onChange} />;
+  }
   if (field.kind === "select") {
     return <Select value={value} onChange={onChange} options={toOptions(field.options || [])} placeholder="Selecione" />;
   }
   return <Input value={value} onChange={onChange} placeholder={field.placeholder} type={field.kind} />;
 }
 
+/** Cor do PDF: escolher entre as cores da identidade ou qualquer outra, e marcar a padrão. */
+function StylePicker({ data, onChange }: { data: BriefingData; onChange: (style: Partial<BriefingData["style"]>) => void }) {
+  const { can } = useAuth();
+  const { settings, setSettings } = useWorkspace();
+  const [status, setStatus] = useState("");
+  const brand = settings?.brand;
+  const colors = brand?.colors || [];
+  const current = (data.style.color || brand?.defaultColor || "#111111").toUpperCase();
+  const isDefault = current === (brand?.defaultColor || "").toUpperCase();
+
+  async function makeDefault() {
+    if (!brand) return;
+    setStatus("");
+    try {
+      const known = colors.some((color) => color.hex.toUpperCase() === current);
+      const saved = await resources.settings.update({
+        brand: { ...brand, defaultColor: current, colors: known ? colors : [...colors, { name: "Cor personalizada", hex: current }] },
+      });
+      setSettings(saved);
+      setStatus("Cor padrão atualizada.");
+    } catch (err) {
+      setStatus(apiError(err, "Não foi possível salvar a cor padrão."));
+    }
+  }
+
+  return (
+    <section className="card p-4">
+      <p className="text-sm font-semibold text-charcoal">Identidade do PDF</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {colors.map((color) => {
+          const active = color.hex.toUpperCase() === current;
+          return (
+            <button
+              key={color.hex}
+              type="button"
+              title={`${color.name}${color.hex.toUpperCase() === brand?.defaultColor.toUpperCase() ? " (padrão)" : ""}`}
+              aria-label={color.name}
+              onClick={() => onChange({ color: color.hex })}
+              className={`h-8 w-8 rounded-full border border-charcoal/15 ${active ? "ring-2 ring-tan ring-offset-2" : ""}`}
+              style={{ backgroundColor: color.hex }}
+            />
+          );
+        })}
+        <label className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-charcoal/25 px-2.5 text-xs font-semibold text-charcoal/60">
+          Outra cor
+          <input type="color" className="h-5 w-6 cursor-pointer border-0 bg-transparent p-0" value={current} onChange={(e) => onChange({ color: e.target.value.toUpperCase() })} />
+        </label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="text-charcoal/55">{isDefault ? "Esta é a cor padrão." : `Cor atual: ${current}`}</span>
+        {!isDefault && can("configuracoes") ? (
+          <button type="button" className="font-semibold text-tan hover:underline" onClick={() => void makeDefault()}>
+            Marcar como padrão
+          </button>
+        ) : null}
+      </div>
+      {brand?.logo ? (
+        <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-charcoal/70">
+          <input type="checkbox" checked={data.style.showLogo} onChange={(e) => onChange({ showLogo: e.target.checked })} />
+          Incluir o logo da produtora no PDF
+        </label>
+      ) : can("configuracoes") ? (
+        <p className="mt-3 text-xs text-charcoal/50">Envie o logo em Configurações → Geral e identidade visual.</p>
+      ) : null}
+      {status ? <p className="mt-2 text-xs text-charcoal/60">{status}</p> : null}
+    </section>
+  );
+}
+
 export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: BriefingEditorProps) {
   const { user } = useAuth();
+  const { settings } = useWorkspace();
+  const companyName = useCompanyName();
   const { data, setData, isLoading, error, saveState, ownerName, flush } = useToolDocument<BriefingData>({
     api: briefingsApi,
     id,
@@ -121,7 +192,7 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
   const specific = data.specific[data.type];
   const showOwner = user?.role === "admin" && ownerName && ownerName !== user.name;
 
-  const patch = <K extends "client" | "goal" | "creative" | "delivery">(key: K, value: Partial<BriefingData[K]>) =>
+  const patch = <K extends "client" | "goal" | "creative" | "delivery" | "production" | "style">(key: K, value: Partial<BriefingData[K]>) =>
     setData((current) => ({ ...current, [key]: { ...current[key], ...value } }));
   const setSpecific = (key: string, value: string) =>
     setData((current) => ({
@@ -144,15 +215,18 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
     setData(defaultData());
   }
 
+  const color = data.style.color || settings?.brand.defaultColor || "#111111";
+
   function handlePrint() {
     if (!summary || !data) return;
-    printDocument(`Briefing — ${titleOf(data)}`, briefingToHtml(summary), BRIEFING_PRINT_CSS);
+    const brand = { color, logo: data.style.showLogo ? settings?.brand.logo || "" : "", companyName };
+    printDocument(`Briefing — ${titleOf(data)}`, briefingToHtml(summary, brand), briefingPrintCss(color));
   }
 
   return (
     <>
       <Head>
-        <title>{`Briefing — ${titleOf(data)} | Noma CRM`}</title>
+        <title>{`Briefing — ${titleOf(data)} | Noma`}</title>
       </Head>
       <PageHeader
         eyebrow="Ferramenta de pré-produção"
@@ -228,7 +302,28 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
             </div>
           </ToolSection>
 
-          <ToolSection step={5} title="Direção criativa">
+          <ToolSection step={5} title="Produção" description="Informações da gravação para a equipe.">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Data da gravação">
+                <Input type="date" value={data.production.date} onChange={(date) => patch("production", { date })} />
+              </Field>
+              <Field label="Horário">
+                <Input value={data.production.time} onChange={(time) => patch("production", { time })} placeholder="Ex.: 8h às 12h (chegada 7h30)" />
+              </Field>
+              <Field label="Local" full>
+                <Input value={data.production.location} onChange={(location) => patch("production", { location })} placeholder="Endereço completo e ponto de referência" />
+              </Field>
+              <Field label="Informações da gravação" full>
+                <TextArea
+                  value={data.production.notes}
+                  onChange={(notes) => patch("production", { notes })}
+                  placeholder="Equipe, equipamentos, figurino, estacionamento, contato no local, autorizações..."
+                />
+              </Field>
+            </div>
+          </ToolSection>
+
+          <ToolSection step={6} title="Direção criativa">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Referências" full hint="Links, perfis ou vídeos que o cliente gosta.">
                 <TextArea value={data.creative.references} onChange={(references) => patch("creative", { references })} placeholder="Cole links ou descreva as referências" />
@@ -242,19 +337,19 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
             </div>
           </ToolSection>
 
-          <ToolSection step={6} title="Entrega">
+          <ToolSection step={7} title="Entrega">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Formato principal">
-                <Select value={data.delivery.format} onChange={(format) => patch("delivery", { format })} options={toOptions(DELIVERY_FORMATS)} />
+                <OptionSelect list="briefingFormat" value={data.delivery.format} onChange={(format) => patch("delivery", { format })} />
               </Field>
               <Field label="Prazo final">
                 <Input type="date" value={data.delivery.deadline} onChange={(deadline) => patch("delivery", { deadline })} />
               </Field>
               <Field label="Número de revisões">
-                <Select value={data.delivery.revisions} onChange={(revisions) => patch("delivery", { revisions })} options={toOptions(REVISION_OPTIONS)} />
+                <OptionSelect list="briefingRevisions" value={data.delivery.revisions} onChange={(revisions) => patch("delivery", { revisions })} />
               </Field>
               <Field label="Canal de publicação">
-                <Select value={data.delivery.channel} onChange={(channel) => patch("delivery", { channel })} options={toOptions(PUBLISH_CHANNELS)} />
+                <OptionSelect list="briefingChannel" value={data.delivery.channel} onChange={(channel) => patch("delivery", { channel })} />
               </Field>
               <label
                 className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 sm:col-span-2 ${
@@ -279,7 +374,8 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
         </div>
 
         <aside className="min-w-0 space-y-3 self-start lg:sticky lg:top-20">
-          <BriefingPreview summary={summary} />
+          <StylePicker data={data} onChange={(style) => patch("style", style)} />
+          <BriefingPreview summary={summary} color={color} />
           <div className="grid grid-cols-2 gap-2">
             <CopyButton text={() => briefingToText(summary)} label="Copiar briefing" className="btn-secondary" />
             <button type="button" className="btn-primary" onClick={handlePrint}>

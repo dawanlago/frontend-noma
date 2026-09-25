@@ -17,6 +17,7 @@ import MenuRounded from "@mui/icons-material/MenuRounded";
 import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
 import LogoMark from "@/components/ui/LogoMark";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompanyName } from "@/contexts/WorkspaceContext";
 import { USER_ROLE_LABELS } from "@/lib/constants";
 import { getInitials } from "@/utils/format";
 interface TopBarProps {
@@ -33,7 +34,8 @@ function todayLabel() {
 
 export default function TopBar({ onMenuClick }: TopBarProps) {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
+  const companyName = useCompanyName();
   const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
 
   function handleLogout() {
@@ -60,23 +62,27 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
             {todayLabel()}
           </Typography>
           <Typography sx={{ fontWeight: 600, fontSize: 14 }}>
-            Box do videomaker
+            {companyName}
           </Typography>
         </Box>
 
         <Box sx={{ flexGrow: 1 }} />
 
-        <Button
-          variant="contained"
-          startIcon={<AddRounded />}
-          onClick={() => router.push("/crm?novo=1")}
-        >
-          Novo lead
-        </Button>
+        {can("crm") ? (
+          <Button
+            variant="contained"
+            startIcon={<AddRounded />}
+            onClick={() => router.push("/crm?novo=1")}
+          >
+            Nova venda
+          </Button>
+        ) : null}
 
-        <IconButton aria-label="Configurações" onClick={() => router.push("/configuracoes")}>
-          <SettingsOutlined />
-        </IconButton>
+        {can("configuracoes") ? (
+          <IconButton aria-label="Configurações" onClick={() => router.push("/configuracoes")}>
+            <SettingsOutlined />
+          </IconButton>
+        ) : null}
 
         <IconButton onClick={(event) => setUserAnchor(event.currentTarget)}>
           <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 12 }}>

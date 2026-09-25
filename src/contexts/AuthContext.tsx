@@ -8,12 +8,15 @@ import {
   type ReactNode,
 } from "react";
 import { api, AUTH_TOKEN_KEY } from "@/lib/api";
-import type { User } from "@/types";
+import type { ModuleKey, User } from "@/types";
 
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  /** O usuário tem acesso a pelo menos um dos módulos? */
+  can: (...modules: ModuleKey[]) => boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -63,15 +66,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }, []);
 
+  const can = useCallback(
+    (...modules: ModuleKey[]) =>
+      user?.role === "admin" || modules.some((key) => (user?.permissions || []).includes(key)),
+    [user],
+  );
+
   const value = useMemo(
     () => ({
       user,
       isLoading,
       isAuthenticated: Boolean(user),
+      isAdmin: user?.role === "admin",
+      can,
       login,
       logout,
     }),
-    [user, isLoading, login, logout],
+    [user, isLoading, can, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

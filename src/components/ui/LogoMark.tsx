@@ -61,7 +61,7 @@ export default function LogoMark({
               color: inverted ? "rgba(255,255,255,0.62)" : "text.secondary",
             }}
           >
-            CRM
+            Produtora
           </Typography>
         </Box>
       ) : null}

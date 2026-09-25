@@ -56,7 +56,7 @@ function BriefingList({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <>
       <Head>
-        <title>Gerador de Briefing | Noma CRM</title>
+        <title>Gerador de Briefing | Noma</title>
       </Head>
       <PageHeader
         eyebrow="Ferramenta de pré-produção"

@@ -1,7 +1,8 @@
 import { HiOutlineMagnifyingGlass } from "react-icons/hi2";
+import OptionSelect from "@/components/options/OptionSelect";
 import OwnerFilter from "@/components/tools/OwnerFilter";
 import Select from "@/components/ui/Select";
-import { LEAD_SERVICES, MONTH_NAMES } from "@/lib/constants";
+import { LEAD_TEMPERATURES, MONTH_NAMES } from "@/lib/constants";
 import type { LeadFilters } from "@/lib/crm/metrics";
 
 interface CrmFiltersProps {
@@ -17,25 +18,31 @@ export default function CrmFilters({ filters, onChange, ownerId, onOwnerChange }
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
       <label className="relative block flex-1">
-        <span className="sr-only">Buscar cliente ou empresa</span>
+        <span className="sr-only">Buscar negociação, contato ou empresa</span>
         <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal/40" />
         <input
           className="input-search pl-9"
-          placeholder="Buscar cliente ou empresa"
+          placeholder="Buscar negociação, contato ou empresa"
           value={filters.search}
           onChange={(event) => onChange({ ...filters, search: event.target.value })}
         />
       </label>
-      <div className="grid gap-3 sm:grid-cols-3 lg:flex">
+      <div className="grid gap-3 sm:grid-cols-4 lg:flex">
         <div className="lg:w-52">
-          <Select
+          <OptionSelect
+            list="leadService"
+            noAdd
             value={filters.service}
             onChange={(service) => onChange({ ...filters, service })}
-            placeholder="Todos os serviços"
-            options={[
-              { value: "", label: "Todos os serviços" },
-              ...LEAD_SERVICES.map((service) => ({ value: service, label: service })),
-            ]}
+            emptyLabel="Todos os serviços"
+          />
+        </div>
+        <div className="lg:w-40">
+          <Select
+            value={filters.temperature}
+            onChange={(temperature) => onChange({ ...filters, temperature })}
+            placeholder="Termômetro"
+            options={[{ value: "", label: "Todos" }, ...LEAD_TEMPERATURES.map((item) => ({ value: item.value, label: item.label }))]}
           />
         </div>
         <div className="lg:w-40">

@@ -1,5 +1,5 @@
 import { computeLeadMetrics, conversionByStage, formatPercent, groupBySource } from "@/lib/crm/metrics";
-import type { Lead } from "@/types";
+import type { Funnel, Lead } from "@/types";
 import { formatCurrencyBRL } from "@/utils/format";
 
 function Bar({ rate, tone = "bg-tan" }: { rate: number; tone?: string }) {
@@ -10,16 +10,17 @@ function Bar({ rate, tone = "bg-tan" }: { rate: number; tone?: string }) {
   );
 }
 
-export default function ReportsView({ leads }: { leads: Lead[] }) {
-  const stages = conversionByStage(leads);
+export default function ReportsView({ leads, funnel }: { leads: Lead[]; funnel: Funnel }) {
+  const stages = conversionByStage(leads, funnel);
   const sources = groupBySource(leads);
   const metrics = computeLeadMetrics(leads);
 
   const summary = [
-    { label: "Leads cadastrados", value: String(metrics.total) },
-    { label: "Chegaram à proposta", value: `${metrics.proposalCount} (${formatPercent(metrics.total ? metrics.proposalCount / metrics.total : 0)})` },
+    { label: "Negociações", value: String(metrics.total) },
+    { label: "Vendas feitas", value: `${metrics.wonCount} (${formatPercent(metrics.conversionRate)})` },
+    { label: "Perdidas", value: String(metrics.lostCount) },
     { label: "Potencial em aberto", value: formatCurrencyBRL(metrics.openValue) },
-    { label: "Valor ganho", value: formatCurrencyBRL(metrics.wonValue) },
+    { label: "Valor vendido", value: formatCurrencyBRL(metrics.wonValue) },
   ];
 
   return (
@@ -27,24 +28,24 @@ export default function ReportsView({ leads }: { leads: Lead[] }) {
       <div className="grid gap-6">
         <section className="card p-5 sm:p-6">
           <h2 className="text-base font-semibold text-charcoal">Conversão por etapa</h2>
-          <p className="mt-1 text-sm text-charcoal/55">Quantos leads chegaram a cada etapa do funil (ou foram além dela).</p>
+          <p className="mt-1 text-sm text-charcoal/55">Quantas negociações de “{funnel.name}” chegaram a cada etapa (ou foram além dela).</p>
           <ul className="mt-5 grid gap-4">
             {stages.map((item) => (
-              <li key={item.stage}>
+              <li key={item.stage._id}>
                 <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-charcoal">{item.label}</span>
+                  <span className="font-medium text-charcoal">{item.stage.name}</span>
                   <span className="tabular-nums text-charcoal/55">
-                    {item.reached} {item.reached === 1 ? "lead" : "leads"} · <strong className="text-charcoal">{formatPercent(item.rate)}</strong>
+                    {item.reached} · <strong className="text-charcoal">{formatPercent(item.rate)}</strong>
                   </span>
                 </div>
-                <Bar rate={item.rate} tone={item.stage === "won" ? "bg-sage" : "bg-tan"} />
+                <Bar rate={item.rate} tone={item.stage.kind === "won" ? "bg-sage" : "bg-tan"} />
               </li>
             ))}
           </ul>
         </section>
 
         <section className="card p-5 sm:p-6">
-          <h2 className="text-base font-semibold text-charcoal">Origem dos leads</h2>
+          <h2 className="text-base font-semibold text-charcoal">Origem das negociações</h2>
           <p className="mt-1 text-sm text-charcoal/55">De onde vêm as suas oportunidades.</p>
           {sources.length ? (
             <ul className="mt-5 grid gap-4">
@@ -61,7 +62,7 @@ export default function ReportsView({ leads }: { leads: Lead[] }) {
               ))}
             </ul>
           ) : (
-            <p className="mt-5 text-sm text-charcoal/45">Nenhum lead no filtro atual.</p>
+            <p className="mt-5 text-sm text-charcoal/45">Nenhuma negociação no filtro atual.</p>
           )}
         </section>
       </div>

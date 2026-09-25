@@ -1,10 +1,57 @@
 import Head from "next/head";
 import Link from "next/link";
-import { HiOutlineArrowRight, HiOutlineRectangleStack, HiOutlineTag, HiOutlineUserGroup } from "react-icons/hi2";
+import {
+  HiOutlineAdjustmentsHorizontal,
+  HiOutlineArrowRight,
+  HiOutlineChatBubbleLeftRight,
+  HiOutlineDocumentText,
+  HiOutlineFunnel,
+  HiOutlineListBullet,
+  HiOutlinePaintBrush,
+  HiOutlineRectangleStack,
+  HiOutlineTag,
+  HiOutlineUserGroup,
+} from "react-icons/hi2";
 import PageHeader from "@/components/ui/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 
 const settingsLinks = [
+  {
+    href: "/configuracoes/geral",
+    title: "Geral e identidade visual",
+    description: "Nome da produtora, frase de entrada do início, cores e logo usados no briefing.",
+    icon: HiOutlinePaintBrush,
+  },
+  {
+    href: "/configuracoes/opcoes",
+    title: "Listas de opções",
+    description: "Serviços, origens, nichos, cargos, tipos de receita, formas de pagamento e todas as outras seleções.",
+    icon: HiOutlineListBullet,
+  },
+  {
+    href: "/configuracoes/campos",
+    title: "Campos personalizados",
+    description: "Crie campos extras para negociações, contatos, empresas e para a prospecção.",
+    icon: HiOutlineAdjustmentsHorizontal,
+  },
+  {
+    href: "/configuracoes/funis",
+    title: "Funis de venda",
+    description: "Crie funis personalizados e ajuste as etapas de cada um.",
+    icon: HiOutlineFunnel,
+  },
+  {
+    href: "/configuracoes/prospeccao",
+    title: "Mensagens da prospecção",
+    description: "Edite as mensagens prontas de cada oportunidade e a chamada de cada objetivo.",
+    icon: HiOutlineChatBubbleLeftRight,
+  },
+  {
+    href: "/configuracoes/contratos",
+    title: "Modelos de contrato",
+    description: "Cadastre o contrato padrão da produtora e outros modelos com campos automáticos.",
+    icon: HiOutlineDocumentText,
+  },
   {
     href: "/configuracoes/etiquetas",
     title: "Etiquetas",
@@ -20,16 +67,15 @@ const settingsLinks = [
   },
   {
     href: "/usuarios",
-    title: "Usuários",
-    description: "Cadastre a equipe. Administradores veem os dados de todos.",
+    title: "Usuários e acessos",
+    description: "Cadastre a equipe e escolha o que cada pessoa pode acessar no sistema.",
     icon: HiOutlineUserGroup,
     adminOnly: true,
   },
 ];
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { isAdmin } = useAuth();
   const links = settingsLinks.filter((item) => !item.adminOnly || isAdmin);
 
   return (
@@ -38,7 +84,11 @@ export default function SettingsPage() {
         <title>Configurações | Noma</title>
       </Head>
 
-      <PageHeader eyebrow="Workspace" title="Configurações" description="Ajustes gerais do seu Box." />
+      <PageHeader
+        eyebrow="Workspace"
+        title="Configurações"
+        description="Ajuste campos, opções, funis, mensagens e a identidade da produtora."
+      />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {links.map((item) => {

@@ -10,6 +10,8 @@ export interface BriefingField {
   placeholder?: string;
   defaultValue?: string;
   full?: boolean;
+  /** Lista configurável (Configurações → Listas de opções) usada no lugar de `options`. */
+  optionList?: string;
 }
 
 export interface BriefingTemplate {
@@ -119,7 +121,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         full: true,
         placeholder: "Texturas, embalagem, funcionamento, acessórios...",
       },
-      { key: "style", label: "Estilo desejado", kind: "select", options: ["Clean", "Lifestyle", "Comercial", "Premium", "A definir"] },
+      { key: "style", label: "Estilo desejado", kind: "select", optionList: "briefingStyle" },
       { key: "model", label: "Precisa de modelo/pessoa?", kind: "select", options: YES_NO_TBD },
     ],
   },

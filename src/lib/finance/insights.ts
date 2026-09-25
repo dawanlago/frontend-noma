@@ -79,7 +79,7 @@ export function buildMonthInsights(totals: MonthTotals, goal: number): FinanceIn
       key: "start",
       tone: "tan",
       title: "Comece registrando",
-      text: "Lance suas entradas e despesas do mês para o Box mostrar como anda o resultado do seu trabalho.",
+      text: "Lance suas entradas e despesas do mês para a Noma mostrar como anda o resultado da produtora.",
     });
   }
 

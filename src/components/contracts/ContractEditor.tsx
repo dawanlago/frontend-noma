@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import CopyButton from "@/components/tools/CopyButton";
 import Field from "@/components/tools/Field";
 import OptionCards from "@/components/tools/OptionCards";
@@ -12,6 +13,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToolDocument } from "@/hooks/useToolDocument";
 import { contractsApi } from "@/lib/contracts/api";
 import { buildContract, contractToHtml, contractToText, CONTRACT_PRINT_CSS } from "@/lib/contracts/clauses";
+import { buildFromTemplate } from "@/lib/contracts/template";
+import { resources } from "@/lib/resources";
+import type { ContractTemplate } from "@/types";
 import {
   CONTRACT_TYPE_LABELS,
   CONTRACT_TYPE_OPTIONS,
@@ -106,7 +110,15 @@ const textArea = (value: string, onChange: (value: string) => void, placeholder 
 );
 
 export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: ContractEditorProps) {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
+  const [templates, setTemplates] = useState<ContractTemplate[] | null>(null);
+
+  useEffect(() => {
+    resources.contractTemplates
+      .list()
+      .then(setTemplates)
+      .catch(() => setTemplates([]));
+  }, []);
   const { data, setData, isLoading, error, saveState, ownerName, flush } = useToolDocument<ContractData>({
     api: contractsApi,
     id,
@@ -115,7 +127,20 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
   });
   const [busy, setBusy] = useState(false);
 
-  const doc = useMemo(() => (data ? buildContract(data) : null), [data]);
+  const template = useMemo(() => {
+    if (!templates?.length || !data) return null;
+    return templates.find((item) => item._id === data.templateId) || templates.find((item) => item.isDefault) || templates[0];
+  }, [templates, data]);
+
+  const doc = useMemo(() => {
+    if (!data) return null;
+    if (data.type === "custom") {
+      return template
+        ? buildFromTemplate(template.body, data, template.name.toUpperCase())
+        : { ...buildContract({ ...data, type: "project" }), title: "Cadastre o contrato da produtora" };
+    }
+    return buildContract(data);
+  }, [data, template]);
 
   if (isLoading) {
     return (
@@ -141,6 +166,7 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
   }
 
   const roles = partyRoles(data.type);
+  const isCustom = data.type === "custom";
   const isImage = data.type === "image";
   const isRecurring = data.type === "recurring";
   const isOutsourcing = data.type === "outsourcing";
@@ -181,7 +207,7 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
   return (
     <>
       <Head>
-        <title>{`${titleOf(data)} | Noma CRM`}</title>
+        <title>{`${titleOf(data)} | Noma`}</title>
       </Head>
       <PageHeader
         eyebrow="Ferramenta operacional"
@@ -220,6 +246,32 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
               options={CONTRACT_TYPE_OPTIONS}
               onChange={(type) => setData((current) => ({ ...current, type }))}
             />
+            {isCustom ? (
+              <div className="mt-4 rounded-xl border border-charcoal/10 p-4">
+                {templates === null ? (
+                  <div className="skeleton h-10" />
+                ) : templates.length ? (
+                  <Field label="Modelo" hint="O texto do modelo é editado em Configurações → Modelos de contrato.">
+                    <Select
+                      value={template?._id || ""}
+                      onChange={(templateId) => setData((current) => ({ ...current, templateId }))}
+                      options={templates.map((item) => ({ value: item._id, label: `${item.name}${item.isDefault ? " (padrão)" : ""}` }))}
+                    />
+                  </Field>
+                ) : (
+                  <p className="text-sm text-charcoal/65">
+                    Nenhum modelo cadastrado ainda.{" "}
+                    {can("configuracoes") ? (
+                      <Link href="/configuracoes/contratos" className="font-semibold text-tan hover:underline">
+                        Cadastrar o contrato da produtora
+                      </Link>
+                    ) : (
+                      "Peça a um administrador para cadastrar o contrato da produtora."
+                    )}
+                  </p>
+                )}
+              </div>
+            ) : null}
           </ToolSection>
 
           <ToolSection
@@ -336,29 +388,40 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
             </div>
           </ToolSection>
 
-          <ToolSection step={6} title="Regras do trabalho" description="Ligue ou desligue cláusulas. Elas renumeram sozinhas no contrato.">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {rulesForType(data.type).map((rule) => (
-                <Checkbox
-                  key={rule.key}
-                  checked={data.rules[rule.key]}
-                  onChange={(checked) => rules({ [rule.key]: checked })}
-                  title={rule.title}
-                  description={rule.description}
-                >
-                  {rule.key === "approval" ? (
-                    <Field label="Prazo para aprovação (dias corridos)">
-                      {textInput(data.rules.approvalDays, (approvalDays) => rules({ approvalDays }), "5", "number")}
-                    </Field>
-                  ) : rule.key === "reschedule" ? (
-                    <Field label="Antecedência mínima (horas)">
-                      {textInput(data.rules.rescheduleHours, (rescheduleHours) => rules({ rescheduleHours }), "48", "number")}
-                    </Field>
-                  ) : null}
-                </Checkbox>
-              ))}
-            </div>
-          </ToolSection>
+          {isCustom ? (
+            <ToolSection step={6} title="Assinaturas">
+              <Checkbox
+                checked={data.rules.signatures}
+                onChange={(checked) => rules({ signatures: checked })}
+                title="Incluir duas testemunhas"
+                description="Adiciona as linhas de testemunhas ao final do contrato."
+              />
+            </ToolSection>
+          ) : (
+            <ToolSection step={6} title="Regras do trabalho" description="Ligue ou desligue cláusulas. Elas renumeram sozinhas no contrato.">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {rulesForType(data.type).map((rule) => (
+                  <Checkbox
+                    key={rule.key}
+                    checked={data.rules[rule.key]}
+                    onChange={(checked) => rules({ [rule.key]: checked })}
+                    title={rule.title}
+                    description={rule.description}
+                  >
+                    {rule.key === "approval" ? (
+                      <Field label="Prazo para aprovação (dias corridos)">
+                        {textInput(data.rules.approvalDays, (approvalDays) => rules({ approvalDays }), "5", "number")}
+                      </Field>
+                    ) : rule.key === "reschedule" ? (
+                      <Field label="Antecedência mínima (horas)">
+                        {textInput(data.rules.rescheduleHours, (rescheduleHours) => rules({ rescheduleHours }), "48", "number")}
+                      </Field>
+                    ) : null}
+                  </Checkbox>
+                ))}
+              </div>
+            </ToolSection>
+          )}
 
           <ToolSection step={7} title="Assinatura">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -391,7 +454,7 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
               <p className="eyebrow">Pré-visualização</p>
               <p className="text-sm font-semibold text-charcoal">{CONTRACT_TYPE_LABELS[data.type]}</p>
             </div>
-            <span className="chip bg-tan/10 text-tan">{doc.sections.length} cláusulas</span>
+            <span className="chip bg-tan/10 text-tan">{doc.sections.length} {isCustom ? "seções" : "cláusulas"}</span>
           </div>
           <ContractPreview doc={doc} logo={data.logo} />
           <div className="grid grid-cols-2 gap-2">

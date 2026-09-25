@@ -4,6 +4,7 @@ import { CssBaseline, ThemeProvider } from "@mui/material";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthGate from "@/components/auth/AuthGate";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { isPublicRoute } from "@/lib/routes";
 import { nomaTheme } from "@/theme";
 import { inter } from "@/theme/font";
@@ -26,15 +27,17 @@ export default function App({ Component, pageProps, router }: AppProps) {
       <CssBaseline />
       <div className={`${inter.className} ${inter.variable} h-full`}>
         <AuthProvider>
-          <AuthGate>
-            {isPublic ? (
-              <Component {...pageProps} />
-            ) : (
-              <AppLayout>
+          <WorkspaceProvider>
+            <AuthGate>
+              {isPublic ? (
                 <Component {...pageProps} />
-              </AppLayout>
-            )}
-          </AuthGate>
+              ) : (
+                <AppLayout>
+                  <Component {...pageProps} />
+                </AppLayout>
+              )}
+            </AuthGate>
+          </WorkspaceProvider>
         </AuthProvider>
       </div>
     </ThemeProvider>

@@ -1,6 +1,7 @@
 import { todayISO } from "@/utils/format";
 
-export type ContractType = "project" | "recurring" | "outsourcing" | "image";
+/** "custom" usa um modelo próprio da produtora (Configurações → Modelos de contrato). */
+export type ContractType = "custom" | "project" | "recurring" | "outsourcing" | "image";
 export type PaymentCondition = "cash" | "split" | "installments";
 
 export interface ContractParty {
@@ -67,6 +68,8 @@ export interface ContractSignature {
 
 export interface ContractData {
   type: ContractType;
+  /** Modelo usado quando `type` é "custom" (vazio = modelo padrão). */
+  templateId: string;
   logo: string;
   me: ContractParty;
   other: ContractParty;
@@ -77,6 +80,12 @@ export interface ContractData {
 }
 
 export const CONTRACT_TYPE_OPTIONS: { value: ContractType; title: string; badge: string; description: string }[] = [
+  {
+    value: "custom",
+    title: "Contrato da produtora",
+    badge: "Modelo próprio",
+    description: "Usa o contrato cadastrado em Configurações → Modelos de contrato, preenchendo os dados automaticamente.",
+  },
   {
     value: "project",
     title: "Projeto fechado",
@@ -104,6 +113,7 @@ export const CONTRACT_TYPE_OPTIONS: { value: ContractType; title: string; badge:
 ];
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
+  custom: "Contrato da produtora",
   project: "Projeto fechado",
   recurring: "Contrato recorrente",
   outsourcing: "Terceirização",
@@ -172,6 +182,7 @@ export const RULE_OPTIONS: { key: ContractRuleKey; title: string; description: s
 ];
 
 const RULES_BY_TYPE: Record<ContractType, ContractRuleKey[]> = {
+  custom: ["signatures"],
   project: RULE_OPTIONS.map((rule) => rule.key),
   recurring: RULE_OPTIONS.map((rule) => rule.key),
   outsourcing: RULE_OPTIONS.map((rule) => rule.key).filter((key) => key !== "editableFiles"),
@@ -194,6 +205,7 @@ function emptyParty(): ContractParty {
 export function defaultData(): ContractData {
   return {
     type: "project",
+    templateId: "",
     logo: "",
     me: emptyParty(),
     other: emptyParty(),
@@ -234,12 +246,13 @@ export function defaultData(): ContractData {
 
 export function normalize(partial: Partial<ContractData>): ContractData {
   const base = defaultData();
-  const types: ContractType[] = ["project", "recurring", "outsourcing", "image"];
+  const types: ContractType[] = ["custom", "project", "recurring", "outsourcing", "image"];
   return {
     ...base,
     ...partial,
     type: types.includes(partial.type as ContractType) ? (partial.type as ContractType) : base.type,
     logo: typeof partial.logo === "string" ? partial.logo : "",
+    templateId: typeof partial.templateId === "string" ? partial.templateId : "",
     me: { ...base.me, ...(partial.me || {}) },
     other: { ...base.other, ...(partial.other || {}) },
     scope: { ...base.scope, ...(partial.scope || {}) },

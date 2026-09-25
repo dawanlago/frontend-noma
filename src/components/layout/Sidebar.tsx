@@ -28,54 +28,73 @@ import ReplayOutlined from "@mui/icons-material/ReplayOutlined";
 import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
 import TravelExploreOutlined from "@mui/icons-material/TravelExploreOutlined";
 import ViewKanbanOutlined from "@mui/icons-material/ViewKanbanOutlined";
+import TaskAltOutlined from "@mui/icons-material/TaskAltOutlined";
+import StickyNote2Outlined from "@mui/icons-material/StickyNote2Outlined";
+import DynamicFormOutlined from "@mui/icons-material/DynamicFormOutlined";
+import HandshakeOutlined from "@mui/icons-material/HandshakeOutlined";
 import LogoMark from "@/components/ui/LogoMark";
 import { useAuth } from "@/contexts/AuthContext";
 import { USER_ROLE_LABELS } from "@/lib/constants";
+import type { ModuleKey } from "@/types";
 import { getInitials } from "@/utils/format";
 import { DRAWER_WIDTH } from "@/theme";
 
-const groups = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof HomeOutlined;
+  module?: ModuleKey;
+  adminOnly?: boolean;
+}
+
+const groups: { label: string; items: NavItem[] }[] = [
   {
     label: "Visão geral",
-    items: [{ href: "/", label: "Início", icon: HomeOutlined }],
+    items: [
+      { href: "/", label: "Início", icon: HomeOutlined },
+      { href: "/atividades", label: "Atividades", icon: TaskAltOutlined, module: "atividades" },
+      { href: "/anotacoes", label: "Anotações", icon: StickyNote2Outlined, module: "anotacoes" },
+    ],
   },
   {
     label: "Comercial",
     items: [
-      { href: "/crm", label: "CRM Comercial", icon: ViewKanbanOutlined },
-      { href: "/propostas", label: "Gerador de Propostas", icon: DescriptionOutlined },
-      { href: "/prospeccao", label: "Gerador de Prospecção", icon: TravelExploreOutlined },
-      { href: "/follow-up", label: "Gerador de Follow-up", icon: ReplayOutlined },
+      { href: "/crm", label: "CRM Comercial", icon: ViewKanbanOutlined, module: "crm" },
+      { href: "/formularios", label: "Formulários", icon: DynamicFormOutlined, module: "formularios" },
+      { href: "/propostas", label: "Gerador de Propostas", icon: DescriptionOutlined, module: "propostas" },
+      { href: "/prospeccao", label: "Gerador de Prospecção", icon: TravelExploreOutlined, module: "prospeccao" },
+      { href: "/follow-up", label: "Gerador de Follow-up", icon: ReplayOutlined, module: "followup" },
     ],
   },
   {
     label: "Precificação e operação",
     items: [
-      { href: "/orcamento", label: "Calculadora de Orçamento", icon: CalculateOutlined },
-      { href: "/contratos", label: "Gerador de Contratos", icon: GavelOutlined },
-      { href: "/briefing", label: "Gerador de Briefing", icon: AssignmentOutlined },
+      { href: "/orcamento", label: "Calculadora de Orçamento", icon: CalculateOutlined, module: "orcamento" },
+      { href: "/contratos", label: "Contratos", icon: GavelOutlined, module: "contratos" },
+      { href: "/briefing", label: "Gerador de Briefing", icon: AssignmentOutlined, module: "briefing" },
     ],
   },
   {
     label: "Gestão",
     items: [
-      { href: "/financeiro", label: "Financeiro", icon: AccountBalanceWalletOutlined },
-      { href: "/biblioteca", label: "Biblioteca Audiovisual", icon: LibraryMusicOutlined },
+      { href: "/financeiro", label: "Financeiro", icon: AccountBalanceWalletOutlined, module: "financeiro" },
+      { href: "/biblioteca", label: "Biblioteca Audiovisual", icon: LibraryMusicOutlined, module: "biblioteca" },
     ],
   },
   {
-    label: "Cadastros",
+    label: "Base de dados",
     items: [
-      { href: "/contatos", label: "Contatos", icon: PeopleOutlined },
-      { href: "/empresas", label: "Empresas", icon: BusinessOutlined },
-      { href: "/produtos", label: "Produtos", icon: Inventory2Outlined },
+      { href: "/contatos", label: "Base geral", icon: PeopleOutlined, module: "base" },
+      { href: "/empresas", label: "Empresas", icon: BusinessOutlined, module: "base" },
+      { href: "/fornecedores", label: "Fornecedores e parceiros", icon: HandshakeOutlined, module: "base" },
+      { href: "/produtos", label: "Produtos", icon: Inventory2Outlined, module: "produtos" },
     ],
   },
   {
     label: "Workspace",
     items: [
       { href: "/usuarios", label: "Usuários", icon: GroupOutlined, adminOnly: true },
-      { href: "/configuracoes", label: "Configurações", icon: SettingsOutlined },
+      { href: "/configuracoes", label: "Configurações", icon: SettingsOutlined, module: "configuracoes" },
     ],
   },
 ];
@@ -92,8 +111,7 @@ interface SidebarProps {
 
 function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { user, isAdmin, can } = useAuth();
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -106,7 +124,9 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
       <Divider />
       <Box sx={{ flex: 1, overflowY: "auto", px: 1.5, py: 2 }}>
         {groups.map((group) => {
-          const items = group.items.filter((item) => !("adminOnly" in item && item.adminOnly) || isAdmin);
+          const items = group.items.filter(
+            (item) => (!item.adminOnly || isAdmin) && (!item.module || can(item.module)),
+          );
           if (!items.length) return null;
 
           return (

@@ -511,6 +511,7 @@ function imageRevocationSection(data: ContractData, grantor: string, grantee: st
 /* ------------------------------------------------------------------ */
 
 const TITLES = {
+  custom: "CONTRATO DE PRESTAÇÃO DE SERVIÇOS AUDIOVISUAIS",
   project: "CONTRATO DE PRESTAÇÃO DE SERVIÇOS AUDIOVISUAIS",
   recurring: "CONTRATO DE PRESTAÇÃO CONTINUADA DE SERVIÇOS AUDIOVISUAIS",
   outsourcing: "CONTRATO DE PRESTAÇÃO DE SERVIÇOS AUDIOVISUAIS TERCEIRIZADOS",

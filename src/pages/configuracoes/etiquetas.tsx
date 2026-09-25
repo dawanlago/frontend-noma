@@ -20,7 +20,7 @@ export default function SettingsLabelsPage() {
 
   return (
     <>
-      <Head><title>Etiquetas | Configurações | Noma CRM</title></Head>
+      <Head><title>Etiquetas | Configurações | Noma</title></Head>
       <ListWorkspace title="Etiquetas" actionLabel="Inserir etiqueta" onAction={() => setModalOpen(true)} countLabel={`Existem ${labels?.length || 0} etiquetas na sua base`} columns={["Etiqueta", "Cor"]} emptyMessage="Não existem etiquetas salvas na sua base." isLoading={isLoading} error={error}>
         {(labels || []).map((label) => (
           <tr key={label._id} className="border-t border-charcoal/5">

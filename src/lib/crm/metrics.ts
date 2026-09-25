@@ -1,15 +1,15 @@
-import { LEAD_STAGES, PROPOSAL_STAGES } from "@/lib/constants";
-import type { Lead, LeadStage } from "@/types";
+import type { Funnel, FunnelStage, Lead } from "@/types";
 import { leadDateOnly } from "./model";
 
 export interface LeadFilters {
   search: string;
   service: string;
+  temperature: string;
   /** "" = todos; "1".."12" = mês de criação no ano corrente. */
   month: string;
 }
 
-export const EMPTY_LEAD_FILTERS: LeadFilters = { search: "", service: "", month: "" };
+export const EMPTY_LEAD_FILTERS: LeadFilters = { search: "", service: "", temperature: "", month: "" };
 
 function normalizeText(value: string) {
   return value
@@ -24,8 +24,9 @@ export function filterLeads(leads: Lead[], filters: LeadFilters, now = new Date(
   const month = Number(filters.month);
   const year = now.getFullYear();
   return leads.filter((lead) => {
-    if (term && !normalizeText(`${lead.name} ${lead.company}`).includes(term)) return false;
+    if (term && !normalizeText(`${lead.name} ${lead.contactName} ${lead.company}`).includes(term)) return false;
     if (filters.service && lead.service !== filters.service) return false;
+    if (filters.temperature && lead.temperature !== filters.temperature) return false;
     if (month) {
       const created = new Date(lead.createdAt);
       if (created.getFullYear() !== year || created.getMonth() + 1 !== month) return false;
@@ -39,63 +40,62 @@ export interface LeadMetrics {
   openValue: number;
   wonValue: number;
   wonCount: number;
+  lostCount: number;
   averageTicket: number;
   conversionRate: number;
-  proposalCount: number;
-}
-
-export function computeLeadMetrics(leads: Lead[]): LeadMetrics {
-  const total = leads.length;
-  const won = leads.filter((lead) => lead.stage === "won");
-  const allValue = sum(leads);
-  const wonValue = sum(won);
-  return {
-    total,
-    openValue: allValue - wonValue,
-    wonValue,
-    wonCount: won.length,
-    averageTicket: total ? allValue / total : 0,
-    conversionRate: total ? won.length / total : 0,
-    proposalCount: leads.filter((lead) => PROPOSAL_STAGES.includes(lead.stage)).length,
-  };
 }
 
 function sum(leads: Lead[]) {
   return leads.reduce((acc, lead) => acc + (Number(lead.value) || 0), 0);
 }
 
+export function computeLeadMetrics(leads: Lead[]): LeadMetrics {
+  const total = leads.length;
+  const won = leads.filter((lead) => lead.status === "won");
+  const closed = won.length + leads.filter((lead) => lead.status === "lost").length;
+  return {
+    total,
+    openValue: sum(leads.filter((lead) => lead.status === "open")),
+    wonValue: sum(won),
+    wonCount: won.length,
+    lostCount: closed - won.length,
+    averageTicket: won.length ? sum(won) / won.length : total ? sum(leads) / total : 0,
+    conversionRate: total ? won.length / total : 0,
+  };
+}
+
 export interface StageColumn {
-  stage: LeadStage;
-  label: string;
+  stage: FunnelStage;
   leads: Lead[];
   total: number;
 }
 
-export function groupByStage(leads: Lead[]): StageColumn[] {
-  return LEAD_STAGES.map(({ value, label }) => {
-    const items = leads.filter((lead) => lead.stage === value);
-    return { stage: value, label, leads: items, total: sum(items) };
+export function groupByStage(leads: Lead[], funnel: Funnel): StageColumn[] {
+  return funnel.stages.map((stage) => {
+    const items = leads.filter((lead) => lead.stageId === stage._id);
+    return { stage, leads: items, total: sum(items) };
   });
 }
 
 export interface StageConversion {
-  stage: LeadStage;
-  label: string;
-  /** Leads que estão nesta etapa ou além dela. */
+  stage: FunnelStage;
+  /** Negociações que estão nesta etapa ou além dela (vendas feitas contam como além de todas). */
   reached: number;
-  current: number;
   rate: number;
 }
 
-/** Como não há histórico de etapas, "alcançou" = está nesta etapa ou em uma posterior. */
-export function conversionByStage(leads: Lead[]): StageConversion[] {
-  const order = LEAD_STAGES.map((item) => item.value);
+export function conversionByStage(leads: Lead[], funnel: Funnel): StageConversion[] {
+  const order = funnel.stages.map((stage) => stage._id);
   const total = leads.length;
-  return LEAD_STAGES.map(({ value, label }, index) => {
-    const reached = leads.filter((lead) => order.indexOf(lead.stage) >= index).length;
-    const current = leads.filter((lead) => lead.stage === value).length;
-    return { stage: value, label, reached, current, rate: total ? reached / total : 0 };
-  });
+  return funnel.stages
+    .filter((stage) => stage.kind !== "lost")
+    .map((stage) => {
+      const index = order.indexOf(stage._id);
+      const reached = leads.filter(
+        (lead) => lead.status === "won" || (lead.status === "open" && order.indexOf(lead.stageId) >= index),
+      ).length;
+      return { stage, reached, rate: total ? reached / total : 0 };
+    });
 }
 
 export interface SourceGroup {
@@ -123,14 +123,10 @@ export function groupBySource(leads: Lead[]): SourceGroup[] {
     .sort((a, b) => b.count - a.count || b.value - a.value);
 }
 
-export function proposalLeads(leads: Lead[]): Lead[] {
-  return leads.filter((lead) => PROPOSAL_STAGES.includes(lead.stage));
-}
-
-/** Próxima ação vencida (antes de hoje) e lead ainda não ganho. */
+/** Próxima ação vencida (antes de hoje) em negociação ainda aberta. */
 export function isLeadOverdue(lead: Lead, today: string): boolean {
   const date = leadDateOnly(lead);
-  return Boolean(date) && date < today && lead.stage !== "won";
+  return Boolean(date) && date < today && lead.status === "open";
 }
 
 export function formatPercent(rate: number): string {

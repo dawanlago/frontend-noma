@@ -1,4 +1,4 @@
-import type { FinanceStatus, LeadStage, TransactionType } from "@/types";
+import type { FinanceStatus, LeadStatus, LeadTemperature, TransactionType } from "@/types";
 
 export const APP_NAME = "Noma";
 
@@ -10,34 +10,19 @@ export const USER_ROLE_LABELS: Record<(typeof USER_ROLES)[number], string> = {
   seller: "Vendedor",
 };
 
-export const LEAD_STAGES: { value: LeadStage; label: string }[] = [
-  { value: "new", label: "Novo lead" },
-  { value: "first_contact", label: "Primeiro contato" },
-  { value: "meeting", label: "Reunião marcada" },
-  { value: "proposal_sent", label: "Proposta enviada" },
-  { value: "awaiting", label: "Aguardando resposta" },
-  { value: "negotiation", label: "Em negociação" },
-  { value: "won", label: "Fechado / ganho" },
+export const LEAD_TEMPERATURES: { value: LeadTemperature; label: string; tone: string }[] = [
+  { value: "cold", label: "Frio", tone: "bg-sky-100 text-sky-700" },
+  { value: "warm", label: "Morno", tone: "bg-gold/10 text-gold" },
+  { value: "hot", label: "Quente", tone: "bg-burgundy/10 text-burgundy" },
 ];
 
-export const LEAD_STAGE_LABELS = Object.fromEntries(LEAD_STAGES.map((s) => [s.value, s.label])) as Record<
-  LeadStage,
-  string
->;
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  open: "Em andamento",
+  won: "Venda feita",
+  lost: "Perdida",
+};
 
-/** Etapas a partir das quais o lead aparece na aba "Propostas" do CRM. */
-export const PROPOSAL_STAGES: LeadStage[] = ["proposal_sent", "awaiting", "negotiation", "won"];
-
-export const LEAD_SERVICES = [
-  "Conteúdo mensal",
-  "Institucional",
-  "Evento",
-  "Produto",
-  "Depoimentos",
-  "Foto + Vídeo",
-  "Outro",
-] as const;
-
+/* Valores iniciais das listas de opções (as listas reais vêm de Configurações). */
 export const INCOME_CATEGORIES = [
   "Contrato mensal",
   "Evento",

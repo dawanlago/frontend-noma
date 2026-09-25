@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -14,7 +14,7 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl";
 }
 
 export default function Modal({
@@ -26,21 +26,13 @@ export default function Modal({
   footer,
   size = "md",
 }: ModalProps) {
-  useEffect(() => {
-    if (!open) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
-
+  // O Dialog já fecha com Esc só o modal do topo (importante nos atalhos abertos por cima de formulários).
   return (
     <Dialog
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth={size === "lg" ? "md" : "sm"}
+      maxWidth={size === "xl" ? "lg" : size === "lg" ? "md" : "sm"}
     >
       <DialogTitle sx={{ pr: 6 }}>
         {title}
@@ -57,7 +49,12 @@ export default function Modal({
           <CloseRounded />
         </IconButton>
       </DialogTitle>
-      <DialogContent>{children}</DialogContent>
+      {/*
+        Os modais de atalho abrem por cima de outros formulários. No React o submit
+        sobe pela árvore de componentes (mesmo em portal) e enviaria também o
+        formulário de trás; aqui ele para no modal onde aconteceu.
+      */}
+      <DialogContent onSubmit={(event) => event.stopPropagation()}>{children}</DialogContent>
       {footer ? <DialogActions sx={{ px: 3, pb: 2.5 }}>{footer}</DialogActions> : null}
     </Dialog>
   );

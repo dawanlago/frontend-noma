@@ -1,13 +1,17 @@
 import { useMemo } from "react";
 import Head from "next/head";
+import Link from "next/link";
+import CustomFieldsInputs from "@/components/options/CustomFieldsInputs";
+import OptionChips from "@/components/options/OptionChips";
+import OptionSelect from "@/components/options/OptionSelect";
 import CopyButton from "@/components/tools/CopyButton";
 import Field from "@/components/tools/Field";
 import OptionCards from "@/components/tools/OptionCards";
 import SaveStatus from "@/components/tools/SaveStatus";
 import ToolSection from "@/components/tools/ToolSection";
 import PageHeader from "@/components/ui/PageHeader";
-import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompanyName, useWorkspace } from "@/contexts/WorkspaceContext";
 import { useLocalDraft } from "@/hooks/useLocalDraft";
 import {
   generateProspecting,
@@ -17,19 +21,7 @@ import {
   type ProspectStep,
   type QualityChip,
 } from "@/lib/prospecting/generate";
-import {
-  CHANNEL_OPTIONS,
-  DEFAULT_PROSPECT,
-  GOAL_OPTIONS,
-  OPPORTUNITY_OPTIONS,
-  SEGMENT_OPTIONS,
-  SOURCE_OPTIONS,
-  type ProspectForm,
-  type ProspectGoal,
-  type ProspectOpportunity,
-  type ProspectSegment,
-  type ProspectSource,
-} from "@/lib/prospecting/options";
+import { CHANNEL_OPTIONS, DEFAULT_PROSPECT, normalizeProspect, type ProspectForm } from "@/lib/prospecting/options";
 
 const qualityBox: Record<BaseQuality, string> = {
   good: "border-sage/25 bg-sage/[0.06]",
@@ -51,12 +43,38 @@ const chipTone: Record<QualityChip["tone"], string> = {
 };
 
 export default function ProspectingPage() {
-  const { user } = useAuth();
-  const [form, setForm, reset] = useLocalDraft<ProspectForm>("prospecting", DEFAULT_PROSPECT);
-  const result = useMemo(() => generateProspecting(form, user?.name || ""), [form, user?.name]);
+  const { user, can } = useAuth();
+  const { labelOf, options, fieldsOf } = useWorkspace();
+  const producer = useCompanyName();
+  const [draft, setForm, reset] = useLocalDraft<ProspectForm>("prospecting", DEFAULT_PROSPECT);
+  const form = useMemo(() => normalizeProspect(draft), [draft]);
+  // Respostas dos campos personalizados, para as variáveis {chave} das mensagens.
+  const customText = useMemo(
+    () =>
+      Object.fromEntries(
+        fieldsOf("prospecting").map((field) => {
+          const value = form.custom[field.key];
+          const list = `field:${field._id}`;
+          const text = Array.isArray(value) ? value.map((item) => labelOf(list, item)).join(", ") : value ? labelOf(list, value) : "";
+          return [field.key, text];
+        }),
+      ),
+    [fieldsOf, form.custom, labelOf],
+  );
+  const result = useMemo(
+    () =>
+      generateProspecting(form, {
+        senderName: user?.name || "",
+        producer,
+        labelOf,
+        metaOf: (list, value) => options.find((item) => item.list === list && item.value === value)?.meta,
+        customText,
+      }),
+    [form, user?.name, producer, labelOf, options, customText],
+  );
 
   function update(changes: Partial<ProspectForm>) {
-    setForm((current) => ({ ...current, ...changes }));
+    setForm((current) => ({ ...normalizeProspect(current), ...changes }));
   }
 
   const { assessment } = result;
@@ -70,10 +88,15 @@ export default function ProspectingPage() {
       <PageHeader
         eyebrow="Ferramenta comercial"
         title="Gerador de Prospecção"
-        description="Monte uma primeira abordagem que mostre que você realmente olhou para o negócio antes de oferecer seu trabalho."
+        description="Monte uma primeira abordagem que mostre que você realmente olhou para o negócio antes de oferecer o trabalho da produtora."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <SaveStatus state="saved" local />
+            {can("configuracoes") ? (
+              <Link href="/configuracoes/prospeccao" className="btn-secondary">
+                Editar mensagens
+              </Link>
+            ) : null}
             <button
               type="button"
               className="btn-secondary"
@@ -117,18 +140,10 @@ export default function ProspectingPage() {
                 />
               </Field>
               <Field label="Segmento">
-                <Select
-                  value={form.segment}
-                  onChange={(value) => update({ segment: value as ProspectSegment })}
-                  options={SEGMENT_OPTIONS}
-                />
+                <OptionSelect list="prospectSegment" value={form.segment} onChange={(segment) => update({ segment })} />
               </Field>
               <Field label="Como encontrou?">
-                <Select
-                  value={form.source}
-                  onChange={(value) => update({ source: value as ProspectSource })}
-                  options={SOURCE_OPTIONS}
-                />
+                <OptionSelect list="prospectSource" value={form.source} onChange={(source) => update({ source })} />
               </Field>
             </div>
           </ToolSection>
@@ -151,22 +166,23 @@ export default function ProspectingPage() {
             </Field>
           </ToolSection>
 
-          <ToolSection step={4} title="Qual oportunidade você enxergou?">
+          <ToolSection
+            step={4}
+            title="Qual oportunidade você enxergou?"
+            description="Pode marcar mais de uma: a primeira marcada conduz a mensagem e as outras entram como complemento."
+          >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Oportunidade">
-                <Select
-                  value={form.opportunity}
-                  onChange={(value) => update({ opportunity: value as ProspectOpportunity })}
-                  options={OPPORTUNITY_OPTIONS}
+              <Field label="Oportunidades" full group>
+                <OptionChips
+                  list="prospectOpportunity"
+                  value={form.opportunities}
+                  onChange={(opportunities) => update({ opportunities })}
                 />
               </Field>
               <Field label="Objetivo da primeira mensagem">
-                <Select
-                  value={form.goal}
-                  onChange={(value) => update({ goal: value as ProspectGoal })}
-                  options={GOAL_OPTIONS}
-                />
+                <OptionSelect list="prospectGoal" value={form.goal} onChange={(goal) => update({ goal })} />
               </Field>
+              <CustomFieldsInputs entity="prospecting" value={form.custom} onChange={(custom) => update({ custom })} />
               <Field label="Ideia que gostaria de apresentar" hint="Opcional." full>
                 <textarea
                   className="input-search min-h-[80px] resize-y"

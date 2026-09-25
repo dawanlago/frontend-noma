@@ -56,3 +56,46 @@ export function todayISO(): string {
 export function currentMonthISO(): string {
   return todayISO().slice(0, 7);
 }
+
+function digits(value: string, max: number) {
+  return value.replace(/\D/g, "").slice(0, max);
+}
+
+/** 000.000.000-00 */
+export function maskCpf(value: string): string {
+  const d = digits(value, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+}
+
+/** 00.000.000/0000-00 */
+export function maskCnpj(value: string): string {
+  const d = digits(value, 14);
+  return d
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
+/** (00) 00000-0000 */
+export function maskPhone(value: string): string {
+  const d = digits(value, 11);
+  if (d.length <= 2) return d ? `(${d}` : "";
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+export function whatsappLink(phone: string): string {
+  const d = phone.replace(/\D/g, "");
+  if (!d) return "";
+  return `https://wa.me/${d.length <= 11 ? `55${d}` : d}`;
+}
+
+export function instagramLink(handle: string): string {
+  const clean = handle.trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "").replace(/\/$/, "");
+  return clean ? `https://instagram.com/${clean}` : "";
+}

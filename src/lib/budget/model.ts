@@ -1,5 +1,6 @@
 /** Modelo de dados da Calculadora de Orçamento (documento salvo no servidor). */
 
+/** Tipos iniciais; a lista real é configurável (Configurações → Listas de opções). */
 export const PROJECT_TYPES = [
   "Conteúdo para redes sociais",
   "Evento",
@@ -9,7 +10,7 @@ export const PROJECT_TYPES = [
   "Outro",
 ] as const;
 
-export type ProjectType = (typeof PROJECT_TYPES)[number];
+export type ProjectType = string;
 
 export const OPERATIONAL_OPTIONS = [0, 5, 10, 15, 20] as const;
 export const MARGIN_OPTIONS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
@@ -89,9 +90,7 @@ export function normalize(partial: Partial<BudgetData>): BudgetData {
     : base.externalCosts;
 
   return {
-    projectType: PROJECT_TYPES.includes(source.projectType as ProjectType)
-      ? (source.projectType as ProjectType)
-      : base.projectType,
+    projectType: typeof source.projectType === "string" && source.projectType.trim() ? source.projectType : base.projectType,
     projectName: typeof source.projectName === "string" ? source.projectName : "",
     days: num(source.days, base.days),
     dailyRate: num(source.dailyRate, base.dailyRate),
