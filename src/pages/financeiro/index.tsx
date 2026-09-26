@@ -22,7 +22,8 @@ import YearSheet from "@/components/finance/YearSheet";
 import YearView from "@/components/finance/YearView";
 import OptionSelect from "@/components/options/OptionSelect";
 import OwnerFilter from "@/components/tools/OwnerFilter";
-import PageHeader from "@/components/ui/PageHeader";
+import FilterBar, { type FilterChip } from "@/components/ui/FilterBar";
+import ListHeader from "@/components/ui/ListHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
@@ -112,6 +113,11 @@ export default function FinancePage() {
     [narrowed],
   );
 
+  const chips: FilterChip[] = [
+    search ? { key: "search", label: `Busca: ${search}`, onRemove: () => setSearch("") } : null,
+    category ? { key: "category", label: category, onRemove: () => setCategory("") } : null,
+  ].filter((chip): chip is FilterChip => Boolean(chip));
+
   // Admin vendo outro usuário: a meta exibida é a dele e não pode ser alterada aqui.
   const canEditGoal = !ownerId || ownerId === user?._id;
   const monthLoading = monthData.isLoading;
@@ -119,6 +125,16 @@ export default function FinancePage() {
   function openNew(type: TransactionType) {
     setEntryModal({ open: true, type, entry: null });
   }
+
+  // Botão "Criar" do topo: /financeiro?novo=entrada ou ?novo=despesa.
+  useEffect(() => {
+    const novo = router.query.novo;
+    if (!router.isReady || typeof novo !== "string") return;
+    openNew(novo === "despesa" ? "expense" : "income");
+    void router.replace({ pathname: router.pathname }, undefined, { shallow: true });
+    // Só reage à chegada do parâmetro.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.novo]);
 
   // "Lançar no financeiro" a partir de uma venda feita no CRM: /financeiro?negociacao=<id>.
   useEffect(() => {
@@ -223,10 +239,9 @@ export default function FinancePage() {
         <title>Financeiro | Noma</title>
       </Head>
 
-      <PageHeader
-        eyebrow="Gestão"
+      <ListHeader
         title="Financeiro"
-        description="Registre o que entrou, o que saiu e o que ainda precisa receber. Acompanhe cada mês, a planilha do ano por categoria e o resultado da produtora."
+        description="O que entrou, o que saiu e o que ainda falta receber."
         actions={
           <>
             <button type="button" className="btn-secondary" onClick={() => openNew("expense")}>
@@ -374,31 +389,14 @@ export default function FinancePage() {
             </div>
           ) : null}
 
-          <div className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_240px_240px]">
-            <input
-              className="input-search"
-              placeholder="Buscar descrição ou cliente"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
+          <FilterBar
+            search={{ value: search, onChange: setSearch, placeholder: "Buscar descrição ou cliente" }}
+            count={`${visible.length} movimentaç${visible.length === 1 ? "ão" : "ões"}`}
+            chips={chips}
+          >
             <OptionSelect list="incomeCategory" noAdd value={categoryInList("income")} onChange={setCategory} emptyLabel="Todos os tipos de receita" />
             <OptionSelect list="expenseCategory" noAdd value={categoryInList("expense")} onChange={setCategory} emptyLabel="Todas as categorias de despesa" />
-          </div>
-          {category || search ? (
-            <p className="mb-3 text-xs text-charcoal/55">
-              Filtro ativo: {category ? `categoria “${category}”` : ""} {search ? `busca “${search}”` : ""} ·{" "}
-              <button
-                type="button"
-                className="font-semibold text-tan hover:underline"
-                onClick={() => {
-                  setCategory("");
-                  setSearch("");
-                }}
-              >
-                Limpar
-              </button>
-            </p>
-          ) : null}
+          </FilterBar>
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
             <EntryList

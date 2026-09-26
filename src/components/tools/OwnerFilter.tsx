@@ -8,6 +8,14 @@ interface OwnerFilterProps {
   onChange: (ownerId: string) => void;
 }
 
+/** Nome do usuário filtrado (para o chip de filtro ativo). */
+export function useOwnerName(ownerId: string) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const { data: users } = useAsyncData(() => (isAdmin ? resources.users.list() : Promise.resolve([])), [isAdmin]);
+  return (users || []).find((item) => item._id === ownerId)?.name || "";
+}
+
 /** Filtro por usuário, visível só para administradores (os demais veem apenas os próprios dados). */
 export default function OwnerFilter({ value, onChange }: OwnerFilterProps) {
   const { user } = useAuth();
@@ -17,7 +25,7 @@ export default function OwnerFilter({ value, onChange }: OwnerFilterProps) {
   if (!isAdmin) return null;
 
   return (
-    <div className="w-full sm:w-56">
+    <div className="w-full sm:w-52">
       <Select
         value={value}
         onChange={onChange}

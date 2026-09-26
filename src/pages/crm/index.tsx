@@ -2,15 +2,20 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HiOutlineAdjustmentsHorizontal, HiOutlineCog6Tooth, HiOutlinePlus } from "react-icons/hi2";
-import CrmFilters from "@/components/crm/CrmFilters";
+import { HiOutlineCog6Tooth, HiOutlinePlus } from "react-icons/hi2";
 import EmptyState from "@/components/crm/EmptyState";
 import LeadModal from "@/components/crm/LeadModal";
 import LeadsTable from "@/components/crm/LeadsTable";
 import PipelineBoard from "@/components/crm/PipelineBoard";
 import ReportsView from "@/components/crm/ReportsView";
 import WonNotice from "@/components/crm/WonNotice";
+import OptionSelect from "@/components/options/OptionSelect";
+import OwnerFilter, { useOwnerName } from "@/components/tools/OwnerFilter";
+import FilterBar, { type FilterChip } from "@/components/ui/FilterBar";
+import ListHeader from "@/components/ui/ListHeader";
 import MetricCard from "@/components/ui/MetricCard";
+import Select from "@/components/ui/Select";
+import { LEAD_TEMPERATURES, MONTH_NAMES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
@@ -33,7 +38,7 @@ const TABS: { value: CrmTab; label: string }[] = [
 export default function CrmPage() {
   const router = useRouter();
   const { user, isAdmin, can } = useAuth();
-  const { funnels, isReady } = useWorkspace();
+  const { funnels, isReady, labelOf } = useWorkspace();
   const [tab, setTab] = useState<CrmTab>("pipeline");
   const [funnelId, setFunnelId] = useState("");
   const [ownerId, setOwnerId] = useState("");
@@ -43,7 +48,6 @@ export default function CrmPage() {
   const [wonLead, setWonLead] = useState<Lead | null>(null);
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const today = todayISO();
 
   const funnel = funnels.find((item) => item._id === funnelId) || funnels[0];
@@ -51,6 +55,28 @@ export default function CrmPage() {
   const leads = useMemo(() => (data || []).filter((lead) => lead.funnelId === funnel?._id), [data, funnel]);
   const filtered = useMemo(() => filterLeads(leads, filters), [leads, filters]);
   const metrics = useMemo(() => computeLeadMetrics(filtered), [filtered]);
+  const ownerName = useOwnerName(ownerId);
+  const chips: FilterChip[] = [
+    filters.search ? { key: "search", label: `Busca: ${filters.search}`, onRemove: () => setFilters((f) => ({ ...f, search: "" })) } : null,
+    filters.service
+      ? { key: "service", label: labelOf("leadService", filters.service), onRemove: () => setFilters((f) => ({ ...f, service: "" })) }
+      : null,
+    filters.temperature
+      ? {
+          key: "temperature",
+          label: LEAD_TEMPERATURES.find((item) => item.value === filters.temperature)?.label || filters.temperature,
+          onRemove: () => setFilters((f) => ({ ...f, temperature: "" })),
+        }
+      : null,
+    filters.month
+      ? {
+          key: "month",
+          label: MONTH_NAMES[Number(filters.month) - 1]?.replace(/^./, (c) => c.toUpperCase()) || filters.month,
+          onRemove: () => setFilters((f) => ({ ...f, month: "" })),
+        }
+      : null,
+    ownerId ? { key: "owner", label: ownerName || "Usuário", onRemove: () => setOwnerId("") } : null,
+  ].filter((chip): chip is FilterChip => Boolean(chip));
 
   const openNew = useCallback(() => {
     setPreset({});
@@ -144,7 +170,6 @@ export default function CrmPage() {
   }
 
   const openLead = (lead: Lead) => void router.push(`/crm/${lead._id}`);
-  const hasFilters = Boolean(filters.search || filters.service || filters.month || filters.temperature);
 
   function renderContent() {
     if (isLoading || !isReady) {
@@ -229,9 +254,10 @@ export default function CrmPage() {
         <title>CRM Comercial | Noma</title>
       </Head>
 
-      <header className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-charcoal">CRM</h1>
+      <ListHeader
+        title="CRM"
+        aside={
+          <>
           {funnels.length > 1 ? (
             <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
               <div className="flex min-w-max gap-1.5">
@@ -255,8 +281,10 @@ export default function CrmPage() {
               </div>
             </div>
           ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+          </>
+        }
+        actions={
+          <>
           <div role="tablist" className="inline-flex gap-0.5 rounded-lg bg-beige p-0.5">
             {TABS.map((item) => {
               const active = item.value === tab;
@@ -284,44 +312,36 @@ export default function CrmPage() {
           <button type="button" className="btn-primary" onClick={openNew}>
             <HiOutlinePlus className="h-4 w-4" /> Nova venda
           </button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-charcoal/55">
-          <span className="font-semibold text-charcoal">{formatCurrencyBRL(metrics.openValue)}</span> em aberto ·{" "}
-          {metrics.total} negociaç{metrics.total === 1 ? "ão" : "ões"} ·{" "}
-          <span className="font-semibold text-sage">{formatCurrencyBRL(metrics.wonValue)}</span> vendido ·{" "}
-          {formatPercent(metrics.conversionRate)} de conversão
-        </p>
-        <button
-          type="button"
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-            filtersOpen || hasFilters ? "bg-charcoal/[0.06] text-charcoal" : "text-charcoal/55 hover:text-charcoal"
-          }`}
-          aria-expanded={filtersOpen || hasFilters}
-          onClick={() => setFiltersOpen((current) => !current)}
-        >
-          <HiOutlineAdjustmentsHorizontal className="h-4 w-4" />
-          Filtros{hasFilters ? " · ativos" : ""}
-        </button>
-      </div>
-
-      {filtersOpen || hasFilters ? (
-        <div className="card mb-4 p-3 sm:p-4">
-          <CrmFilters filters={filters} onChange={setFilters} ownerId={ownerId} onOwnerChange={setOwnerId} />
-          {hasFilters ? (
-            <div className="mt-3 flex items-center gap-2 text-xs text-charcoal/55">
-              <span>
-                {filtered.length} de {leads.length} negociações no filtro atual.
-              </span>
-              <button type="button" className="font-semibold text-tan hover:underline" onClick={() => setFilters(EMPTY_LEAD_FILTERS)}>
-                Limpar filtros
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      <FilterBar
+        search={{ value: filters.search, onChange: (search) => setFilters({ ...filters, search }), placeholder: "Buscar negociação, contato ou empresa" }}
+        count={`${filtered.length} negociaç${filtered.length === 1 ? "ão" : "ões"} · ${formatCurrencyBRL(metrics.openValue)} em aberto`}
+        chips={chips}
+      >
+        <OptionSelect
+          list="leadService"
+          noAdd
+          value={filters.service}
+          onChange={(service) => setFilters({ ...filters, service })}
+          emptyLabel="Todos os serviços"
+        />
+        <Select
+          value={filters.temperature}
+          onChange={(temperature) => setFilters({ ...filters, temperature })}
+          placeholder="Termômetro"
+          options={[{ value: "", label: "Todos os termômetros" }, ...LEAD_TEMPERATURES.map((item) => ({ value: item.value, label: item.label }))]}
+        />
+        <Select
+          value={filters.month}
+          onChange={(month) => setFilters({ ...filters, month })}
+          placeholder="Todos os meses"
+          options={[{ value: "", label: "Todos os meses" }, ...MONTH_NAMES.map((name, index) => ({ value: String(index + 1), label: name.charAt(0).toUpperCase() + name.slice(1) }))]}
+        />
+        {isAdmin ? <OwnerFilter value={ownerId} onChange={setOwnerId} /> : null}
+      </FilterBar>
 
       {notice ? (
         <div role="alert" className="mb-4 rounded-lg border border-burgundy/20 bg-burgundy/[0.06] px-4 py-3 text-sm font-medium text-burgundy">

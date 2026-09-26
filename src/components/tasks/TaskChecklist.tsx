@@ -18,6 +18,8 @@ interface TaskChecklistProps {
   /** Esconde o campo de nova atividade (prévia do início). */
   readOnly?: boolean;
   emptyText?: string;
+  /** id do campo de nova atividade (para focar a partir de outro botão). */
+  addInputId?: string;
 }
 
 function dueTone(task: Task, today: string) {
@@ -28,7 +30,7 @@ function dueTone(task: Task, today: string) {
 }
 
 /** Checklist de atividades: marcar como feita, criar e excluir. */
-export default function TaskChecklist({ tasks, onChange, leadId, showLead, showOwner, readOnly, emptyText }: TaskChecklistProps) {
+export default function TaskChecklist({ tasks, onChange, leadId, showLead, showOwner, readOnly, emptyText, addInputId }: TaskChecklistProps) {
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState("");
@@ -92,7 +94,7 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
             add();
           }}
         >
-          <input className="input-search" value={title} placeholder="Nova atividade" onChange={(e) => setTitle(e.target.value)} />
+          <input id={addInputId} className="input-search" value={title} placeholder="Nova atividade" onChange={(e) => setTitle(e.target.value)} />
           <input className="input-search" type="date" value={dueDate} aria-label="Prazo" onChange={(e) => setDueDate(e.target.value)} />
           <button type="submit" className="btn-primary" disabled={!title.trim()}>
             Adicionar

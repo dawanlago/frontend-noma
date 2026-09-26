@@ -82,6 +82,12 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entry, preset, month, initialType]);
 
+  // Aberto logo ao carregar a página (ex.: menu "Criar"): as opções podem chegar depois.
+  useEffect(() => {
+    if (!open || entry || !defaults.cashbox) return;
+    setForm((current) => (current.cashbox ? current : { ...current, cashbox: defaults.cashbox || "" }));
+  }, [open, entry, defaults.cashbox]);
+
   const clientItems = useMemo(
     () => [
       ...companies.map((company) => ({ id: `company:${company._id}`, label: company.name, sublabel: "Empresa", image: company.logo })),

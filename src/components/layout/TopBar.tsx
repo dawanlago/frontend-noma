@@ -15,11 +15,42 @@ import AddRounded from "@mui/icons-material/AddRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import MenuRounded from "@mui/icons-material/MenuRounded";
 import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
+import KeyboardArrowDownRounded from "@mui/icons-material/KeyboardArrowDownRounded";
+import ListItemText from "@mui/material/ListItemText";
+import type { ReactNode } from "react";
+import {
+  HiOutlineArrowTrendingDown,
+  HiOutlineArrowTrendingUp,
+  HiOutlineBriefcase,
+  HiOutlineBuildingOffice2,
+  HiOutlineCheckCircle,
+  HiOutlineUser,
+} from "react-icons/hi2";
+import type { ModuleKey } from "@/types";
 import LogoMark from "@/components/ui/LogoMark";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanyName } from "@/contexts/WorkspaceContext";
 import { USER_ROLE_LABELS } from "@/lib/constants";
 import { getInitials } from "@/utils/format";
+interface CreateItem {
+  label: string;
+  hint: string;
+  href: string;
+  module: ModuleKey;
+  icon: ReactNode;
+  /** Começa um novo grupo no menu. */
+  divider?: boolean;
+}
+
+const CREATE_ITEMS: CreateItem[] = [
+  { label: "Negociação", hint: "Nova venda no funil", href: "/crm?novo=1", module: "crm", icon: <HiOutlineBriefcase /> },
+  { label: "Contato", hint: "Pessoa da base", href: "/contatos?novo=contato", module: "base", icon: <HiOutlineUser /> },
+  { label: "Empresa", hint: "Cliente, fornecedor ou parceiro", href: "/empresas?novo=empresa", module: "base", icon: <HiOutlineBuildingOffice2 /> },
+  { label: "Atividade", hint: "Tarefa do checklist", href: "/atividades?novo=1", module: "atividades", icon: <HiOutlineCheckCircle /> },
+  { label: "Entrada", hint: "Valor recebido ou a receber", href: "/financeiro?novo=entrada", module: "financeiro", icon: <HiOutlineArrowTrendingUp />, divider: true },
+  { label: "Despesa", hint: "Custo pago ou previsto", href: "/financeiro?novo=despesa", module: "financeiro", icon: <HiOutlineArrowTrendingDown /> },
+];
+
 interface TopBarProps {
   onMenuClick: () => void;
 }
@@ -37,6 +68,8 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
   const { user, logout, can } = useAuth();
   const companyName = useCompanyName();
   const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
+  const [createAnchor, setCreateAnchor] = useState<null | HTMLElement>(null);
+  const createItems = CREATE_ITEMS.filter((item) => can(item.module));
 
   function handleLogout() {
     logout();
@@ -68,13 +101,16 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
 
         <Box sx={{ flexGrow: 1 }} />
 
-        {can("crm") ? (
+        {createItems.length ? (
           <Button
             variant="contained"
             startIcon={<AddRounded />}
-            onClick={() => router.push("/crm?novo=1")}
+            endIcon={<KeyboardArrowDownRounded />}
+            aria-haspopup="menu"
+            aria-expanded={Boolean(createAnchor)}
+            onClick={(event) => setCreateAnchor(event.currentTarget)}
           >
-            Nova venda
+            Criar
           </Button>
         ) : null}
 
@@ -90,6 +126,33 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           </Avatar>
         </IconButton>
       </Toolbar>
+
+      <Menu
+        anchorEl={createAnchor}
+        open={Boolean(createAnchor)}
+        onClose={() => setCreateAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{ paper: { sx: { width: 260, mt: 0.75 } } }}
+      >
+        {createItems.flatMap((item, index) => [
+          item.divider && index > 0 ? <Divider key={`${item.label}-divider`} /> : null,
+          <MenuItem
+            key={item.label}
+            onClick={() => {
+              setCreateAnchor(null);
+              void router.push(item.href);
+            }}
+          >
+            <ListItemIcon sx={{ fontSize: 18, color: "text.secondary" }}>{item.icon}</ListItemIcon>
+            <ListItemText
+              primary={item.label}
+              secondary={item.hint}
+              slotProps={{ primary: { sx: { fontWeight: 600, fontSize: 14 } }, secondary: { sx: { fontSize: 12 } } }}
+            />
+          </MenuItem>,
+        ])}
+      </Menu>
 
       <Menu
         anchorEl={userAnchor}

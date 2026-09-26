@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import OptionSelect from "@/components/options/OptionSelect";
-import PageHeader from "@/components/ui/PageHeader";
+import FilterBar, { type FilterChip } from "@/components/ui/FilterBar";
+import ListHeader from "@/components/ui/ListHeader";
+import Select from "@/components/ui/Select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { resources } from "@/lib/resources";
@@ -15,6 +16,8 @@ import CompanyForm from "./CompanyForm";
 import ContactForm from "./ContactForm";
 
 type EntityType = "all" | "contact" | "company";
+
+const TYPE_LABELS: Record<EntityType, string> = { all: "Pessoas e empresas", contact: "Pessoas", company: "Empresas" };
 
 interface Row {
   id: string;
@@ -32,7 +35,6 @@ interface Row {
 interface BaseDirectoryProps {
   title: string;
   description: string;
-  eyebrow?: string;
   /** Tipo inicial (pessoas, empresas ou tudo). */
   initialType?: EntityType;
   /** Mostra só registros com um destes tipos de relação (ex.: fornecedores). */
@@ -54,7 +56,6 @@ function normalize(value: string) {
 export default function BaseDirectory({
   title,
   description,
-  eyebrow = "Base de dados",
   initialType = "all",
   kinds,
   newKinds = [],
@@ -71,6 +72,18 @@ export default function BaseDirectory({
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<"contact" | "company" | null>(null);
+
+  // Botão "Criar" do topo: ?novo=contato ou ?novo=empresa abre o cadastro.
+  useEffect(() => {
+    const novo = router.query.novo;
+    if (!router.isReady || typeof novo !== "string") return;
+    setForm(novo === "empresa" ? "company" : "contact");
+    const query = { ...router.query };
+    delete query.novo;
+    void router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
+    // Só reage à chegada do parâmetro.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.novo]);
 
   const companyNames = useMemo(() => new Map((companies.data || []).map((company) => [company._id, company.name])), [companies.data]);
 
@@ -118,6 +131,14 @@ export default function BaseDirectory({
   const kindOptions = optionsOf("relationship").filter((item) => !kinds || kinds.includes(item.value));
   const isLoading = contacts.isLoading || companies.isLoading;
 
+  const chips: FilterChip[] = [
+    search ? { key: "search", label: `Busca: ${search}`, onRemove: () => setSearch("") } : null,
+    type !== initialType ? { key: "type", label: TYPE_LABELS[type], onRemove: () => setType(initialType) } : null,
+    kind ? { key: "kind", label: labelOf("relationship", kind), onRemove: () => setKind("") } : null,
+    niche ? { key: "niche", label: labelOf("niche", niche), onRemove: () => setNiche("") } : null,
+    category ? { key: "category", label: labelOf("supplierCategory", category), onRemove: () => setCategory("") } : null,
+  ].filter((chip): chip is FilterChip => Boolean(chip));
+
   function counts(value: EntityType) {
     return rows.filter((row) => (value === "all" || row.type === value) && (!kinds || row.kinds.some((item) => kinds.includes(item)))).length;
   }
@@ -127,74 +148,47 @@ export default function BaseDirectory({
       <Head>
         <title>{`${title} | Noma`}</title>
       </Head>
-      <PageHeader
-        eyebrow={eyebrow}
+      <ListHeader
         title={title}
         description={description}
         actions={
           <>
             {initialType !== "company" ? (
               <button type="button" className="btn-primary" onClick={() => setForm("contact")}>
-                Novo contato
+                Criar contato
               </button>
             ) : null}
             <button type="button" className={initialType === "company" ? "btn-primary" : "btn-secondary"} onClick={() => setForm("company")}>
-              Nova empresa
+              Criar empresa
             </button>
           </>
         }
       />
 
-      <div className="card mb-4 space-y-3 p-3 sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <label className="relative block flex-1">
-            <span className="sr-only">Buscar</span>
-            <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal/40" />
-            <input className="input-search pl-9" placeholder="Buscar por nome, telefone, e-mail ou empresa" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2 lg:flex">
-            <div className="lg:w-52">
-              <OptionSelect list="niche" noAdd value={niche} onChange={setNiche} emptyLabel="Todos os nichos" />
-            </div>
-            {showCategory ? (
-              <div className="lg:w-56">
-                <OptionSelect list="supplierCategory" noAdd value={category} onChange={setCategory} emptyLabel="Todas as categorias" />
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {!hideTypeTabs
-            ? (["all", "contact", "company"] as EntityType[]).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={type === value}
-                  onClick={() => setType(value)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    type === value ? "bg-charcoal text-white" : "bg-beige text-charcoal/60 hover:text-charcoal"
-                  }`}
-                >
-                  {value === "all" ? "Todos" : value === "contact" ? "Pessoas" : "Empresas"} <span className="opacity-60">{counts(value)}</span>
-                </button>
-              ))
-            : null}
-          {!hideTypeTabs ? <span className="mx-1 h-5 w-px bg-charcoal/10" aria-hidden /> : null}
-          {[{ value: "", label: "Todas as relações" }, ...kindOptions].map((item) => (
-            <button
-              key={item.value || "all"}
-              type="button"
-              aria-pressed={kind === item.value}
-              onClick={() => setKind(item.value)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                kind === item.value ? "border-tan bg-tan/10 text-tan" : "border-charcoal/10 text-charcoal/60 hover:border-charcoal/25"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <FilterBar
+        search={{ value: search, onChange: setSearch, placeholder: "Buscar por nome, telefone, e-mail ou empresa" }}
+        count={`${filtered.length} registro${filtered.length === 1 ? "" : "s"}`}
+        chips={chips}
+      >
+        {!hideTypeTabs ? (
+          <Select
+            value={type}
+            onChange={(value) => setType(value as EntityType)}
+            options={(["all", "contact", "company"] as EntityType[]).map((value) => ({
+              value,
+              label: `${TYPE_LABELS[value]} (${counts(value)})`,
+            }))}
+          />
+        ) : null}
+        <Select
+          value={kind}
+          onChange={setKind}
+          placeholder="Todas as relações"
+          options={[{ value: "", label: "Todas as relações" }, ...kindOptions.map((item) => ({ value: item.value, label: item.label }))]}
+        />
+        <OptionSelect list="niche" noAdd value={niche} onChange={setNiche} emptyLabel="Todos os nichos" />
+        {showCategory ? <OptionSelect list="supplierCategory" noAdd value={category} onChange={setCategory} emptyLabel="Todas as categorias" /> : null}
+      </FilterBar>
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
@@ -281,7 +275,6 @@ export default function BaseDirectory({
           </table>
         </div>
       </div>
-      <p className="mt-3 text-xs text-charcoal/45">{filtered.length} registro(s) no filtro atual.</p>
 
       <ContactForm
         open={form === "contact"}

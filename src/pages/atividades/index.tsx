@@ -1,8 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
+import { useRouter } from "next/router";
+import { HiOutlinePlus } from "react-icons/hi2";
 import TaskChecklist from "@/components/tasks/TaskChecklist";
-import OwnerFilter from "@/components/tools/OwnerFilter";
-import PageHeader from "@/components/ui/PageHeader";
+import OwnerFilter, { useOwnerName } from "@/components/tools/OwnerFilter";
+import FilterBar from "@/components/ui/FilterBar";
+import ListHeader from "@/components/ui/ListHeader";
+import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { resources } from "@/lib/resources";
@@ -42,6 +46,22 @@ export default function TasksPage() {
   const today = todayISO();
   const tasks = useMemo(() => data || [], [data]);
   const visible = useMemo(() => applyFilter(tasks, filter, today), [tasks, filter, today]);
+  const ownerName = useOwnerName(ownerId);
+  const router = useRouter();
+
+  function focusNew() {
+    const input = document.getElementById("nova-atividade");
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    input?.focus();
+  }
+
+  // Botão "Criar" do topo: /atividades?novo=1 foca o campo de nova atividade.
+  useEffect(() => {
+    if (!router.isReady || router.query.novo !== "1" || isLoading) return;
+    focusNew();
+    void router.replace({ pathname: router.pathname }, undefined, { shallow: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.novo, isLoading]);
 
   // O checklist devolve a lista visível alterada; mescla de volta na lista completa.
   function handleChange(next: Task[]) {
@@ -60,35 +80,26 @@ export default function TasksPage() {
       <Head>
         <title>Atividades | Noma</title>
       </Head>
-      <PageHeader
-        eyebrow="Visão geral"
+      <ListHeader
         title="Atividades"
-        description="Checklist do que precisa ser feito. Atividades criadas dentro de uma negociação também aparecem aqui."
+        description="O que precisa ser feito. Atividades criadas dentro de uma negociação também aparecem aqui."
+        actions={
+          <button type="button" className="btn-primary" onClick={focusNew}>
+            <HiOutlinePlus className="h-4 w-4" /> Criar atividade
+          </button>
+        }
       />
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="-mx-1 overflow-x-auto px-1">
-          <div className="inline-flex min-w-max gap-1 rounded-xl bg-beige p-1">
-            {FILTERS.map((item) => {
-              const count = applyFilter(tasks, item.value, today).length;
-              return (
-                <button
-                  key={item.value}
-                  type="button"
-                  aria-pressed={filter === item.value}
-                  onClick={() => setFilter(item.value)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                    filter === item.value ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
-                  }`}
-                >
-                  {item.label}
-                  <span className="ml-1.5 text-xs text-charcoal/40">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <OwnerFilter value={ownerId} onChange={setOwnerId} />
-      </div>
+      <FilterBar
+        count={`${visible.length} atividade${visible.length === 1 ? "" : "s"}`}
+        chips={ownerId ? [{ key: "owner", label: ownerName || "Usuário", onRemove: () => setOwnerId("") }] : []}
+      >
+        <Select
+          value={filter}
+          onChange={(value) => setFilter(value as Filter)}
+          options={FILTERS.map((item) => ({ value: item.value, label: `${item.label} (${applyFilter(tasks, item.value, today).length})` }))}
+        />
+        {isAdmin ? <OwnerFilter value={ownerId} onChange={setOwnerId} /> : null}
+      </FilterBar>
       <section className="card p-5 sm:p-6">
         {error ? <p className="mb-3 text-sm text-burgundy">{error}</p> : null}
         {isLoading ? (
@@ -97,7 +108,7 @@ export default function TasksPage() {
             <div className="skeleton h-10" />
           </div>
         ) : (
-          <TaskChecklist tasks={visible} onChange={handleChange} showLead showOwner={isAdmin} />
+          <TaskChecklist tasks={visible} onChange={handleChange} showLead showOwner={isAdmin} addInputId="nova-atividade" />
         )}
       </section>
     </>
