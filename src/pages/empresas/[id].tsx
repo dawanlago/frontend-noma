@@ -6,6 +6,7 @@ import EntityAvatar from "@/components/base/Avatar";
 import CompanyForm from "@/components/base/CompanyForm";
 import ContactForm from "@/components/base/ContactForm";
 import ProfileHeader, { InfoList } from "@/components/base/ProfileHeader";
+import PixKey from "@/components/base/PixKey";
 import ProfileHistory from "@/components/base/ProfileHistory";
 import { useCustomFieldDisplay } from "@/components/options/CustomFieldsInputs";
 import { useAuth } from "@/contexts/AuthContext";
@@ -115,6 +116,7 @@ export default function CompanyProfilePage() {
                 },
                 { label: "Nicho", value: company.niche ? labelOf("niche", company.niche) : null },
                 ...(company.supplierCategory ? [{ label: "Categoria", value: labelOf("supplierCategory", company.supplierCategory) }] : []),
+                ...(company.pixKey ? [{ label: "Chave PIX", value: <PixKey value={company.pixKey} /> }] : []),
                 ...customDisplay,
               ]}
             />

@@ -56,6 +56,9 @@ export default function FinancePage() {
   const [month, setMonth] = useState(currentMonthISO);
   const [year, setYear] = useState(() => currentMonthISO().slice(0, 4));
   const [ownerId, setOwnerId] = useState("");
+  /** Caixa aberto ("" = todos os caixas somados). */
+  const [cashbox, setCashbox] = useState("");
+  const cashboxes = optionsOf("financeCashbox");
   const [filter, setFilter] = useState<EntryFilter>("all");
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
@@ -77,12 +80,12 @@ export default function FinancePage() {
   const today = todayISO();
 
   const monthData = useAsyncData(
-    () => (view === "month" ? resources.finance.entries(month, { ownerId }) : Promise.resolve(null)),
-    [view, month, ownerId],
+    () => (view === "month" ? resources.finance.entries(month, { ownerId, cashbox }) : Promise.resolve(null)),
+    [view, month, ownerId, cashbox],
   );
   const yearData = useAsyncData(
-    () => (view === "year" ? resources.finance.summary(year, { ownerId }) : Promise.resolve(null)),
-    [view, year, ownerId],
+    () => (view === "year" ? resources.finance.summary(year, { ownerId, cashbox }) : Promise.resolve(null)),
+    [view, year, ownerId, cashbox],
   );
 
   const entries = useMemo(() => monthData.data?.entries || [], [monthData.data]);
@@ -181,7 +184,7 @@ export default function FinancePage() {
   }
 
   async function handleSaveGoal(value: number) {
-    await resources.finance.setGoal(month, value);
+    await resources.finance.setGoal(month, value, cashbox);
     monthData.setData((current) => (current ? { ...current, goal: value } : current));
     setGoalOpen(false);
   }
@@ -236,6 +239,29 @@ export default function FinancePage() {
         }
       />
 
+      {cashboxes.length > 1 ? (
+        <div role="tablist" aria-label="Caixa" className="mb-4 flex flex-wrap items-center gap-2">
+          {[{ value: "", label: "Todos os caixas" }, ...cashboxes.map((item) => ({ value: item.value, label: `Caixa ${item.label}` }))].map(
+            (item) => (
+              <button
+                key={item.value || "all"}
+                type="button"
+                role="tab"
+                aria-selected={cashbox === item.value}
+                onClick={() => setCashbox(item.value)}
+                className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+                  cashbox === item.value
+                    ? "border-charcoal bg-charcoal text-white"
+                    : "border-charcoal/10 bg-white text-charcoal/60 hover:border-charcoal/25 hover:text-charcoal"
+                }`}
+              >
+                {item.label}
+              </button>
+            ),
+          )}
+        </div>
+      ) : null}
+
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-1">
           <button type="button" className="btn-ghost" aria-label="Anterior" onClick={() => step(-1)}>
@@ -288,7 +314,7 @@ export default function FinancePage() {
       ) : null}
 
       {view === "sheet" ? (
-        <YearSheet year={year} ownerId={ownerId} version={sheetVersion} onEdit={openEdit} />
+        <YearSheet year={year} ownerId={ownerId} cashbox={cashbox} version={sheetVersion} onEdit={openEdit} />
       ) : view === "year" ? (
         <YearView
           year={year}
@@ -383,6 +409,7 @@ export default function FinancePage() {
               today={today}
               isLoading={monthLoading}
               showOwner={isAdmin}
+              showCashbox={!cashbox && cashboxes.length > 1}
               busyId={busyId}
               onSettle={handleSettle}
               onEdit={openEdit}
@@ -403,13 +430,14 @@ export default function FinancePage() {
         initialType={entryModal.type}
         entry={entryModal.entry}
         preset={entryModal.preset}
+        cashbox={cashbox}
         onClose={closeEntryModal}
         onSave={handleSaveEntry}
       />
       <DeleteEntryModal entry={deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete} />
       <GoalModal
         open={goalOpen}
-        label={monthLabel(month)}
+        label={`${monthLabel(month)}${cashbox ? ` · Caixa ${cashbox}` : ""}`}
         goal={goal}
         onClose={() => setGoalOpen(false)}
         onSave={handleSaveGoal}

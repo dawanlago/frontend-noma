@@ -30,6 +30,7 @@ export function emptyContact(): ContactDraft {
     affinity: 0,
     kinds: [],
     supplierCategory: "",
+    pixKey: "",
     notes: "",
     custom: {},
   };
@@ -159,6 +160,11 @@ export default function ContactForm({ open, contact, initial, onClose, onSaved }
                 emptyLabel="Não informada"
                 onChange={(supplierCategory) => set("supplierCategory", supplierCategory)}
               />
+            </Field>
+          ) : null}
+          {isSupplier ? (
+            <Field label="Chave PIX" hint="Para pagar este fornecedor ou parceiro.">
+              <input className="input-search" value={form.pixKey} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" onChange={(e) => set("pixKey", e.target.value)} />
             </Field>
           ) : null}
           <CustomFieldsInputs entity="contact" value={form.custom} onChange={(custom) => set("custom", custom)} />

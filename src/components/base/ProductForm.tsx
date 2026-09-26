@@ -16,7 +16,7 @@ interface ProductFormProps {
 
 /** Cadastro de produto (custo + lucro = preço de venda). */
 export default function ProductForm({ open, product, onClose, onSaved }: ProductFormProps) {
-  const [form, setForm] = useState({ name: "", operationalCost: "", profit: "" });
+  const [form, setForm] = useState({ name: "", description: "", operationalCost: "", profit: "" });
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -24,8 +24,13 @@ export default function ProductForm({ open, product, onClose, onSaved }: Product
     if (!open) return;
     setForm(
       product
-        ? { name: product.name, operationalCost: maskCurrencyBRL(product.operationalCost), profit: maskCurrencyBRL(product.profit) }
-        : { name: "", operationalCost: "", profit: "" },
+        ? {
+            name: product.name,
+            description: product.description || "",
+            operationalCost: maskCurrencyBRL(product.operationalCost),
+            profit: maskCurrencyBRL(product.profit),
+          }
+        : { name: "", description: "", operationalCost: "", profit: "" },
     );
     setError("");
   }, [open, product]);
@@ -43,7 +48,7 @@ export default function ProductForm({ open, product, onClose, onSaved }: Product
     setIsSaving(true);
     setError("");
     try {
-      const payload = { name: form.name.trim(), operationalCost, profit };
+      const payload = { name: form.name.trim(), description: form.description.trim(), operationalCost, profit };
       onSaved(product ? await resources.products.update(product._id, payload) : await resources.products.create(payload));
     } catch (err) {
       setError(apiError(err, "Erro ao salvar produto."));
@@ -83,6 +88,14 @@ export default function ProductForm({ open, product, onClose, onSaved }: Product
             autoFocus
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Ex.: Vídeo de posicionamento"
+          />
+        </FormField>
+        <FormField label="Descrição" hint="O que está incluso, formato, prazo... Aparece ao escolher o produto na negociação.">
+          <textarea
+            className="input-search min-h-[80px] resize-y"
+            value={form.description}
+            placeholder="Ex.: 1 vídeo de até 90s, roteiro, 1 diária de gravação, 2 revisões"
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
         </FormField>
         <div className="grid gap-4 sm:grid-cols-2">

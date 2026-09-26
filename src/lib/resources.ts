@@ -1,6 +1,7 @@
 import { api } from "./api";
 import type {
   AppSettings,
+  Birthday,
   CaptureForm,
   Company,
   CompanyProfile,
@@ -55,6 +56,7 @@ export interface DashboardData {
     monthPending: number;
   } | null;
   documents: Partial<Record<ToolKey, number>>;
+  birthdays: Birthday[];
   tasks: {
     pending: number;
     overdue: number;
@@ -121,6 +123,22 @@ export function isInviteCode(id: string) {
 }
 
 export type FinanceEntryPayload = Partial<FinanceEntry> & { recurring?: boolean };
+
+export interface InstallmentsPayload {
+  description: string;
+  client?: string;
+  category: string;
+  payment: string;
+  cashbox: string;
+  bank: string;
+  notes?: string;
+  leadId?: string;
+  contactId?: string;
+  companyId?: string;
+  /** Primeira parcela (ou à vista) já recebida. */
+  firstReceived?: boolean;
+  installments: { value: number; date: string }[];
+}
 export type LeadPayload = Partial<Omit<Lead, "nextActionDate">> & { nextActionDate?: string | null };
 
 export const resources = {
@@ -229,14 +247,17 @@ export const resources = {
       return { entries: data.data, goal: Number(data.meta?.goal) || 0 };
     },
     yearEntries: (year: string, params?: ListParams) => listData<FinanceEntry>("/finance/entries", { ...params, year }),
+    /** Lançamentos (parcelas) ligados a uma negociação. */
+    leadEntries: (leadId: string) => listData<FinanceEntry>("/finance/entries", { leadId }),
+    createInstallments: (payload: InstallmentsPayload) => create<FinanceEntry[]>("/finance/installments", payload),
     createEntry: (payload: FinanceEntryPayload) => create<FinanceEntry>("/finance/entries", payload),
     updateEntry: (id: string, payload: FinanceEntryPayload) => update<FinanceEntry>(`/finance/entries/${id}`, payload),
     /** `scope: "series"` encerra a recorrência; sem ele, só pula o mês. */
     removeEntry: (id: string, scope?: "series") => remove(`/finance/entries/${id}`, { scope }),
     summary: (year: string, params?: ListParams) =>
       getOne<{ year: string; months: FinanceMonthSummary[] }>("/finance/summary", { ...params, year }),
-    setGoal: async (month: string, value: number) => {
-      const { data } = await api.put<ApiItemResponse<{ value: number }>>(`/finance/goals/${month}`, { value });
+    setGoal: async (month: string, value: number, cashbox = "") => {
+      const { data } = await api.put<ApiItemResponse<{ value: number }>>(`/finance/goals/${month}`, { value, cashbox });
       return data.data;
     },
   },

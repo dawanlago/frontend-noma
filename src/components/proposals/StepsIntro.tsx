@@ -4,6 +4,7 @@ import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import CloudUploadOutlined from "@mui/icons-material/CloudUploadOutlined";
 import Field from "@/components/tools/Field";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import {
   IMAGE_QUALITY,
   LOGO_MAX_WIDTH,
@@ -55,6 +56,7 @@ export function CompanyStep({ data, setData }: StepProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const brandLogo = useWorkspace().settings?.brand?.logo || "";
 
   async function handleLogo(file: File | undefined) {
     if (!file) return;
@@ -108,6 +110,11 @@ export function CompanyStep({ data, setData }: StepProps) {
               <CloudUploadOutlined sx={{ fontSize: 18 }} />
               {busy ? "Processando…" : company.logo ? "Trocar logo" : "Enviar logo"}
             </button>
+            {brandLogo && company.logo !== brandLogo ? (
+              <button type="button" className="btn-ghost justify-start !px-0 text-sm" onClick={() => set({ logo: brandLogo })}>
+                Usar logo da Noma
+              </button>
+            ) : null}
             {company.logo ? (
               <button type="button" className="text-left text-sm text-burgundy" onClick={() => set({ logo: "" })}>
                 Remover logo

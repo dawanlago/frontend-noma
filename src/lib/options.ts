@@ -16,6 +16,8 @@ export const OPTION_LISTS: OptionListInfo[] = [
   { key: "incomeCategory", area: "Financeiro", title: "Tipos de receita", description: "Categorias das entradas." },
   { key: "expenseCategory", area: "Financeiro", title: "Categorias de despesa", description: "Categorias das despesas." },
   { key: "paymentMethod", area: "Financeiro", title: "Formas de pagamento", description: "Pix, cartão, boleto..." },
+  { key: "financeCashbox", area: "Financeiro", title: "Caixas", description: "Financeiros separados (ex.: Noma e Brava). Cada caixa tem seus números e metas." },
+  { key: "bankAccount", area: "Financeiro", title: "Bancos e contas", description: "De qual banco saiu ou para qual entrou cada lançamento." },
   { key: "budgetProjectType", area: "Orçamento", title: "Tipos de projeto", description: "Tipo de trabalho na Calculadora de Orçamento." },
   { key: "briefingFormat", area: "Briefing", title: "Formatos de entrega", description: "Vertical 9:16, horizontal 16:9..." },
   { key: "briefingChannel", area: "Briefing", title: "Canais de publicação", description: "Onde o conteúdo vai ser publicado." },

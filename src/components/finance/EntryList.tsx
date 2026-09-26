@@ -27,6 +27,8 @@ interface EntryListProps {
   today: string;
   isLoading: boolean;
   showOwner: boolean;
+  /** Mostra o caixa de cada movimentação (na aba "Todos"). */
+  showCashbox?: boolean;
   busyId: string | null;
   onSettle: (entry: FinanceEntry) => void;
   onEdit: (entry: FinanceEntry) => void;
@@ -41,6 +43,7 @@ export default function EntryList({
   today,
   isLoading,
   showOwner,
+  showCashbox = false,
   busyId,
   onSettle,
   onEdit,
@@ -94,7 +97,7 @@ export default function EntryList({
             const isIncome = entry.type === "income";
             const kind = entryStatusKind(entry, today);
             const open = isEntryOpen(entry);
-            const meta = [isIncome ? entry.client || entry.category : entry.category, formatDateOnly(entry.date), entry.payment]
+            const meta = [isIncome ? entry.client || entry.category : entry.category, formatDateOnly(entry.date), entry.payment, entry.bank]
               .filter(Boolean)
               .join(" • ");
             return (
@@ -111,8 +114,21 @@ export default function EntryList({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-charcoal">{entry.description}</p>
                     <p className="truncate text-xs text-charcoal/55">{meta}</p>
+                    {entry.notes ? (
+                      <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-xs italic text-charcoal/45" title={entry.notes}>
+                        {entry.notes}
+                      </p>
+                    ) : null}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <span className={`chip ${statusTone[kind]}`}>{ENTRY_STATUS_LABELS[kind]}</span>
+                      {entry.installment ? (
+                        <span className="chip bg-charcoal/[0.06] text-charcoal/60">
+                          Parcela {entry.installment.number}/{entry.installment.total}
+                        </span>
+                      ) : null}
+                      {showCashbox && entry.cashbox ? (
+                        <span className="chip bg-gold/10 text-gold">{entry.cashbox}</span>
+                      ) : null}
                       {entry.recurringId ? (
                         <span className="chip bg-tan/10 text-tan">
                           <HiOutlineArrowPath className="h-3 w-3" /> Recorrente

@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HiOutlinePlus } from "react-icons/hi2";
+import { HiOutlineAdjustmentsHorizontal, HiOutlineCog6Tooth, HiOutlinePlus } from "react-icons/hi2";
 import CrmFilters from "@/components/crm/CrmFilters";
 import EmptyState from "@/components/crm/EmptyState";
 import LeadModal from "@/components/crm/LeadModal";
@@ -11,7 +11,6 @@ import PipelineBoard from "@/components/crm/PipelineBoard";
 import ReportsView from "@/components/crm/ReportsView";
 import WonNotice from "@/components/crm/WonNotice";
 import MetricCard from "@/components/ui/MetricCard";
-import PageHeader from "@/components/ui/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
@@ -28,7 +27,7 @@ type CrmTab = "pipeline" | "list" | "reports";
 const TABS: { value: CrmTab; label: string }[] = [
   { value: "pipeline", label: "Funil" },
   { value: "list", label: "Lista" },
-  { value: "reports", label: "Relatórios" },
+  { value: "reports", label: "Painel" },
 ];
 
 export default function CrmPage() {
@@ -44,6 +43,7 @@ export default function CrmPage() {
   const [wonLead, setWonLead] = useState<Lead | null>(null);
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const today = todayISO();
 
   const funnel = funnels.find((item) => item._id === funnelId) || funnels[0];
@@ -188,7 +188,25 @@ export default function CrmPage() {
         />
       );
     }
-    if (tab === "reports") return <ReportsView leads={filtered} funnel={funnel} />;
+    if (tab === "reports") {
+      return (
+        <>
+          <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <MetricCard label="Potencial em aberto" value={formatCurrencyBRL(metrics.openValue)} />
+            <MetricCard label="Vendas feitas" value={formatCurrencyBRL(metrics.wonValue)} hint={`${metrics.wonCount} vendas`} tone="sage" />
+            <MetricCard label="Ticket médio" value={formatCurrencyBRL(metrics.averageTicket)} />
+            <MetricCard
+              label="Taxa de conversão"
+              value={formatPercent(metrics.conversionRate)}
+              hint={`${metrics.wonCount} de ${metrics.total}`}
+              tone="gold"
+            />
+            <MetricCard label="Negociações no funil" value={String(metrics.total)} />
+          </section>
+          <ReportsView leads={filtered} funnel={funnel} />
+        </>
+      );
+    }
     if (!filtered.length) {
       return (
         <EmptyState
@@ -211,96 +229,99 @@ export default function CrmPage() {
         <title>CRM Comercial | Noma</title>
       </Head>
 
-      <PageHeader
-        eyebrow="Comercial"
-        title="CRM Comercial"
-        description="Acompanhe cada venda no funil certo, do primeiro contato ao fechamento."
-        actions={
-          <>
-            {can("configuracoes") ? (
-              <Link href="/configuracoes/funis" className="btn-secondary">
-                Gerenciar funis
-              </Link>
-            ) : null}
-            <button type="button" className="btn-primary" onClick={openNew}>
-              <HiOutlinePlus className="h-4 w-4" /> Nova venda
-            </button>
-          </>
-        }
-      />
-
-      {funnels.length > 1 ? (
-        <div className="-mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <div className="flex min-w-max gap-2">
-            {funnels.map((item) => {
-              const active = item._id === funnel?._id;
-              const count = (data || []).filter((lead) => lead.funnelId === item._id && lead.status === "open").length;
+      <header className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-charcoal">CRM</h1>
+          {funnels.length > 1 ? (
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              <div className="flex min-w-max gap-1.5">
+                {funnels.map((item) => {
+                  const active = item._id === funnel?._id;
+                  const count = (data || []).filter((lead) => lead.funnelId === item._id && lead.status === "open").length;
+                  return (
+                    <button
+                      key={item._id}
+                      type="button"
+                      onClick={() => setFunnelId(item._id)}
+                      className={`rounded-full px-3 py-1 text-sm font-semibold transition ${
+                        active ? "bg-charcoal text-white" : "text-charcoal/55 hover:bg-charcoal/[0.05] hover:text-charcoal"
+                      }`}
+                    >
+                      {item.name}
+                      <span className={`ml-1.5 text-xs ${active ? "text-white/65" : "text-charcoal/35"}`}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="tablist" className="inline-flex gap-0.5 rounded-lg bg-beige p-0.5">
+            {TABS.map((item) => {
+              const active = item.value === tab;
               return (
                 <button
-                  key={item._id}
+                  key={item.value}
                   type="button"
-                  onClick={() => setFunnelId(item._id)}
-                  className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
-                    active ? "border-tan bg-tan text-white" : "border-charcoal/10 bg-white text-charcoal/65 hover:border-charcoal/25"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTab(item.value)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-semibold transition duration-150 ${
+                    active ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
                   }`}
                 >
-                  {item.name}
-                  <span className={`ml-2 text-xs ${active ? "text-white/75" : "text-charcoal/40"}`}>{count}</span>
+                  {item.label}
                 </button>
               );
             })}
           </div>
+          {can("configuracoes") ? (
+            <Link href="/configuracoes/funis" className="btn-ghost h-9 w-9" aria-label="Gerenciar funis" title="Gerenciar funis">
+              <HiOutlineCog6Tooth className="h-5 w-5" />
+            </Link>
+          ) : null}
+          <button type="button" className="btn-primary" onClick={openNew}>
+            <HiOutlinePlus className="h-4 w-4" /> Nova venda
+          </button>
+        </div>
+      </header>
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-charcoal/55">
+          <span className="font-semibold text-charcoal">{formatCurrencyBRL(metrics.openValue)}</span> em aberto ·{" "}
+          {metrics.total} negociaç{metrics.total === 1 ? "ão" : "ões"} ·{" "}
+          <span className="font-semibold text-sage">{formatCurrencyBRL(metrics.wonValue)}</span> vendido ·{" "}
+          {formatPercent(metrics.conversionRate)} de conversão
+        </p>
+        <button
+          type="button"
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+            filtersOpen || hasFilters ? "bg-charcoal/[0.06] text-charcoal" : "text-charcoal/55 hover:text-charcoal"
+          }`}
+          aria-expanded={filtersOpen || hasFilters}
+          onClick={() => setFiltersOpen((current) => !current)}
+        >
+          <HiOutlineAdjustmentsHorizontal className="h-4 w-4" />
+          Filtros{hasFilters ? " · ativos" : ""}
+        </button>
+      </div>
+
+      {filtersOpen || hasFilters ? (
+        <div className="card mb-4 p-3 sm:p-4">
+          <CrmFilters filters={filters} onChange={setFilters} ownerId={ownerId} onOwnerChange={setOwnerId} />
+          {hasFilters ? (
+            <div className="mt-3 flex items-center gap-2 text-xs text-charcoal/55">
+              <span>
+                {filtered.length} de {leads.length} negociações no filtro atual.
+              </span>
+              <button type="button" className="font-semibold text-tan hover:underline" onClick={() => setFilters(EMPTY_LEAD_FILTERS)}>
+                Limpar filtros
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
-
-      <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <MetricCard label="Potencial em aberto" value={formatCurrencyBRL(metrics.openValue)} />
-        <MetricCard label="Vendas feitas" value={formatCurrencyBRL(metrics.wonValue)} hint={`${metrics.wonCount} vendas`} tone="sage" />
-        <MetricCard label="Ticket médio" value={formatCurrencyBRL(metrics.averageTicket)} />
-        <MetricCard
-          label="Taxa de conversão"
-          value={formatPercent(metrics.conversionRate)}
-          hint={`${metrics.wonCount} de ${metrics.total}`}
-          tone="gold"
-        />
-        <MetricCard label="Negociações no funil" value={String(metrics.total)} />
-      </section>
-
-      <div className="card mb-4 p-3 sm:p-4">
-        <CrmFilters filters={filters} onChange={setFilters} ownerId={ownerId} onOwnerChange={setOwnerId} />
-        {hasFilters ? (
-          <div className="mt-3 flex items-center gap-2 text-xs text-charcoal/55">
-            <span>
-              {filtered.length} de {leads.length} negociações no filtro atual.
-            </span>
-            <button type="button" className="font-semibold text-tan hover:underline" onClick={() => setFilters(EMPTY_LEAD_FILTERS)}>
-              Limpar filtros
-            </button>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div role="tablist" className="inline-flex min-w-max gap-1 rounded-xl bg-beige p-1">
-          {TABS.map((item) => {
-            const active = item.value === tab;
-            return (
-              <button
-                key={item.value}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setTab(item.value)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition duration-150 ${
-                  active ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {notice ? (
         <div role="alert" className="mb-4 rounded-lg border border-burgundy/20 bg-burgundy/[0.06] px-4 py-3 text-sm font-medium text-burgundy">

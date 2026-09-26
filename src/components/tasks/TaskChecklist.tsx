@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useState } from "react";
-import { HiOutlineTrash } from "react-icons/hi2";
+import { HiOutlineCheck, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineXMark } from "react-icons/hi2";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { Task } from "@/types";
@@ -32,6 +32,7 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState<{ id: string; title: string; dueDate: string } | null>(null);
   const today = todayISO();
 
   async function run(action: () => Promise<void>) {
@@ -58,6 +59,18 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
       onChange([...tasks, saved]);
       setTitle("");
       setDueDate("");
+    });
+  }
+
+  /** Renomeia a atividade (e ajusta o prazo) sem sair da lista. */
+  function saveEdit() {
+    if (!editing || !editing.title.trim()) return;
+    const { id, title: nextTitle, dueDate: nextDate } = editing;
+    onChange(tasks.map((item) => (item._id === id ? { ...item, title: nextTitle.trim(), dueDate: nextDate } : item)));
+    setEditing(null);
+    void run(async () => {
+      const saved = await resources.tasks.update(id, { title: nextTitle.trim(), dueDate: nextDate });
+      onChange(tasks.map((item) => (item._id === id ? { ...item, ...saved, ownerName: item.ownerName } : item)));
     });
   }
 
@@ -100,8 +113,45 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
                 aria-label={`Concluir ${task.title}`}
                 onChange={() => toggle(task)}
               />
+              {editing?.id === task._id ? (
+                <form
+                  className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveEdit();
+                  }}
+                >
+                  <input
+                    className="input-search !py-1.5 min-w-[160px] flex-1"
+                    value={editing.title}
+                    autoFocus
+                    aria-label="Nome da atividade"
+                    onChange={(event) => setEditing({ ...editing, title: event.target.value })}
+                    onKeyDown={(event) => event.key === "Escape" && setEditing(null)}
+                  />
+                  <input
+                    className="input-search !w-auto !py-1.5"
+                    type="date"
+                    value={editing.dueDate}
+                    aria-label="Prazo"
+                    onChange={(event) => setEditing({ ...editing, dueDate: event.target.value })}
+                  />
+                  <button type="submit" className="btn-ghost h-8 w-8 text-sage" aria-label="Salvar" disabled={!editing.title.trim()}>
+                    <HiOutlineCheck className="h-4 w-4" />
+                  </button>
+                  <button type="button" className="btn-ghost h-8 w-8" aria-label="Cancelar" onClick={() => setEditing(null)}>
+                    <HiOutlineXMark className="h-4 w-4" />
+                  </button>
+                </form>
+              ) : (
               <div className="min-w-0 flex-1">
-                <p className={`text-sm ${task.done ? "text-charcoal/40 line-through" : "text-charcoal"}`}>{task.title}</p>
+                <p
+                  className={`text-sm ${task.done ? "text-charcoal/40 line-through" : "text-charcoal"} ${readOnly ? "" : "cursor-text"}`}
+                  onDoubleClick={() => !readOnly && setEditing({ id: task._id, title: task.title, dueDate: task.dueDate })}
+                  title={readOnly ? undefined : "Clique duas vezes para renomear"}
+                >
+                  {task.title}
+                </p>
                 <p className="flex flex-wrap gap-x-3 text-xs">
                   {task.dueDate ? <span className={dueTone(task, today)}>{task.dueDate < today && !task.done ? "Atrasada · " : ""}{formatDateOnly(task.dueDate)}</span> : null}
                   {showLead && task.leadId ? (
@@ -112,7 +162,18 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
                   {showOwner && task.ownerName ? <span className="text-charcoal/45">{task.ownerName}</span> : null}
                 </p>
               </div>
-              {!readOnly ? (
+              )}
+              {!readOnly && editing?.id !== task._id ? (
+                <button
+                  type="button"
+                  className="btn-ghost h-8 w-8 opacity-0 transition group-hover:opacity-100 focus:opacity-100"
+                  aria-label="Renomear atividade"
+                  onClick={() => setEditing({ id: task._id, title: task.title, dueDate: task.dueDate })}
+                >
+                  <HiOutlinePencilSquare className="h-4 w-4" />
+                </button>
+              ) : null}
+              {!readOnly && editing?.id !== task._id ? (
                 <button
                   type="button"
                   className="btn-ghost h-8 w-8 opacity-0 transition group-hover:opacity-100 hover:text-burgundy focus:opacity-100"

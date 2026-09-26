@@ -30,6 +30,8 @@ interface EntryModalProps {
   entry: FinanceEntry | null;
   /** Formulário já preenchido (ex.: vindo de uma venda feita no CRM). */
   preset?: EntryForm | null;
+  /** Caixa padrão das movimentações novas (a aba aberta no financeiro). */
+  cashbox?: string;
   onClose: () => void;
   onSave: (form: EntryForm) => Promise<void>;
 }
@@ -45,12 +47,14 @@ export function useCategoryDefaults(): CategoryDefaults {
     income: optionsOf("incomeCategory")[0]?.value,
     expense: optionsOf("expenseCategory")[0]?.value,
     payment: optionsOf("paymentMethod")[0]?.value,
+    cashbox: optionsOf("financeCashbox")[0]?.value,
   };
 }
 
-export default function EntryModal({ open, month, initialType, entry, preset, onClose, onSave }: EntryModalProps) {
+export default function EntryModal({ open, month, initialType, entry, preset, cashbox, onClose, onSave }: EntryModalProps) {
   const { can } = useAuth();
-  const defaults = useCategoryDefaults();
+  const baseDefaults = useCategoryDefaults();
+  const defaults = { ...baseDefaults, cashbox: cashbox || baseDefaults.cashbox };
   const [form, setForm] = useState<EntryForm>(() => emptyEntryForm(month, initialType));
   const [leads, setLeads] = useState<Lead[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -219,6 +223,20 @@ export default function EntryModal({ open, month, initialType, entry, preset, on
             </Field>
             <Field label="Forma de pagamento">
               <OptionSelect list="paymentMethod" value={form.payment} onChange={(value) => update("payment", value)} />
+            </Field>
+            <Field label="Caixa" hint="Em qual caixa este valor entra (ou sai).">
+              <OptionSelect list="financeCashbox" value={form.cashbox} onChange={(value) => update("cashbox", value)} />
+            </Field>
+            <Field label={isIncome ? "Banco de entrada" : "Banco de saída"} hint="Conta onde o dinheiro entrou ou de onde saiu.">
+              <OptionSelect list="bankAccount" value={form.bank} onChange={(value) => update("bank", value)} emptyLabel="Não informado" />
+            </Field>
+            <Field label="Notas" full>
+              <textarea
+                className="input-search min-h-[72px] resize-y"
+                value={form.notes}
+                placeholder="Número da nota fiscal, observações do pagamento..."
+                onChange={(event) => update("notes", event.target.value)}
+              />
             </Field>
           </div>
 

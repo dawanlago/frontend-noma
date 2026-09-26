@@ -61,7 +61,7 @@ export default function PipelineBoard({
 
   return (
     <div className="-mx-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
-      <div className="noma-stagger flex min-w-max gap-3">
+      <div className="noma-stagger flex min-w-full gap-3">
         {columns.map((column) => {
           const isOver = overStage === column.stage._id && draggingId !== null;
           return (
@@ -76,16 +76,16 @@ export default function PipelineBoard({
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOverStage(null);
               }}
               onDrop={(event) => handleDrop(event, column.stage._id)}
-              className={`flex w-[272px] shrink-0 flex-col rounded-xl border p-3 transition duration-150 ${
+              className={`flex min-h-[calc(100vh-240px)] w-[300px] min-w-[300px] flex-1 flex-col rounded-2xl border p-3 transition duration-150 ${
                 isOver ? "border-tan bg-tan/[0.05] ring-2 ring-tan/15" : "border-charcoal/[0.06] bg-beige"
               }`}
             >
               <header className="mb-3 px-1">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-[13px] font-semibold text-charcoal">{column.stage.name}</h3>
+                  <h3 className="text-sm font-semibold text-charcoal">{column.stage.name}</h3>
                   <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-charcoal/60">{column.leads.length}</span>
                 </div>
-                <p className={`mt-0.5 text-xs font-medium ${headerTone[column.stage.kind]}`}>{formatCurrencyBRL(column.total)}</p>
+                <p className={`mt-0.5 text-sm font-medium ${headerTone[column.stage.kind]}`}>{formatCurrencyBRL(column.total)}</p>
               </header>
               <div className="flex min-h-[140px] flex-1 flex-col gap-2.5">
                 {column.leads.map((lead) => (

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import ContactForm from "@/components/base/ContactForm";
 import ProfileHeader, { InfoList } from "@/components/base/ProfileHeader";
+import PixKey from "@/components/base/PixKey";
 import ProfileHistory from "@/components/base/ProfileHistory";
 import SendNpsDialog from "@/components/nps/SendNpsDialog";
 import { useCustomFieldDisplay } from "@/components/options/CustomFieldsInputs";
@@ -133,6 +134,7 @@ export default function ContactProfilePage() {
               { label: "Nascimento", value: contact.birthDate ? `${formatDateOnly(contact.birthDate)}${age !== null ? ` (${age} anos)` : ""}` : null },
               { label: "Nicho", value: contact.niche ? labelOf("niche", contact.niche) : null },
               ...(contact.supplierCategory ? [{ label: "Categoria", value: labelOf("supplierCategory", contact.supplierCategory) }] : []),
+              ...(contact.pixKey ? [{ label: "Chave PIX", value: <PixKey value={contact.pixKey} /> }] : []),
               ...customDisplay,
             ]}
           />

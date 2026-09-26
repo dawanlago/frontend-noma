@@ -24,15 +24,16 @@ function csvCell(value: string | number) {
 interface YearSheetProps {
   year: string;
   ownerId: string;
+  cashbox?: string;
   onEdit: (entry: FinanceEntry) => void;
   /** Muda quando uma movimentação é salva, para recarregar. */
   version: number;
 }
 
 /** Planilha do ano: categorias × meses e a lista completa de lançamentos com filtros. */
-export default function YearSheet({ year, ownerId, onEdit, version }: YearSheetProps) {
+export default function YearSheet({ year, ownerId, cashbox = "", onEdit, version }: YearSheetProps) {
   const { labelOf } = useWorkspace();
-  const { data, isLoading, error } = useAsyncData(() => resources.finance.yearEntries(year, { ownerId }), [year, ownerId, version]);
+  const { data, isLoading, error } = useAsyncData(() => resources.finance.yearEntries(year, { ownerId, cashbox }), [year, ownerId, cashbox, version]);
   const [mode, setMode] = useState<SheetMode>("all");
   const [type, setType] = useState<"" | TransactionType>("");
   const [category, setCategory] = useState("");

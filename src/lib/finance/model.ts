@@ -17,6 +17,11 @@ export interface EntryForm {
   leadId: string;
   /** "contact:<id>" ou "company:<id>" (cliente da base). */
   clientRef: string;
+  /** Caixa (ex.: Noma, Brava). */
+  cashbox: string;
+  /** Banco/conta de entrada ou saída. */
+  bank: string;
+  notes: string;
 }
 
 export function clientRefOf(entry: Pick<FinanceEntry, "contactId" | "companyId">) {
@@ -30,6 +35,7 @@ export interface CategoryDefaults {
   income?: string;
   expense?: string;
   payment?: string;
+  cashbox?: string;
 }
 
 /** Data padrão: hoje se o mês visto é o atual, senão o dia 1 do mês visto. */
@@ -58,6 +64,9 @@ export function emptyEntryForm(month: string, type: TransactionType = "income", 
     recurring: false,
     leadId: "",
     clientRef: "",
+    cashbox: defaults.cashbox || "",
+    bank: "",
+    notes: "",
   };
 }
 
@@ -87,6 +96,9 @@ export function entryToForm(entry: FinanceEntry): EntryForm {
     recurring: Boolean(entry.recurringId),
     leadId: entry.leadId || "",
     clientRef: clientRefOf(entry),
+    cashbox: entry.cashbox || "",
+    bank: entry.bank || "",
+    notes: entry.notes || "",
   };
 }
 
@@ -115,6 +127,9 @@ export function formToEntryPayload(form: EntryForm): FinanceEntryPayload {
     leadId: form.leadId,
     contactId: form.clientRef.startsWith("contact:") ? form.clientRef.slice(8) : "",
     companyId: form.clientRef.startsWith("company:") ? form.clientRef.slice(8) : "",
+    cashbox: form.cashbox,
+    bank: form.bank,
+    notes: form.notes.trim(),
   };
   if (form.type === "expense") base.recurring = form.recurring;
   return base;
@@ -168,4 +183,26 @@ export const ENTRY_STATUS_LABELS: Record<EntryStatusKind, string> = {
 
 export function isEntryOpen(entry: FinanceEntry): boolean {
   return (entry.type === "income" && entry.status === "pending") || (entry.type === "expense" && entry.status === "planned");
+}
+
+/* ---------- Parcelas ---------- */
+
+/** Soma `months` meses a uma data YYYY-MM-DD, mantendo o dia (ou o último dia do mês, se ele não existir). */
+export function addMonths(date: string, months: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const target = new Date(year, month - 1 + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(day, lastDay));
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
+}
+
+/** Divide o total em parcelas mensais; os centavos que sobram vão para a primeira. */
+export function splitInstallments(total: number, count: number, firstDate: string): { value: number; date: string }[] {
+  const n = Math.max(1, Math.floor(count));
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / n);
+  return Array.from({ length: n }, (_, index) => ({
+    value: (base + (index === 0 ? cents - base * n : 0)) / 100,
+    date: addMonths(firstDate, index),
+  }));
 }

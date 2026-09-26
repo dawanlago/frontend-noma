@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import Link from "next/link";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { uploadImage, type UploadFolder } from "@/lib/upload";
 
 interface LogoUploadProps {
@@ -13,6 +15,9 @@ export default function LogoUpload({ value, onChange, folder = "contratos" }: Lo
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // No próprio cadastro da marca não faz sentido oferecer "usar a logo da marca".
+  const workspaceLogo = useWorkspace().settings?.brand?.logo || "";
+  const brandLogo = folder === "marca" ? "" : workspaceLogo;
 
   async function handleFile(file?: File) {
     if (!file) return;
@@ -54,8 +59,22 @@ export default function LogoUpload({ value, onChange, folder = "contratos" }: Lo
         <p className="text-sm font-semibold text-charcoal">Logo (opcional)</p>
         <p className="text-xs text-charcoal/50">Aparece no topo do PDF. PNG com fundo transparente é mantido.</p>
         {error ? <p className="mt-1 text-xs text-burgundy">{error}</p> : null}
+        {folder !== "marca" && !brandLogo ? (
+          <p className="mt-1 text-xs text-charcoal/45">
+            Cadastre a logo da produtora em{" "}
+            <Link href="/configuracoes/geral" className="font-semibold text-charcoal/70 underline">
+              Configurações → Geral
+            </Link>{" "}
+            para usá-la com um clique.
+          </p>
+        ) : null}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {brandLogo && value !== brandLogo ? (
+          <button type="button" className="btn-secondary !py-1.5" onClick={() => onChange(brandLogo)}>
+            Usar logo da Noma
+          </button>
+        ) : null}
         <button type="button" className="btn-secondary !py-1.5" disabled={isLoading} onClick={() => inputRef.current?.click()}>
           {isLoading ? "Carregando…" : value ? "Trocar" : "Enviar logo"}
         </button>

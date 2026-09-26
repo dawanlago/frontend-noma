@@ -226,7 +226,7 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
               items={products.map((product) => ({
                 id: product._id,
                 label: product.name,
-                sublabel: formatCurrencyBRL(productPrice(product)),
+                sublabel: [formatCurrencyBRL(productPrice(product)), product.description].filter(Boolean).join(" · "),
               }))}
               value=""
               onChange={addProduct}

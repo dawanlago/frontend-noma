@@ -104,7 +104,16 @@ export default function PublicFormPage() {
       </Head>
       <main className="min-h-screen bg-beige px-4 py-10">
         <div className="mx-auto max-w-xl">
-          <p className="mb-4 text-center text-sm font-bold tracking-tight text-charcoal">Noma · Produtora audiovisual</p>
+          <div className="mb-5 flex justify-center">
+            {form?.brand?.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.brand.logo} alt={form.brand.companyName || "Noma"} className="max-h-14 max-w-[180px] object-contain" />
+            ) : (
+              <p className="text-center text-sm font-bold tracking-tight text-charcoal">
+                {form?.brand?.companyName || "Noma"} · Produtora audiovisual
+              </p>
+            )}
+          </div>
           <div className="card p-6 sm:p-8">
             {!form && !error ? <div className="skeleton h-64" /> : null}
             {error && !form ? <p className="text-center text-sm text-burgundy">{error}</p> : null}

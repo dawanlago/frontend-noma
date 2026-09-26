@@ -48,6 +48,7 @@ export default function AgendaPage() {
   const [ownerId, setOwnerId] = useState("");
   const { data, isLoading, error, setData } = useAsyncData(() => resources.tasks.list({ ownerId }), [ownerId]);
   const leads = useAsyncData(() => resources.leads.list().catch(() => []));
+  const contacts = useAsyncData(() => resources.contacts.list().catch(() => []));
   const today = iso(new Date());
   const [cursor, setCursor] = useState(() => today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
@@ -64,6 +65,24 @@ export default function AgendaPage() {
     return map;
   }, [tasks]);
 
+  /** Aniversários por "MM-DD" (29/02 cai em 28/02 nos anos não bissextos). */
+  const birthdaysByDay = useMemo(() => {
+    const map = new Map<string, { _id: string; name: string; year: number }[]>();
+    (contacts.data || []).forEach((contact) => {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(contact.birthDate || "");
+      if (!match) return;
+      const key = `${match[2]}-${match[3]}`;
+      map.set(key, [...(map.get(key) || []), { _id: contact._id, name: contact.name, year: Number(match[1]) }]);
+    });
+    return map;
+  }, [contacts.data]);
+  const birthdaysOn = (date: string) => {
+    const key = date.slice(5);
+    const year = Number(date.slice(0, 4));
+    const leap = new Date(year, 1, 29).getDate() === 29;
+    return [...(birthdaysByDay.get(key) || []), ...(key === "02-28" && !leap ? birthdaysByDay.get("02-29") || [] : [])];
+  };
+
   const monthStart = fromIso(`${cursor}-01`);
   const blanks = monthStart.getDay();
   const totalDays = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
@@ -72,6 +91,7 @@ export default function AgendaPage() {
     .sort((a, b) => `${a.dueDate} ${a.time || "99"}`.localeCompare(`${b.dueDate} ${b.time || "99"}`))
     .slice(0, 3);
   const dayTasks = byDay.get(selectedDate) || [];
+  const dayBirthdays = birthdaysOn(selectedDate);
   const openTask = (data || []).find((task) => task._id === openTaskId) || null;
 
   function goToMonth(offset: number) {
@@ -241,6 +261,7 @@ export default function AgendaPage() {
               {Array.from({ length: totalDays }).map((_, index) => {
                 const date = `${cursor}-${String(index + 1).padStart(2, "0")}`;
                 const items = byDay.get(date) || [];
+                const birthdays = birthdaysOn(date);
                 const isToday = date === today;
                 const isSelected = date === selectedDate;
                 return (
@@ -267,6 +288,12 @@ export default function AgendaPage() {
                       ) : null}
                     </div>
                     <div className="mt-1 space-y-1">
+                      {birthdays.slice(0, 1).map((person) => (
+                        <p key={person._id} className="truncate rounded-full bg-burgundy/10 px-2 py-0.5 text-[11px] text-burgundy">
+                          🎂 {person.name.split(" ")[0]}
+                          {birthdays.length > 1 ? ` +${birthdays.length - 1}` : ""}
+                        </p>
+                      ))}
                       {items.slice(0, 2).map((task) => (
                         <p key={task._id} className={`truncate rounded-full px-2 py-0.5 text-[11px] ${statusOf(task).tone}`}>
                           {task.time ? `${task.time} ` : ""}
@@ -295,6 +322,19 @@ export default function AgendaPage() {
               Novo
             </button>
           </div>
+          {dayBirthdays.length ? (
+            <ul className="mt-4 space-y-1.5">
+              {dayBirthdays.map((person) => (
+                <li key={person._id} className="rounded-xl bg-burgundy/[0.06] px-3 py-2 text-sm text-charcoal">
+                  🎂{" "}
+                  <Link href={`/contatos/${person._id}`} className="font-medium hover:underline">
+                    {person.name}
+                  </Link>
+                  <span className="text-xs text-charcoal/50"> · faz {Number(selectedDate.slice(0, 4)) - person.year} anos</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <div className="mt-4 space-y-2">
             {dayTasks.length === 0 ? (
               <p className="rounded-xl bg-beige/60 px-4 py-6 text-sm text-charcoal/50">Clique em Novo para marcar um horário.</p>

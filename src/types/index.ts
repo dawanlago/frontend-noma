@@ -58,6 +58,7 @@ export interface Company {
   affinity: number;
   kinds: string[];
   supplierCategory: string;
+  pixKey: string;
   notes: string;
   custom: CustomValues;
   isActive: boolean;
@@ -82,6 +83,7 @@ export interface Contact {
   affinity: number;
   kinds: string[];
   supplierCategory: string;
+  pixKey: string;
   notes: string;
   custom: CustomValues;
   createdAt: string;
@@ -91,6 +93,7 @@ export interface Contact {
 export interface Product {
   _id: string;
   name: string;
+  description: string;
   operationalCost: number;
   profit: number;
   createdAt: string;
@@ -265,6 +268,10 @@ export interface FinanceEntry extends Owned {
   date: string;
   status: FinanceStatus;
   payment: string;
+  cashbox: string;
+  bank: string;
+  notes: string;
+  installment?: { number: number; total: number };
   recurringId?: string;
   leadId?: string;
   contactId?: string;
@@ -440,6 +447,8 @@ export interface FormInvite {
 }
 
 export interface PublicFormData {
+  /** Identidade da produtora (logo e nome) no topo do formulário. */
+  brand?: { logo: string; companyName: string; color: string };
   name: string;
   description: string;
   fields: FormField[];
@@ -449,4 +458,16 @@ export interface PublicFormData {
   contactFirstName?: string;
   prefill?: Record<string, string>;
   answers?: { label: string; value: string }[];
+}
+
+export interface Birthday {
+  _id: string;
+  name: string;
+  birthDate: string;
+  phone?: string;
+  photo?: string;
+  /** Data do próximo aniversário (YYYY-MM-DD). */
+  date: string;
+  daysUntil: number;
+  age: number;
 }

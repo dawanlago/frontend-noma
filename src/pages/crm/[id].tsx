@@ -16,6 +16,7 @@ import LeadModal from "@/components/crm/LeadModal";
 import SendNpsDialog from "@/components/nps/SendNpsDialog";
 import StageChip from "@/components/crm/StageChip";
 import { TemperatureBadge } from "@/components/crm/Temperature";
+import LeadPayments from "@/components/crm/LeadPayments";
 import WonNotice from "@/components/crm/WonNotice";
 import { useCustomFieldDisplay } from "@/components/options/CustomFieldsInputs";
 import TaskChecklist from "@/components/tasks/TaskChecklist";
@@ -25,7 +26,7 @@ import { LEAD_STATUS_LABELS } from "@/lib/constants";
 import { formToPayload, leadDateOnly, type LeadFormState } from "@/lib/crm/model";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
-import type { Contact, Lead, LeadComment, LeadStatus, Task } from "@/types";
+import type { Contact, FinanceEntry, Lead, LeadComment, LeadStatus, Task } from "@/types";
 import { formatCurrencyBRL, formatDateOnly, formatDateTime, instagramLink, whatsappLink } from "@/utils/format";
 import { confirmDialog } from "@/components/ui/DialogHost";
 
@@ -165,6 +166,8 @@ export default function LeadDashboardPage() {
   const [notice, setNotice] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [wonLead, setWonLead] = useState<Lead | null>(null);
+  const [launchMode, setLaunchMode] = useState<"won" | "launch">("won");
+  const [payments, setPayments] = useState<FinanceEntry[]>([]);
   const [npsOpen, setNpsOpen] = useState(false);
   const customDisplay = useCustomFieldDisplay("lead", lead?.custom);
 
@@ -179,6 +182,13 @@ export default function LeadDashboardPage() {
       .list({ leadId: id })
       .then(setTasks)
       .catch(() => setTasks([]));
+    if (can("financeiro"))
+      resources.finance
+        .leadEntries(id)
+        .then(setPayments)
+        .catch(() => setPayments([]));
+    // `can` só muda no login.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
@@ -222,7 +232,10 @@ export default function LeadDashboardPage() {
 
   async function setStatus(status: LeadStatus) {
     const saved = await run(() => resources.leads.setStatus(lead!._id, status));
-    if (saved && status === "won") setWonLead(saved);
+    if (saved && status === "won") {
+      setLaunchMode("won");
+      setWonLead(saved);
+    }
   }
 
   async function handleSave(form: LeadFormState) {
@@ -295,9 +308,16 @@ export default function LeadDashboardPage() {
               </button>
             )}
             {lead.status === "won" && can("financeiro") ? (
-              <Link href={`/financeiro?negociacao=${lead._id}`} className="btn-secondary">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setLaunchMode("launch");
+                  setWonLead(lead);
+                }}
+              >
                 Lançar no financeiro
-              </Link>
+              </button>
             ) : null}
             {lead.contactId && can("nps", "crm") ? (
               <button type="button" className="btn-secondary" onClick={() => setNpsOpen(true)}>
@@ -413,6 +433,19 @@ export default function LeadDashboardPage() {
             {lead.notes ? <p className="mt-4 whitespace-pre-line rounded-lg bg-beige px-3 py-2 text-sm text-charcoal/75">{lead.notes}</p> : null}
           </Section>
 
+          {can("financeiro") && (lead.status === "won" || payments.length) ? (
+            <Section title="Pagamento">
+              <LeadPayments
+                entries={payments}
+                onChange={setPayments}
+                onLaunch={() => {
+                  setLaunchMode("launch");
+                  setWonLead(lead);
+                }}
+              />
+            </Section>
+          ) : null}
+
           {contact ? (
             <Section title="Contato">
               <Link href={`/contatos/${contact._id}`} className="flex items-center gap-3">
@@ -451,7 +484,12 @@ export default function LeadDashboardPage() {
         onSave={handleSave}
         onDelete={() => handleDelete()}
       />
-      <WonNotice lead={wonLead} onClose={() => setWonLead(null)} />
+      <WonNotice
+        lead={wonLead}
+        mode={launchMode}
+        onClose={() => setWonLead(null)}
+        onLaunched={(saved) => setPayments((current) => [...current, ...saved])}
+      />
       <SendNpsDialog open={npsOpen} onClose={() => setNpsOpen(false)} contactId={lead.contactId} leadId={lead._id} />
     </>
   );

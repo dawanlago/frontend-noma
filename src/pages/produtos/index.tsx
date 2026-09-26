@@ -46,7 +46,10 @@ export default function ProductsPage() {
         {filtered.length
           ? filtered.map((product) => (
               <tr key={product._id} className="border-t border-charcoal/5">
-                <td className="px-4 py-3 font-medium">{product.name}</td>
+                <td className="max-w-[360px] px-4 py-3">
+                  <span className="font-medium">{product.name}</span>
+                  {product.description ? <span className="block truncate text-xs text-charcoal/50">{product.description}</span> : null}
+                </td>
                 <td className="px-4 py-3">{formatCurrencyBRL(product.operationalCost)}</td>
                 <td className="px-4 py-3">{formatCurrencyBRL(product.profit)}</td>
                 <td className="px-4 py-3 font-semibold">{formatCurrencyBRL(productPrice(product))}</td>

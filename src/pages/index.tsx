@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { HiOutlineArrowRight } from "react-icons/hi2";
+import BirthdayCard from "@/components/base/BirthdayCard";
 import TaskChecklist from "@/components/tasks/TaskChecklist";
 import MetricCard from "@/components/ui/MetricCard";
 import OwnerFilter from "@/components/tools/OwnerFilter";
@@ -136,6 +137,8 @@ export default function HomePage() {
         </div>
         <TaskChecklist tasks={tasks} onChange={setTasks} showLead readOnly={!can("atividades")} emptyText="Nenhuma atividade pendente." />
       </section>
+
+      <BirthdayCard birthdays={data?.birthdays || []} />
 
       <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {pillars.map((pillar) => (
