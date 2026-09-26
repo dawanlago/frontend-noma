@@ -59,6 +59,7 @@ export default function ProductForm({ open, product, onClose, onSaved }: Product
 
   return (
     <Modal
+        variant="drawer"
       open={open}
       title={product ? "Editar produto" : "Novo produto"}
       description="Monte a oferta com custo, margem e o preço que entra nas negociações."

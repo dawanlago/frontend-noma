@@ -143,6 +143,7 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
   return (
     <>
       <Modal
+        variant="drawer"
         open={open}
         onClose={onClose}
         size="lg"

@@ -85,6 +85,7 @@ export default function ContactForm({ open, contact, initial, onClose, onSaved }
   return (
     <>
       <Modal
+        variant="drawer"
         open={open}
         onClose={onClose}
         size="lg"

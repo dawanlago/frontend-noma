@@ -19,7 +19,8 @@ import { resources } from "@/lib/resources";
 import type { Company, Contact, Lead, Product } from "@/types";
 import { formatCurrencyBRL, maskCurrencyBRL, parseCurrencyBRL } from "@/utils/format";
 import FunnelEditor from "./FunnelEditor";
-import { TemperatureBadge, TemperaturePicker } from "./Temperature";
+import NewLeadWizard from "./NewLeadWizard";
+import { TemperaturePicker } from "./Temperature";
 
 interface LeadModalProps {
   open: boolean;
@@ -35,13 +36,6 @@ interface LeadModalProps {
 
 const ADD_FUNNEL = "__add_funnel__";
 
-/** Etapas da criação (a edição mostra tudo de uma vez). */
-const STEPS = [
-  { title: "Cliente", description: "Com quem é a negociação?" },
-  { title: "Valor", description: "O que está sendo vendido e por quanto?" },
-  { title: "Funil e detalhes", description: "Em que ponto do funil ela está?" },
-];
-
 /** Cadastro e edição de negociação ("Nova venda"). */
 export default function LeadModal({ open, lead, funnelId, preset, onClose, onSave, onDelete }: LeadModalProps) {
   const { funnels } = useWorkspace();
@@ -54,9 +48,6 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
-  const [step, setStep] = useState(0);
-  const isNew = !lead;
-  const lastStep = STEPS.length - 1;
 
   useEffect(() => {
     if (!open) return;
@@ -64,7 +55,6 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
     setForm(lead ? leadToForm(lead) : { ...emptyLeadForm(funnel), contactId: preset?.contactId || "", companyId: preset?.companyId || "" });
     setConfirmDelete(false);
     setError("");
-    setStep(0);
     void Promise.all([resources.contacts.list(), resources.companies.list(), resources.products.list()])
       .then(([contactList, companyList, productList]) => {
         setContacts(contactList);
@@ -104,23 +94,9 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
     set("products", [...form.products, { productId: product._id, name: product.name, price: productPrice(product) }]);
   }
 
-  function clientError() {
-    return !form.contactId && !form.companyId && !form.name.trim() ? "Escolha ou cadastre o contato (ou dê um nome à negociação)." : "";
-  }
-
-  function next() {
-    if (step === 0 && clientError()) {
-      setError(clientError());
-      return;
-    }
-    setError("");
-    setStep((current) => Math.min(lastStep, current + 1));
-  }
-
   async function handleSave() {
-    if (clientError()) {
-      setError(clientError());
-      setStep(0);
+    if (!form.contactId && !form.companyId && !form.name.trim()) {
+      setError("Escolha ou cadastre o contato (ou dê um nome à negociação).");
       return;
     }
     if (!form.funnelId) {
@@ -156,8 +132,45 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
 
   const contactName = contacts.find((item) => item._id === form.contactId)?.name || "";
 
-  const clientFields = (
-      <>
+  // Criação: assistente em etapas (formato do RD). Edição: painel lateral com todos os campos.
+  if (!lead) return <NewLeadWizard open={open} funnelId={funnelId} preset={preset} onClose={onClose} onSave={onSave} />;
+
+  return (
+    <>
+      <Modal
+        variant="drawer"
+        open={open}
+        onClose={onClose}
+        size="lg"
+        title="Editar negociação"
+        description="Cadastre o contato, o funil e o que está sendo vendido."
+        footer={
+          <div className="flex w-full flex-wrap items-center justify-between gap-3">
+            <div>
+              {lead && onDelete ? (
+                <button type="button" className={confirmDelete ? "btn-danger" : "btn-secondary text-burgundy"} onClick={handleDelete} disabled={isSaving}>
+                  {confirmDelete ? "Confirmar exclusão" : "Excluir"}
+                </button>
+              ) : null}
+            </div>
+            <div className="flex gap-2">
+              <button type="button" className="btn-secondary" onClick={onClose} disabled={isSaving}>
+                Cancelar
+              </button>
+              <button type="button" className="btn-primary" onClick={() => void handleSave()} disabled={isSaving}>
+                {isSaving ? "Salvando..." : lead ? "Salvar" : "Criar negociação"}
+              </button>
+            </div>
+          </div>
+        }
+      >
+        <form
+          className="grid gap-4 pt-1 sm:grid-cols-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
           <Field label="Contato *" group>
             <EntityPicker
               items={contacts.map((contact) => ({ id: contact._id, label: contact.name, sublabel: contact.phone || contact.email, image: contact.photo }))}
@@ -187,13 +200,30 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
               onChange={(e) => set("name", e.target.value)}
             />
           </Field>
-      </>
-  );
-  const valueFields = (
-      <>
+          <Field label="Funil">
+            <Select
+              value={form.funnelId}
+              onChange={pickFunnel}
+              options={[
+                ...funnels.map((item) => ({ value: item._id, label: item.name })),
+                ...(can("configuracoes") ? [{ value: ADD_FUNNEL, label: "+ Criar novo funil" }] : []),
+              ]}
+            />
+          </Field>
+          <Field label="Etapa">
+            <Select
+              value={form.stageId}
+              onChange={(stageId) => set("stageId", stageId)}
+              options={(funnel?.stages || []).map((stage) => ({ value: stage._id, label: stage.name }))}
+            />
+          </Field>
           <Field label="Serviço de interesse">
             <OptionSelect list="leadService" value={form.service} emptyLabel="Não informado" onChange={(service) => set("service", service)} />
           </Field>
+          <Field label="Origem / como chegou">
+            <OptionSelect list="leadSource" value={form.source} emptyLabel="Não informada" onChange={(source) => set("source", source)} />
+          </Field>
+
           <div className="rounded-xl border border-charcoal/10 p-4 sm:col-span-2">
             <p className="text-[13px] font-semibold text-charcoal">Valor da negociação</p>
             <p className="mb-3 text-xs text-charcoal/50">Vincule produtos cadastrados, informe um valor avulso ou os dois.</p>
@@ -249,35 +279,6 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
             </div>
           </div>
 
-      </>
-  );
-  const funnelFields = (
-      <>
-          <Field label="Funil">
-            <Select
-              value={form.funnelId}
-              onChange={pickFunnel}
-              options={[
-                ...funnels.map((item) => ({ value: item._id, label: item.name })),
-                ...(can("configuracoes") ? [{ value: ADD_FUNNEL, label: "+ Criar novo funil" }] : []),
-              ]}
-            />
-          </Field>
-          <Field label="Etapa">
-            <Select
-              value={form.stageId}
-              onChange={(stageId) => set("stageId", stageId)}
-              options={(funnel?.stages || []).map((stage) => ({ value: stage._id, label: stage.name }))}
-            />
-          </Field>
-          <Field label="Origem / como chegou">
-            <OptionSelect list="leadSource" value={form.source} emptyLabel="Não informada" onChange={(source) => set("source", source)} />
-          </Field>
-
-      </>
-  );
-  const detailFields = (
-      <>
           <Field label="Termômetro" group>
             <TemperaturePicker value={form.temperature} onChange={(temperature) => set("temperature", temperature)} />
           </Field>
@@ -293,120 +294,9 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
               onChange={(e) => set("notes", e.target.value)}
             />
           </Field>
-      </>
-  );
-  const previewTotal = formTotal(form);
-  const previewCompany = companies.find((item) => item._id === form.companyId)?.name || "";
-  const previewStage = funnel?.stages.find((item) => item._id === form.stageId)?.name || "";
-
-
-  return (
-    <>
-      <Modal
-        open={open}
-        onClose={onClose}
-        size={isNew ? "xl" : "lg"}
-        title={lead ? "Editar negociação" : "Nova negociação"}
-        description={isNew ? `Etapa ${step + 1} de ${STEPS.length} · ${STEPS[step].description}` : "Cadastre o contato, o funil e o que está sendo vendido."}
-        footer={
-          <div className="flex w-full flex-wrap items-center justify-between gap-3">
-            <div>
-              {isNew ? (
-                <ol className="flex items-center gap-2" aria-label="Etapas">
-                  {STEPS.map((item, index) => (
-                    <li key={item.title} className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className={`flex items-center gap-1.5 text-xs font-semibold transition ${
-                          index === step ? "text-charcoal" : index < step ? "text-tan hover:underline" : "text-charcoal/35"
-                        }`}
-                        disabled={index > step}
-                        aria-current={index === step ? "step" : undefined}
-                        onClick={() => setStep(index)}
-                      >
-                        <span
-                          className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${
-                            index === step ? "bg-charcoal text-white" : index < step ? "bg-tan/15 text-tan" : "bg-charcoal/[0.06]"
-                          }`}
-                        >
-                          {index + 1}
-                        </span>
-                        <span className="hidden sm:inline">{item.title}</span>
-                      </button>
-                      {index < lastStep ? <span className="h-px w-4 bg-charcoal/15" aria-hidden /> : null}
-                    </li>
-                  ))}
-                </ol>
-              ) : null}
-              {lead && onDelete ? (
-                <button type="button" className={confirmDelete ? "btn-danger" : "btn-secondary text-burgundy"} onClick={handleDelete} disabled={isSaving}>
-                  {confirmDelete ? "Confirmar exclusão" : "Excluir"}
-                </button>
-              ) : null}
-            </div>
-            <div className="flex gap-2">
-              {isNew && step > 0 ? (
-                <button type="button" className="btn-secondary" onClick={() => setStep((current) => current - 1)} disabled={isSaving}>
-                  Voltar
-                </button>
-              ) : (
-                <button type="button" className="btn-secondary" onClick={onClose} disabled={isSaving}>
-                  Cancelar
-                </button>
-              )}
-              {isNew && step < lastStep ? (
-                <button type="button" className="btn-primary" onClick={next}>
-                  Próximo
-                </button>
-              ) : (
-                <button type="button" className="btn-primary" onClick={() => void handleSave()} disabled={isSaving}>
-                  {isSaving ? "Salvando..." : lead ? "Salvar" : "Criar negociação"}
-                </button>
-              )}
-            </div>
-          </div>
-        }
-      >
-        <div className={isNew ? "grid gap-6 md:grid-cols-[minmax(0,1fr)_260px]" : ""}>
-        <form
-          key={isNew ? step : "edit"}
-          className={`grid content-start gap-4 pt-1 sm:grid-cols-2 ${isNew ? "noma-page-enter" : ""}`}
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (isNew && step < lastStep) next();
-            else void handleSave();
-          }}
-        >
-          {!isNew || step === 0 ? clientFields : null}
-          {!isNew ? funnelFields : null}
-          {!isNew || step === 1 ? valueFields : null}
-          {isNew && step === 2 ? funnelFields : null}
-          {!isNew || step === 2 ? detailFields : null}
           {error ? <p className="text-sm font-medium text-burgundy sm:col-span-2">{error}</p> : null}
           <button type="submit" className="hidden" aria-hidden />
         </form>
-        {isNew ? (
-          <aside className="hidden self-start rounded-2xl bg-beige p-4 md:block" aria-label="Prévia no funil">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-charcoal/45">
-              Prévia no funil{previewStage ? ` · ${previewStage}` : ""}
-            </p>
-            <div className="rounded-lg border border-charcoal/[0.08] bg-white p-3.5 shadow-soft">
-              <p className="truncate text-sm font-semibold text-charcoal">{form.name.trim() || contactName || previewCompany || "Nova negociação"}</p>
-              <p className="truncate text-xs text-charcoal/55">
-                {[contactName, previewCompany].filter(Boolean).join(" · ") || "Sem contato vinculado"}
-              </p>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold tabular-nums text-charcoal">{formatCurrencyBRL(previewTotal)}</span>
-                <TemperatureBadge value={form.temperature} />
-              </div>
-              {form.products.length ? (
-                <p className="mt-2 truncate text-xs text-charcoal/50">{form.products.map((item) => item.name).join(", ")}</p>
-              ) : null}
-            </div>
-            <p className="mt-3 text-xs text-charcoal/50">É assim que a negociação vai aparecer no quadro do funil.</p>
-          </aside>
-        ) : null}
-        </div>
       </Modal>
 
       <ContactForm

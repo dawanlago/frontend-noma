@@ -160,6 +160,7 @@ export default function UsersPage() {
       </ListWorkspace>
 
       <Modal
+        variant="drawer"
         open={modal.open}
         size="lg"
         title={modal.user ? "Editar usuário" : "Novo usuário"}

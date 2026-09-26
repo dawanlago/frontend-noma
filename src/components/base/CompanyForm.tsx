@@ -76,6 +76,7 @@ export default function CompanyForm({ open, company, initial, onClose, onSaved }
 
   return (
     <Modal
+        variant="drawer"
       open={open}
       onClose={onClose}
       size="lg"

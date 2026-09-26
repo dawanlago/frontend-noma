@@ -144,6 +144,7 @@ export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: W
 
   return (
     <Modal
+      variant="drawer"
       open={Boolean(lead)}
       onClose={onClose}
       size="lg"

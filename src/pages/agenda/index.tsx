@@ -430,6 +430,7 @@ export default function AgendaPage() {
       </Modal>
 
       <Modal
+        variant="drawer"
         open={Boolean(editor)}
         title={editor?.task ? "Editar compromisso" : "Novo compromisso"}
         description={editor ? longDay(editor.draft.date || today) : undefined}
