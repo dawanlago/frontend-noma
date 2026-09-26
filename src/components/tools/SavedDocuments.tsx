@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDateTime } from "@/utils/format";
 import type { ToolDocument } from "@/types";
@@ -8,6 +9,8 @@ interface SavedDocumentsProps {
   isLoading?: boolean;
   emptyMessage: string;
   subtitle?: (doc: Omit<ToolDocument, "data">) => string;
+  /** Selo ao lado do título (ex.: "Visto há 2h" nas propostas). */
+  badge?: (doc: Omit<ToolDocument, "data">) => ReactNode;
   onOpen: (id: string) => void;
   onDuplicate?: (id: string) => void;
   onDelete: (id: string) => void;
@@ -20,6 +23,7 @@ export default function SavedDocuments({
   isLoading,
   emptyMessage,
   subtitle,
+  badge,
   onOpen,
   onDuplicate,
   onDelete,
@@ -42,7 +46,10 @@ export default function SavedDocuments({
           {documents.map((doc) => (
             <li key={doc._id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="min-w-0">
-                <p className="truncate font-medium text-charcoal">{doc.title || "Sem título"}</p>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <p className="truncate font-medium text-charcoal">{doc.title || "Sem título"}</p>
+                  {badge?.(doc)}
+                </div>
                 <p className="text-xs text-charcoal/50">
                   {subtitle ? `${subtitle(doc)} • ` : ""}atualizado {formatDateTime(doc.updatedAt)}
                   {isAdmin && doc.ownerName ? ` • ${doc.ownerName}` : ""}

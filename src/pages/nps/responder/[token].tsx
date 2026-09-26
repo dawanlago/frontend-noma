@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import LogoMark from "@/components/ui/LogoMark";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
+import { accentFromHex, normalizeHex } from "@/theme/appearance";
 
 type PublicNps = Awaited<ReturnType<typeof resources.publicNps.get>>;
 
@@ -49,16 +50,26 @@ export default function NpsRespondPage() {
   }
 
   const answered = data?.status === "answered" || submitted;
+  // Cor da pesquisa: troca a variável de destaque só nesta página.
+  const accent = normalizeHex(data?.survey.accentColor || "");
+  const accentStyle = accent ? ({ "--c-tan": accentFromHex(accent).light } as React.CSSProperties) : undefined;
 
   return (
     <>
       <Head>
         <title>{`${data?.survey.name || "Pesquisa"} | Noma`}</title>
       </Head>
-      <div className="flex min-h-screen items-center justify-center bg-beige px-4 py-12">
+      <div className="flex min-h-screen items-center justify-center bg-beige px-4 py-12" style={accentStyle}>
         <div className="w-full max-w-xl">
           <div className="mb-8 flex justify-center">
-            <LogoMark size="md" withWordmark />
+            {data?.survey.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={data.survey.logo} alt={data.survey.name} className="max-h-16 w-auto max-w-[220px] object-contain" />
+            ) : data || loadError ? (
+              <LogoMark size="md" withWordmark />
+            ) : (
+              <div className="h-12" />
+            )}
           </div>
           <div className="card p-7 sm:p-8">
             {!data && !loadError ? (

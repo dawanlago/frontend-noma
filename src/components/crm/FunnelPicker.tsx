@@ -42,7 +42,7 @@ export default function FunnelPicker({ funnels, value, counts, canManage, onChan
         aria-haspopup="listbox"
         aria-expanded={Boolean(anchor)}
         onClick={(event) => setAnchor(event.currentTarget)}
-        className="group flex min-w-0 max-w-full items-center gap-3 rounded-xl border border-charcoal/10 bg-white py-2 pl-3 pr-3 text-left shadow-soft transition hover:border-tan/40"
+        className="group flex min-w-0 max-w-full items-center gap-3 rounded-xl border border-charcoal/10 bg-surface py-2 pl-3 pr-3 text-left shadow-soft transition hover:border-tan/40"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tan/10 text-tan">
           <HiOutlineFunnel className="h-4 w-4" />

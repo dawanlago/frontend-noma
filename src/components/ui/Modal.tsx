@@ -61,7 +61,7 @@ export default function Modal({
           {children}
         </div>
         {footer ? (
-          <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-charcoal/[0.08] bg-white px-6 py-3.5">
+          <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-charcoal/[0.08] bg-surface px-6 py-3.5">
             {footer}
           </footer>
         ) : null}

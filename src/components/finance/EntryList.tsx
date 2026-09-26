@@ -3,6 +3,7 @@ import {
   HiOutlineArrowPath,
   HiOutlineArrowUpRight,
   HiOutlineCheck,
+  HiOutlineChartPie,
   HiOutlinePencilSquare,
   HiOutlineTrash,
 } from "react-icons/hi2";
@@ -33,6 +34,8 @@ interface EntryListProps {
   onSettle: (entry: FinanceEntry) => void;
   onEdit: (entry: FinanceEntry) => void;
   onDelete: (entry: FinanceEntry) => void;
+  /** Distribuir uma entrada recebida nas caixas de distribuição. */
+  onDistribute?: (entry: FinanceEntry) => void;
 }
 
 export default function EntryList({
@@ -48,6 +51,7 @@ export default function EntryList({
   onSettle,
   onEdit,
   onDelete,
+  onDistribute,
 }: EntryListProps) {
   return (
     <section className="card overflow-hidden">
@@ -64,7 +68,7 @@ export default function EntryList({
                   aria-pressed={active}
                   onClick={() => onFilterChange(item.value)}
                   className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                    active ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+                    active ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
                   }`}
                 >
                   {item.label}
@@ -129,6 +133,11 @@ export default function EntryList({
                       {showCashbox && entry.cashbox ? (
                         <span className="chip bg-gold/10 text-gold">{entry.cashbox}</span>
                       ) : null}
+                      {entry.distributed ? (
+                        <span className="chip bg-sage/10 text-sage">
+                          <HiOutlineChartPie className="h-3 w-3" /> Distribuída
+                        </span>
+                      ) : null}
                       {entry.recurringId ? (
                         <span className="chip bg-tan/10 text-tan">
                           <HiOutlineArrowPath className="h-3 w-3" /> Recorrente
@@ -154,12 +163,23 @@ export default function EntryList({
                     {open ? (
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-md border border-charcoal/10 px-2.5 py-1.5 text-xs font-semibold text-charcoal transition hover:bg-white disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-md border border-charcoal/10 px-2.5 py-1.5 text-xs font-semibold text-charcoal transition hover:bg-surface disabled:opacity-50"
                         disabled={busyId === entry._id}
                         onClick={() => onSettle(entry)}
                       >
                         <HiOutlineCheck className="h-3.5 w-3.5" />
                         {isIncome ? "Marcar como recebido" : "Marcar como pago"}
+                      </button>
+                    ) : null}
+                    {onDistribute && isIncome && kind === "received" && !entry.distributed ? (
+                      <button
+                        type="button"
+                        className="btn-ghost h-8 w-8"
+                        aria-label="Distribuir nas caixas"
+                        title="Distribuir nas caixas"
+                        onClick={() => onDistribute(entry)}
+                      >
+                        <HiOutlineChartPie className="h-4 w-4" />
                       </button>
                     ) : null}
                     <button type="button" className="btn-ghost h-8 w-8" aria-label="Editar" title="Editar" onClick={() => onEdit(entry)}>

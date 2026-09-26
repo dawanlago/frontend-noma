@@ -63,7 +63,7 @@ export default function ContractPreview({ doc, logo }: ContractPreviewProps) {
     <div className="rounded-xl bg-charcoal/[0.06] p-3 sm:p-4">
       <div className="max-h-[calc(100vh-13rem)] min-h-[420px] overflow-y-auto rounded-md">
         <article
-          className="mx-auto bg-white px-7 py-8 text-[11.5px] leading-[1.65] text-charcoal shadow-soft sm:px-9 sm:py-10"
+          className="noma-paper mx-auto bg-surface px-7 py-8 text-[11.5px] leading-[1.65] text-charcoal shadow-soft sm:px-9 sm:py-10"
           style={{ fontFamily: SERIF, aspectRatio: "210 / 297" }}
         >
           {logo ? (

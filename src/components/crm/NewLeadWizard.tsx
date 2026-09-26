@@ -81,7 +81,7 @@ function ComboInput({
         <p className="mt-1.5 text-xs text-charcoal/50">{newLabel}</p>
       ) : null}
       {open && matches.length && !value.id ? (
-        <ul className="absolute left-0 right-0 top-[46px] z-10 max-h-60 overflow-y-auto rounded-xl border border-charcoal/10 bg-white py-1 shadow-lift">
+        <ul className="absolute left-0 right-0 top-[46px] z-10 max-h-60 overflow-y-auto rounded-xl border border-charcoal/10 bg-surface py-1 shadow-lift">
           {matches.map((item) => (
             <li key={item.id}>
               <button
@@ -167,7 +167,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
         setContacts(contactList);
         setCompanies(companyList);
         setCatalog(productList);
-        // "Nova venda" a partir de um perfil: já vem com o contato/empresa.
+        // "Nova negociação" a partir de um perfil: já vem com o contato/empresa.
         const presetCompany = companyList.find((item) => item._id === preset?.companyId);
         const presetContact = contactList.find((item) => item._id === preset?.contactId);
         if (presetCompany) {
@@ -259,7 +259,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
 
   const card = (
     <div className="w-full max-w-[320px] text-left">
-      <div className="rounded-xl border border-charcoal/[0.08] bg-white p-4 shadow-soft">
+      <div className="rounded-xl border border-charcoal/[0.08] bg-surface p-4 shadow-soft">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 text-sm text-charcoal/80">
             <span className="h-3 w-3 rounded-sm bg-tan" aria-hidden />

@@ -39,7 +39,7 @@ function NoteItem({
       onClick={onSelect}
       title={draggable ? "Arraste para outro grupo" : undefined}
       className={`mb-1 block w-full truncate rounded-xl px-3 py-2 text-left transition ${
-        active ? "bg-ink text-white" : "hover:bg-beige"
+        active ? "bg-ink text-surface" : "hover:bg-beige"
       } ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       {note.title || "Sem título"}

@@ -29,7 +29,7 @@ export default function OptionCards<T extends string>({ value, options, onChange
             className={`rounded-xl border p-4 text-left transition duration-150 ${
               selected
                 ? "border-tan bg-tan/[0.06] ring-2 ring-tan/20"
-                : "border-charcoal/10 bg-white hover:border-charcoal/25"
+                : "border-charcoal/10 bg-surface hover:border-charcoal/25"
             }`}
           >
             {option.badge ? <span className="eyebrow mb-1 block">{option.badge}</span> : null}

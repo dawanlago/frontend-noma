@@ -4,7 +4,7 @@ import { HiOutlineArrowDownTray, HiOutlineCheck, HiOutlineClipboard } from "reac
 import ListHeader from "@/components/ui/ListHeader";
 
 /** Versão do pacote em /public/downloads/noma-whatsapp.zip (manifest.json da extensão). */
-const EXTENSION_VERSION = "0.1.5";
+const EXTENSION_VERSION = "0.1.6";
 
 function CopyText({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);

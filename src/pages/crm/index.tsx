@@ -14,6 +14,7 @@ import OptionSelect from "@/components/options/OptionSelect";
 import OwnerFilter, { useOwnerName } from "@/components/tools/OwnerFilter";
 import FilterBar, { type FilterChip } from "@/components/ui/FilterBar";
 import ListHeader from "@/components/ui/ListHeader";
+import HideValuesToggle from "@/components/ui/HideValuesToggle";
 import MetricCard from "@/components/ui/MetricCard";
 import Select from "@/components/ui/Select";
 import { LEAD_TEMPERATURES, MONTH_NAMES } from "@/lib/constants";
@@ -87,6 +88,11 @@ export default function CrmPage() {
   const leads = useMemo(() => (data || []).filter((lead) => lead.funnelId === funnel?._id), [data, funnel]);
   const filtered = useMemo(() => filterLeads(leads, filters), [leads, filters]);
   const metrics = useMemo(() => computeLeadMetrics(filtered), [filtered]);
+  // "Na mesa": tudo o que está em aberto, somando todos os funis.
+  const onTable = useMemo(() => {
+    const open = (data || []).filter((lead) => lead.status === "open");
+    return { count: open.length, value: open.reduce((total, lead) => total + (Number(lead.value) || 0), 0) };
+  }, [data]);
   const ownerName = useOwnerName(ownerId);
   const chips: FilterChip[] = [
     filters.search ? { key: "search", label: `Busca: ${filters.search}`, onRemove: () => setFilters((f) => ({ ...f, search: "" })) } : null,
@@ -115,7 +121,7 @@ export default function CrmPage() {
     setModal({ open: true, lead: null });
   }, []);
 
-  // "Nova venda" (barra superior, perfis) abre /crm?novo=1[&contato=id][&empresa=id].
+  // "Nova negociação" (barra superior, perfis) abre /crm?novo=1[&contato=id][&empresa=id].
   useEffect(() => {
     if (!router.isReady || router.query.novo !== "1") return;
     const { contato, empresa } = router.query;
@@ -184,6 +190,19 @@ export default function CrmPage() {
     }
   }
 
+  async function moveSubStage(lead: Lead, subStageId: string) {
+    const previous = data;
+    setData((current) =>
+      (current || []).map((item) => (item._id === lead._id ? { ...item, subStageId, subStageEnteredAt: new Date().toISOString() } : item)),
+    );
+    try {
+      replaceLead(await resources.leads.update(lead._id, { subStageId }));
+    } catch (err) {
+      setData(previous);
+      setNotice(apiError(err, `Não foi possível mudar a microetapa de "${lead.name}".`));
+    }
+  }
+
   async function markWon(lead: Lead) {
     try {
       const saved = await resources.leads.setStatus(lead._id, "won");
@@ -240,6 +259,7 @@ export default function CrmPage() {
           onEdit={(lead) => setModal({ open: true, lead })}
           onDelete={(lead) => void quickDelete(lead)}
           onMove={(lead, stageId) => void moveLead(lead, stageId)}
+          onSubStage={(lead, subStageId) => void moveSubStage(lead, subStageId)}
           onWon={(lead) => void markWon(lead)}
           celebrateId={celebrateId}
         />
@@ -250,10 +270,10 @@ export default function CrmPage() {
       return (
         <EmptyState
           title={leads.length ? "Nada encontrado" : "Nenhuma negociação neste funil"}
-          text={leads.length ? "Nenhuma negociação corresponde aos filtros." : "Cadastre uma venda para acompanhar do primeiro contato ao fechamento."}
+          text={leads.length ? "Nenhuma negociação corresponde aos filtros." : "Cadastre uma negociação para acompanhar do primeiro contato ao fechamento."}
           action={
             <button type="button" className="btn-primary" onClick={openNew}>
-              <HiOutlinePlus className="h-4 w-4" /> Nova venda
+              <HiOutlinePlus className="h-4 w-4" /> Nova negociação
             </button>
           }
         />
@@ -290,7 +310,7 @@ export default function CrmPage() {
                   aria-selected={active}
                   onClick={() => setTab(item.value)}
                   className={`rounded-md px-3 py-1.5 text-sm font-semibold transition duration-150 ${
-                    active ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+                    active ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
                   }`}
                 >
                   {item.label}
@@ -298,22 +318,23 @@ export default function CrmPage() {
               );
             })}
           </div>
+          <HideValuesToggle />
           {can("configuracoes") ? (
             <Link href="/configuracoes/funis" className="btn-ghost h-9 w-9" aria-label="Gerenciar funis" title="Gerenciar funis">
               <HiOutlineCog6Tooth className="h-5 w-5" />
             </Link>
           ) : null}
           <button type="button" className="btn-primary" onClick={openNew}>
-            <HiOutlinePlus className="h-4 w-4" /> Nova venda
+            <HiOutlinePlus className="h-4 w-4" /> Nova negociação
           </button>
           </>
         }
       />
 
       <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <MetricCard label="Potencial em aberto" value={formatCurrencyBRL(metrics.openValue)} />
-        <MetricCard label="Vendas feitas" value={formatCurrencyBRL(metrics.wonValue)} hint={`${metrics.wonCount} vendas`} tone="sage" />
-        <MetricCard label="Ticket médio" value={formatCurrencyBRL(metrics.averageTicket)} />
+        <MetricCard label="Potencial em aberto" value={formatCurrencyBRL(metrics.openValue)} money />
+        <MetricCard label="Vendas feitas" value={formatCurrencyBRL(metrics.wonValue)} hint={`${metrics.wonCount} vendas`} tone="sage" money />
+        <MetricCard label="Ticket médio" value={formatCurrencyBRL(metrics.averageTicket)} money />
         <MetricCard
           label="Taxa de conversão"
           value={formatPercent(metrics.conversionRate)}
@@ -325,8 +346,23 @@ export default function CrmPage() {
 
       <FilterBar
         search={{ value: filters.search, onChange: (search) => setFilters({ ...filters, search }), placeholder: "Buscar negociação, contato ou empresa" }}
-        count={`${filtered.length} negociaç${filtered.length === 1 ? "ão" : "ões"} · ${formatCurrencyBRL(metrics.openValue)} em aberto`}
+        count={
+          <>
+            {filtered.length} negociaç{filtered.length === 1 ? "ão" : "ões"} · <span data-money>{formatCurrencyBRL(metrics.openValue)}</span> em aberto
+          </>
+        }
         chips={chips}
+        aside={
+          <div className="flex items-center gap-3 rounded-lg border border-tan/20 bg-tan/[0.06] px-3 py-1.5" title="Negociações em aberto somando todos os funis">
+            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-tan">Na mesa</span>
+            <span data-money className="text-sm font-semibold tabular-nums text-charcoal">
+              {formatCurrencyBRL(onTable.value)}
+            </span>
+            <span className="text-xs text-charcoal/55">
+              {onTable.count} em aberto · todos os funis
+            </span>
+          </div>
+        }
       >
         <OptionSelect
           list="leadService"
@@ -367,7 +403,7 @@ export default function CrmPage() {
         onSave={handleSave}
         onDelete={handleDelete}
       />
-      <WonNotice lead={wonLead} onClose={() => setWonLead(null)} />
+      <WonNotice lead={wonLead} onClose={() => setWonLead(null)} onLeadSaved={replaceLead} />
     </>
   );
 }

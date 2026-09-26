@@ -1,10 +1,13 @@
-import type { BudgetResult } from "@/lib/budget/calc";
+import { useState } from "react";
+import { itemTotal, type BudgetResult } from "@/lib/budget/calc";
+import { formatQuantity, type BudgetData } from "@/lib/budget/model";
+import { budgetSummaryText } from "@/lib/budget/summary";
+import { copyText } from "@/utils/document";
 import { formatCurrencyBRL } from "@/utils/format";
 
 interface BudgetResultPanelProps {
+  data: BudgetData;
   result: BudgetResult;
-  marginPercent: number;
-  operationalPercent: number;
   onUseValue: () => void;
 }
 
@@ -26,14 +29,36 @@ function PriceRow({ label, hint, value }: { label: string; hint?: string; value:
 }
 
 /** Resultado ao vivo da calculadora (coluna direita). */
-export default function BudgetResultPanel({ result, marginPercent, operationalPercent, onUseValue }: BudgetResultPanelProps) {
-  const breakdown = [
-    { label: "Produção", value: formatCurrencyBRL(result.productionCost) },
-    { label: "Pós-produção", value: formatCurrencyBRL(result.postProductionCost) },
-    { label: "Custos externos", value: formatCurrencyBRL(result.externalCostsTotal) },
-    { label: `Operacionais (${operationalPercent}%)`, value: formatCurrencyBRL(result.operationalCost) },
-    { label: "Horas totais", value: formatHours(result.totalHours) },
-  ];
+export default function BudgetResultPanel({ data, result, onUseValue }: BudgetResultPanelProps) {
+  const { marginPercent, operationalPercent } = data;
+  const hidden = new Set(data.hiddenFields);
+  const [copied, setCopied] = useState(false);
+  const breakdown: { key: string; label: string; hint?: string; value: string }[] = [];
+  if (!hidden.has("production")) {
+    breakdown.push({ key: "production", label: "Produção", value: formatCurrencyBRL(result.productionCost) });
+  }
+  if (!hidden.has("postProduction")) {
+    breakdown.push({ key: "post", label: "Pós-produção", value: formatCurrencyBRL(result.postProductionCost) });
+  }
+  // Cada profissional/custo aparece em uma linha própria.
+  data.items.forEach((item) => {
+    breakdown.push({
+      key: item.id,
+      label: item.name.trim() || "Item sem nome",
+      hint: `${formatQuantity(item.quantity, item.unit)} × ${formatCurrencyBRL(item.unitValue)}`,
+      value: formatCurrencyBRL(itemTotal(item)),
+    });
+  });
+  breakdown.push(
+    { key: "operational", label: `Operacionais (${operationalPercent}%)`, value: formatCurrencyBRL(result.operationalCost) },
+    { key: "hours", label: "Horas totais", value: formatHours(result.totalHours) },
+  );
+
+  async function copySummary() {
+    await copyText(budgetSummaryText(data, result));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <div className="space-y-4">
@@ -70,8 +95,11 @@ export default function BudgetResultPanel({ result, marginPercent, operationalPe
         <h3 className="text-sm font-semibold text-charcoal">Como chegamos aqui</h3>
         <dl className="mt-3 space-y-2">
           {breakdown.map((item) => (
-            <div key={item.label} className="flex justify-between gap-3 text-sm">
-              <dt className="text-charcoal/60">{item.label}</dt>
+            <div key={item.key} className="flex justify-between gap-3 text-sm">
+              <dt className="min-w-0 text-charcoal/60">
+                <span className="block truncate">{item.label}</span>
+                {item.hint ? <span className="block text-xs text-charcoal/45">{item.hint}</span> : null}
+              </dt>
               <dd className="font-medium tabular-nums text-charcoal">{item.value}</dd>
             </div>
           ))}
@@ -82,7 +110,10 @@ export default function BudgetResultPanel({ result, marginPercent, operationalPe
             {result.totalHours > 0 ? `${formatCurrencyBRL(result.hourlyValue)}/h` : "—"}
           </span>
         </div>
-        <p className="mt-4 text-xs leading-5 text-charcoal/50">
+        <button type="button" className="btn-secondary mt-4 w-full !py-2" onClick={() => void copySummary()}>
+          {copied ? "Resumo copiado ✓" : "Copiar resumo do orçamento"}
+        </button>
+        <p className="mt-3 text-xs leading-5 text-charcoal/50">
           As fórmulas podem ser ajustadas ao seu método de precificação.
         </p>
       </section>

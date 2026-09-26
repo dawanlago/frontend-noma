@@ -1,6 +1,8 @@
 import { api } from "./api";
 import type {
   AppSettings,
+  BucketMovement,
+  DistributionBucket,
   Birthday,
   CaptureForm,
   Company,
@@ -25,6 +27,7 @@ import type {
   NPSSurvey,
   OptionItem,
   Product,
+  ProposalShare,
   PublicFormData,
   StoredFile,
   Task,
@@ -122,6 +125,14 @@ export function isInviteCode(id: string) {
   return /^\d{6}$/.test(id);
 }
 
+export interface DistributionPayload {
+  date: string;
+  description: string;
+  cashbox: string;
+  entryId?: string;
+  items: { bucketId: string; value: number; percentage?: number }[];
+}
+
 export type FinanceEntryPayload = Partial<FinanceEntry> & { recurring?: boolean };
 
 export interface InstallmentsPayload {
@@ -146,7 +157,11 @@ export interface GoogleStatus {
   email: string;
 }
 
-export type LeadPayload = Partial<Omit<Lead, "nextActionDate">> & { nextActionDate?: string | null };
+export type LeadPayload = Partial<Omit<Lead, "nextActionDate" | "offeredValue" | "closedValue">> & {
+  nextActionDate?: string | null;
+  offeredValue?: number | null;
+  closedValue?: number | null;
+};
 
 export const resources = {
   dashboard: (params?: ListParams) => getOne<DashboardData>("/dashboard", params),
@@ -181,7 +196,12 @@ export const resources = {
   },
   products: crud<Product>("/products"),
   labels: crud<Label>("/labels"),
-  funnels: crud<Funnel>("/funnels"),
+  funnels: {
+    ...crud<Funnel>("/funnels"),
+    reorder: async (ids: string[]) => {
+      await api.put("/funnels/reorder", { ids });
+    },
+  },
   leads: {
     list: (params?: ListParams) => listData<Lead>("/leads", params),
     get: (id: string) => getOne<Lead>(`/leads/${id}`),
@@ -232,7 +252,7 @@ export const resources = {
   },
   publicNps: {
     get: (token: string) =>
-      getOne<{ status: "pending" | "answered"; contactFirstName: string; survey: Pick<NPSSurvey, "name" | "question" | "commentPrompt" | "thankYouMessage"> }>(
+      getOne<{ status: "pending" | "answered"; contactFirstName: string; survey: Pick<NPSSurvey, "name" | "question" | "commentPrompt" | "thankYouMessage" | "logo" | "accentColor"> }>(
         `/public/nps/${token}`,
       ),
     respond: (token: string, rating: number, comment: string) => create<{ ok: boolean }>(`/public/nps/${token}`, { rating, comment }),
@@ -268,6 +288,16 @@ export const resources = {
     removeEntry: (id: string, scope?: "series") => remove(`/finance/entries/${id}`, { scope }),
     summary: (year: string, params?: ListParams) =>
       getOne<{ year: string; months: FinanceMonthSummary[] }>("/finance/summary", { ...params, year }),
+    distribution: (params?: ListParams) =>
+      getOne<{ buckets: DistributionBucket[]; movements: BucketMovement[] }>("/finance/distribution", params),
+    saveBuckets: async (buckets: (Pick<DistributionBucket, "name" | "percentage" | "color"> & { _id?: string })[]) => {
+      const { data } = await api.put<ApiItemResponse<DistributionBucket[]>>("/finance/distribution/buckets", { buckets });
+      return data.data;
+    },
+    distribute: (payload: DistributionPayload) => create<BucketMovement[]>("/finance/distributions", payload),
+    withdraw: (payload: { bucketId: string; value: number; date: string; description: string; cashbox: string }) =>
+      create<BucketMovement>("/finance/bucket-movements", payload),
+    removeMovement: (id: string) => remove(`/finance/bucket-movements/${id}`),
     setGoal: async (month: string, value: number, cashbox = "") => {
       const { data } = await api.put<ApiItemResponse<{ value: number }>>(`/finance/goals/${month}`, { value, cashbox });
       return data.data;
@@ -278,6 +308,19 @@ export const resources = {
     contracts: toolDocuments("contract"),
     budgets: toolDocuments("budget"),
     briefings: toolDocuments("briefing"),
+    /** Link público da proposta (/p/<token>) e as visualizações do cliente. */
+    proposalShare: {
+      get: (id: string) => getOne<ProposalShare>(`/tools/proposal/documents/${id}/share`),
+      create: (id: string, regenerate = false) => create<ProposalShare>(`/tools/proposal/documents/${id}/share`, { regenerate }),
+      disable: async (id: string) => {
+        const { data } = await api.delete<ApiItemResponse<ProposalShare>>(`/tools/proposal/documents/${id}/share`);
+        return data.data;
+      },
+    },
+  },
+  /** Proposta aberta pelo cliente no link público (sem login). */
+  publicProposals: {
+    get: (token: string) => getOne<{ title: string; data: Record<string, unknown> }>(`/public/proposals/${token}`),
   },
   contractTemplates: crud<ContractTemplate>("/contract-templates"),
   files: {

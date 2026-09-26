@@ -113,9 +113,9 @@ export default function ProductForm({ open, product, onClose, onSaved }: Product
               <p className="eyebrow">Preço de venda</p>
               <p className="mt-1 font-display text-2xl font-semibold tracking-tight text-charcoal">{formatCurrencyBRL(sellingPrice)}</p>
             </div>
-            <p className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-sage">{margin.toFixed(0)}% margem</p>
+            <p className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-sage">{margin.toFixed(0)}% margem</p>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface">
             <div className="h-full rounded-full bg-gradient-to-r from-tan to-gold" style={{ width: `${Math.min(100, margin)}%` }} />
           </div>
         </div>

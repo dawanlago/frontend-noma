@@ -8,7 +8,10 @@ import Field from "@/components/tools/Field";
 import OwnerFilter from "@/components/tools/OwnerFilter";
 import Modal from "@/components/ui/Modal";
 import PageHeader from "@/components/ui/PageHeader";
+import OptionSelect from "@/components/options/OptionSelect";
+import { TaskTypeBadge } from "@/components/tasks/TaskType";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
@@ -50,6 +53,7 @@ const DURATIONS = [
 ];
 
 interface Draft {
+  type: string;
   title: string;
   date: string;
   time: string;
@@ -60,6 +64,7 @@ interface Draft {
 
 export default function AgendaPage() {
   const { isAdmin } = useAuth();
+  const { labelOf } = useWorkspace();
   const [ownerId, setOwnerId] = useState("");
   const { data, isLoading, error, setData } = useAsyncData(() => resources.tasks.list({ ownerId }), [ownerId]);
   const leads = useAsyncData(() => resources.leads.list().catch(() => []));
@@ -117,13 +122,14 @@ export default function AgendaPage() {
 
   function openCreate(date = selectedDate) {
     setFormError("");
-    setEditor({ task: null, draft: { title: "", date, time: "10:00", duration: "60", leadId: "", notes: "" } });
+    setEditor({ task: null, draft: { type: "", title: "", date, time: "10:00", duration: "60", leadId: "", notes: "" } });
   }
 
   function openEdit(task: Task) {
     setOpenTaskId(null);
     setFormError("");
     setEditor({ task, draft: {
+        type: task.type || "",
         title: task.title,
         date: task.dueDate,
         time: task.time,
@@ -154,6 +160,7 @@ export default function AgendaPage() {
     try {
       const payload = {
         title: draft.title.trim(),
+        type: draft.type,
         dueDate: draft.date,
         time: draft.time,
         duration: Number(draft.duration) || 60,
@@ -241,7 +248,10 @@ export default function AgendaPage() {
                     <span className={`chip ${status.tone}`}>{status.label}</span>
                   </div>
                   <p className="mt-2 font-semibold text-charcoal">{task.title}</p>
-                  <p className="mt-1 text-xs text-charcoal/45">{task.leadName || "Sem negociação"}</p>
+                  <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-charcoal/45">
+                    <TaskTypeBadge type={task.type} />
+                    <span>{task.leadName || "Sem negociação"}</span>
+                  </p>
                 </button>
               );
             })}
@@ -312,7 +322,7 @@ export default function AgendaPage() {
                         ? "border-tan bg-tan/[0.08] shadow-soft"
                         : isToday
                           ? "border-tan/40 bg-tan/[0.04]"
-                          : "border-charcoal/[0.06] bg-white hover:border-tan/30"
+                          : "border-charcoal/[0.06] bg-surface hover:border-tan/30"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
@@ -380,13 +390,14 @@ export default function AgendaPage() {
                     key={task._id}
                     type="button"
                     onClick={() => setOpenTaskId(task._id)}
-                    className="w-full rounded-xl border border-charcoal/10 bg-white px-4 py-3 text-left transition hover:border-tan/40 hover:bg-beige/40"
+                    className="w-full rounded-xl border border-charcoal/10 bg-surface px-4 py-3 text-left transition hover:border-tan/40 hover:bg-beige/40"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-medium text-charcoal">{task.title}</p>
                         <p className="mt-1 text-xs text-charcoal/45">
                           {task.time || "Sem horário"}
+                          {task.type ? ` · ${labelOf("taskType", task.type)}` : ""}
                           {task.leadName ? ` · ${task.leadName}` : ""}
                           {isAdmin && task.ownerName ? ` · ${task.ownerName}` : ""}
                         </p>
@@ -429,6 +440,14 @@ export default function AgendaPage() {
         {openTask ? (
           <div className="space-y-5">
             <dl className="space-y-3">
+              {openTask.type ? (
+                <div>
+                  <dt className="text-xs font-medium text-charcoal/45">Tipo</dt>
+                  <dd className="mt-1 text-sm text-charcoal">
+                    <TaskTypeBadge type={openTask.type} />
+                  </dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="text-xs font-medium text-charcoal/45">Negociação</dt>
                 <dd className="mt-1 text-sm text-charcoal">{openTask.leadName || "Sem negociação vinculada"}</dd>
@@ -450,7 +469,7 @@ export default function AgendaPage() {
                       disabled={busy}
                       onClick={() => void setStatus(openTask, item.value)}
                       className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                        active ? "bg-ink text-white" : "bg-beige text-charcoal/70 hover:bg-tan/10 hover:text-charcoal"
+                        active ? "bg-ink text-surface" : "bg-beige text-charcoal/70 hover:bg-tan/10 hover:text-charcoal"
                       }`}
                     >
                       {item.label}
@@ -483,6 +502,14 @@ export default function AgendaPage() {
               void handleSave();
             }}
           >
+            <Field label="Tipo" full hint="Cadastre um tipo novo pela opção no fim da lista.">
+              <OptionSelect
+                list="taskType"
+                value={editor.draft.type}
+                emptyLabel="Sem tipo"
+                onChange={(type) => setEditor({ ...editor, draft: { ...editor.draft, type } })}
+              />
+            </Field>
             <Field label="Título" full>
               <input
                 className="input-search"

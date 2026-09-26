@@ -8,6 +8,7 @@ import SavedDocuments from "@/components/tools/SavedDocuments";
 import PageHeader from "@/components/ui/PageHeader";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { defaultData, moneyText, titleOf, type ProposalData } from "@/lib/proposals/model";
+import { timeAgo } from "@/lib/proposals/views";
 import { resources } from "@/lib/resources";
 import { confirmDialog } from "@/components/ui/DialogHost";
 
@@ -155,7 +156,7 @@ export default function ProposalsPage() {
         {[
           ["01", "Preencha as etapas", "Cliente, empresa, portfólio e investimento — com prévia ao vivo."],
           ["02", "Escolha o visual", "Cinco layouts prontos, com a sua cor e as suas fontes."],
-          ["03", "Envie o arquivo", "Um HTML leve que abre no celular, com os vídeos do Drive."],
+          ["03", "Envie o link", "Um link que abre no celular — e mostra quando e por quanto tempo o cliente viu."],
         ].map(([n, title, text]) => (
           <div key={n} className="card-muted p-4">
             <span className="eyebrow">{n}</span>
@@ -178,6 +179,15 @@ export default function ProposalsPage() {
           const data = (doc as { data?: Partial<ProposalData> }).data;
           return data?.client?.title || "Proposta Comercial";
         }}
+        badge={(doc) =>
+          doc.share?.lastViewedAt ? (
+            <span className="chip bg-sage/10 text-sage" title={`${doc.share.viewsCount} ${doc.share.viewsCount === 1 ? "abertura" : "aberturas"} pelo link`}>
+              Visto {timeAgo(doc.share.lastViewedAt)}
+            </span>
+          ) : doc.share?.isActive ? (
+            <span className="chip bg-charcoal/[0.06] text-charcoal/55">Link criado · não visto</span>
+          ) : null
+        }
         onOpen={open}
         onDuplicate={(docId) => void duplicate(docId)}
         onDelete={(docId) => void remove(docId)}

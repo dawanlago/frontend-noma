@@ -12,12 +12,14 @@ interface FilterBarProps {
   children?: ReactNode;
   search?: { value: string; onChange: (value: string) => void; placeholder: string };
   /** Resumo do resultado, ex.: "12 negociações". */
-  count?: string;
+  count?: ReactNode;
   chips?: FilterChip[];
+  /** Resumo à direita da linha do contador (ex.: total na mesa). */
+  aside?: ReactNode;
 }
 
 /** Barra de filtros padrão: busca + filtros em linha, e abaixo o contador com os filtros ativos removíveis. */
-export default function FilterBar({ children, search, count, chips = [] }: FilterBarProps) {
+export default function FilterBar({ children, search, count, chips = [], aside }: FilterBarProps) {
   return (
     <div className="mb-4">
       <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
@@ -35,13 +37,13 @@ export default function FilterBar({ children, search, count, chips = [] }: Filte
         ) : null}
         {children ? <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:[&>*]:!w-48">{children}</div> : null}
       </div>
-      {count || chips.length ? (
+      {count || chips.length || aside ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {count ? <span className="rounded-md bg-charcoal/[0.06] px-2 py-1 text-xs font-semibold text-charcoal/70">{count}</span> : null}
           {chips.map((chip) => (
             <span
               key={chip.key}
-              className="inline-flex items-center gap-1 rounded-md border border-charcoal/10 bg-white py-0.5 pl-2 pr-1 text-xs font-medium text-charcoal/75"
+              className="inline-flex items-center gap-1 rounded-md border border-charcoal/10 bg-surface py-0.5 pl-2 pr-1 text-xs font-medium text-charcoal/75"
             >
               {chip.label}
               <button
@@ -63,6 +65,7 @@ export default function FilterBar({ children, search, count, chips = [] }: Filte
               Limpar tudo
             </button>
           ) : null}
+          {aside ? <div className="ml-auto">{aside}</div> : null}
         </div>
       ) : null}
     </div>

@@ -1,4 +1,4 @@
-import type { BudgetData } from "./model";
+import type { BudgetData, FixedFieldKey } from "./model";
 
 /** Entradas mínimas para o cálculo (independente do formato salvo). */
 export type BudgetInput = Pick<
@@ -13,13 +13,18 @@ export type BudgetInput = Pick<
   | "reviewHours"
   | "operationalPercent"
   | "marginPercent"
-> & { externalCosts: ReadonlyArray<{ value: number }> };
+> & {
+  items: ReadonlyArray<{ quantity: number; unitValue: number }>;
+  /** Campos fixos removidos: contam como zero. */
+  hiddenFields?: ReadonlyArray<FixedFieldKey>;
+};
 
 export interface BudgetResult {
   productionCost: number;
   postProductionCost: number;
-  externalCostsTotal: number;
-  /** produção + pós + externos */
+  /** profissionais e custos (quantidade × valor unitário) */
+  itemsTotal: number;
+  /** produção + pós + itens */
   baseCost: number;
   operationalCost: number;
   /** base + operacional */
@@ -40,13 +45,23 @@ export const PREMIUM_MARKUP = 0.15;
 
 const safe = (value: number) => (Number.isFinite(value) && value > 0 ? value : 0);
 
+/** Total de uma linha: quantidade × valor unitário. */
+export function itemTotal(item: { quantity: number; unitValue: number }) {
+  return safe(item.quantity) * safe(item.unitValue);
+}
+
 /** Cálculo puro do orçamento. Ajuste as fórmulas aqui para mudar o método de precificação. */
 export function calculateBudget(input: BudgetInput): BudgetResult {
-  const productionCost = safe(input.days) * safe(input.dailyRate);
-  const postProductionCost = safe(input.videos) * safe(input.editHoursPerVideo) * safe(input.editHourlyRate);
-  const externalCostsTotal = input.externalCosts.reduce((sum, cost) => sum + safe(cost.value), 0);
+  const hidden = new Set(input.hiddenFields || []);
+  // Campo removido do orçamento não entra no cálculo.
+  const use = (key: FixedFieldKey, value: number) => (hidden.has(key) ? 0 : safe(value));
 
-  const baseCost = productionCost + postProductionCost + externalCostsTotal;
+  const productionCost = hidden.has("production") ? 0 : safe(input.days) * safe(input.dailyRate);
+  const editHours = hidden.has("postProduction") ? 0 : safe(input.videos) * safe(input.editHoursPerVideo);
+  const postProductionCost = editHours * safe(input.editHourlyRate);
+  const itemsTotal = input.items.reduce((sum, item) => sum + itemTotal(item), 0);
+
+  const baseCost = productionCost + postProductionCost + itemsTotal;
   const operationalCost = baseCost * (safe(input.operationalPercent) / 100);
   const estimatedCost = baseCost + operationalCost;
 
@@ -55,16 +70,13 @@ export function calculateBudget(input: BudgetInput): BudgetResult {
   const premiumPrice = suggestedPrice * (1 + PREMIUM_MARKUP);
 
   const totalHours =
-    safe(input.shootingHours) +
-    safe(input.prepHours) +
-    safe(input.videos) * safe(input.editHoursPerVideo) +
-    safe(input.reviewHours);
+    use("shootingHours", input.shootingHours) + use("prepHours", input.prepHours) + editHours + use("reviewHours", input.reviewHours);
   const hourlyValue = totalHours > 0 ? suggestedPrice / totalHours : 0;
 
   return {
     productionCost,
     postProductionCost,
-    externalCostsTotal,
+    itemsTotal,
     baseCost,
     operationalCost,
     estimatedCost,

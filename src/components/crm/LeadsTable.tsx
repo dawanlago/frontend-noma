@@ -44,7 +44,7 @@ export default function LeadsTable({ leads, funnels, today, showOwner, onOpen }:
                   <td className="px-4 py-3">
                     <TemperatureBadge value={lead.temperature} />
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums text-charcoal">{formatCurrencyBRL(lead.value || 0)}</td>
+                  <td data-money className="px-4 py-3 text-right font-semibold tabular-nums text-charcoal">{formatCurrencyBRL(lead.value || 0)}</td>
                   <td className={`px-4 py-3 ${overdue ? "font-semibold text-burgundy" : "text-charcoal/70"}`}>
                     {date ? formatDateOnly(date) : <span className="text-charcoal/35">—</span>}
                   </td>

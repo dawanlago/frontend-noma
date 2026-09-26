@@ -27,7 +27,7 @@ interface LeadModalProps {
   lead: Lead | null;
   /** Funil pré-selecionado ao criar. */
   funnelId?: string;
-  /** Contato/empresa pré-selecionados ao criar (ex.: "Nova venda" no perfil). */
+  /** Contato/empresa pré-selecionados ao criar (ex.: "Nova negociação" no perfil). */
   preset?: { contactId?: string; companyId?: string };
   onClose: () => void;
   onSave: (form: LeadFormState) => Promise<void>;
@@ -36,7 +36,7 @@ interface LeadModalProps {
 
 const ADD_FUNNEL = "__add_funnel__";
 
-/** Cadastro e edição de negociação ("Nova venda"). */
+/** Cadastro e edição de negociação ("Nova negociação"). */
 export default function LeadModal({ open, lead, funnelId, preset, onClose, onSave, onDelete }: LeadModalProps) {
   const { funnels } = useWorkspace();
   const { can } = useAuth();

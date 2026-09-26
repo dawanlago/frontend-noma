@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
 import DownloadRounded from "@mui/icons-material/DownloadRounded";
+import LinkRounded from "@mui/icons-material/LinkRounded";
 import SaveStatus from "@/components/tools/SaveStatus";
 import Modal from "@/components/ui/Modal";
 import PageHeader from "@/components/ui/PageHeader";
@@ -16,11 +17,13 @@ import {
 import { buildPages, pageIndexForStep } from "@/lib/proposals/pages";
 import { proposalFileName, renderProposalHtml } from "@/lib/proposals/render";
 import { resources } from "@/lib/resources";
-import type { ToolDocument } from "@/types";
+import { timeAgo } from "@/lib/proposals/views";
+import type { ProposalShare, ToolDocument } from "@/types";
 import { downloadFile } from "@/utils/document";
 import InvestmentStep from "./InvestmentStep";
 import PortfolioStep from "./PortfolioStep";
 import ProposalPreview from "./ProposalPreview";
+import ProposalShareModal from "./ProposalShareModal";
 import { ClientStep, CompanyStep, ExperienceStep, ObjectivesStep, StructureStep } from "./StepsIntro";
 import { ClosingStep, IdentityStep, PreviewStep } from "./StepsFinal";
 import { Callout } from "./ui";
@@ -73,6 +76,8 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState<"" | "duplicate" | "delete">("");
   const [actionError, setActionError] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [share, setShare] = useState<ProposalShare | null>(null);
   const formTop = useRef<HTMLDivElement>(null);
 
   const pages = useMemo(() => (data ? buildPages(data) : []), [data]);
@@ -96,6 +101,15 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
   useEffect(() => {
     setStep(1);
     setSlide(0);
+  }, [id]);
+
+  // Resumo das visualizações do link público (selo no topo); falhar aqui não atrapalha a edição.
+  useEffect(() => {
+    setShare(null);
+    resources.tools.proposalShare
+      .get(id)
+      .then(setShare)
+      .catch(() => undefined);
   }, [id]);
 
   function download() {
@@ -165,6 +179,11 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
   const current = STEPS[step - 1];
   const stepProps = { data, setData };
   const showOwner = user?.role === "admin" && ownerName && ownerName !== user.name;
+  const shareBadge = share?.stats.lastViewedAt
+    ? `Visto ${timeAgo(share.stats.lastViewedAt)} · ${share.stats.views} ${share.stats.views === 1 ? "abertura" : "aberturas"}`
+    : share?.link?.isActive
+      ? "Link criado · ainda não visto"
+      : "";
 
   return (
     <>
@@ -191,6 +210,10 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
             <button type="button" className="btn-secondary" onClick={() => goToStep(STEPS.length)}>
               Pré-visualizar
             </button>
+            <button type="button" className="btn-secondary" onClick={() => setShareOpen(true)}>
+              <LinkRounded sx={{ fontSize: 18 }} />
+              Link para o cliente
+            </button>
             <button type="button" className="btn-primary" onClick={download}>
               <DownloadRounded sx={{ fontSize: 18 }} />
               GERAR PROPOSTA
@@ -200,8 +223,15 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
       />
 
       <div className="mb-4 space-y-3">
-        {showOwner ? (
-          <span className="chip bg-gold/10 text-gold">Documento de {ownerName}</span>
+        {showOwner || shareBadge ? (
+          <div className="flex flex-wrap gap-2">
+            {showOwner ? <span className="chip bg-gold/10 text-gold">Documento de {ownerName}</span> : null}
+            {shareBadge ? (
+              <button type="button" className="chip bg-sage/10 text-sage hover:bg-sage/15" onClick={() => setShareOpen(true)}>
+                {shareBadge}
+              </button>
+            ) : null}
+          </div>
         ) : null}
         {actionError ? <Callout tone="warning">{actionError}</Callout> : null}
         {size > SIZE_WARNING_BYTES ? (
@@ -228,7 +258,7 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
                       ? "border-tan bg-tan text-white shadow-sm"
                       : n < step
                         ? "border-tan/20 bg-tan/[0.06] text-tan hover:bg-tan/10"
-                        : "border-charcoal/10 bg-white text-charcoal/60 hover:border-charcoal/25 hover:text-charcoal"
+                        : "border-charcoal/10 bg-surface text-charcoal/60 hover:border-charcoal/25 hover:text-charcoal"
                   }`}
                 >
                   <span className={`tabular-nums ${active ? "text-white/70" : "opacity-60"}`}>{String(n).padStart(2, "0")}</span>
@@ -294,6 +324,14 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
           </p>
         </aside>
       </div>
+
+      <ProposalShareModal
+        id={id}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        onChange={setShare}
+        beforeCreate={flush}
+      />
 
       <Modal
         open={confirmDelete}

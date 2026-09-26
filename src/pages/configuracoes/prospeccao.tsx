@@ -151,7 +151,7 @@ export default function ProspectingSettingsPage() {
               aria-selected={tab === item.value}
               onClick={() => setTab(item.value)}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                tab === item.value ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+                tab === item.value ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
               }`}
             >
               {item.label}

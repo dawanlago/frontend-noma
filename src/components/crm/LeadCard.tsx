@@ -7,9 +7,10 @@ import {
   HiOutlineCalendarDays,
   HiOutlineChatBubbleLeftEllipsis,
   HiOutlineCheckCircle,
+  HiOutlineClock,
   HiOutlineEllipsisHorizontal,
 } from "react-icons/hi2";
-import { isLeadOverdue } from "@/lib/crm/metrics";
+import { daysSince, formatDays, isLeadOverdue } from "@/lib/crm/metrics";
 import { leadDateOnly, leadSubtitle } from "@/lib/crm/model";
 import type { FunnelStage, Lead } from "@/types";
 import { formatCurrencyBRL, formatDateOnly } from "@/utils/format";
@@ -28,6 +29,7 @@ interface LeadCardProps {
   onEdit: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
   onMove: (lead: Lead, stageId: string) => void;
+  onSubStage: (lead: Lead, subStageId: string) => void;
   onWon: (lead: Lead) => void;
   onDragStart: (event: DragEvent<HTMLElement>, lead: Lead) => void;
   onDragEnd: () => void;
@@ -45,6 +47,7 @@ export default function LeadCard({
   onEdit,
   onDelete,
   onMove,
+  onSubStage,
   onWon,
   onDragStart,
   onDragEnd,
@@ -53,6 +56,12 @@ export default function LeadCard({
   const date = leadDateOnly(lead);
   const overdue = isLeadOverdue(lead, today);
   const subtitle = leadSubtitle(lead);
+  const inFunnel = daysSince(lead.funnelEnteredAt || lead.createdAt);
+  const inStage = daysSince(lead.stageEnteredAt || lead.funnelEnteredAt || lead.createdAt);
+  const subStages = stages.find((stage) => stage._id === lead.stageId)?.subStages || [];
+  const subStage = subStages.find((sub) => sub._id === lead.subStageId);
+  const inSubStage = subStage ? daysSince(lead.subStageEnteredAt || lead.stageEnteredAt || lead.createdAt) : null;
+  const lastContact = daysSince(lead.lastContactAt);
 
   function close() {
     setAnchor(null);
@@ -64,7 +73,7 @@ export default function LeadCard({
       onDragStart={(event) => onDragStart(event, lead)}
       onDragEnd={onDragEnd}
       onClick={() => onOpen(lead)}
-      className={`group cursor-pointer rounded-lg border bg-white p-3.5 transition duration-150 hover:border-charcoal/20 hover:shadow-soft active:cursor-grabbing ${
+      className={`group cursor-pointer rounded-lg border bg-surface p-3.5 transition duration-150 hover:border-charcoal/20 hover:shadow-soft active:cursor-grabbing ${
         lead.status === "won" ? "border-sage/40" : lead.status === "lost" ? "border-burgundy/20 opacity-70" : "border-charcoal/[0.08]"
       } ${isDragging ? "opacity-40" : ""} ${celebrating ? "noma-won" : ""}`}
     >
@@ -88,12 +97,42 @@ export default function LeadCard({
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <TemperatureBadge value={lead.temperature} />
+        {subStage ? (
+          <span className="chip bg-charcoal/[0.06] text-charcoal/70" title="Microetapa">
+            ↳ {subStage.name}
+          </span>
+        ) : null}
         {serviceLabel ? <span className="chip bg-tan/10 text-tan">{serviceLabel}</span> : null}
         {showOwner && lead.ownerName ? <span className="chip bg-charcoal/[0.06] text-charcoal/60">{lead.ownerName}</span> : null}
       </div>
 
+      {inFunnel !== null && inStage !== null ? (
+        <p
+          className="mt-2.5 flex items-center gap-1 text-[11px] text-charcoal/50"
+          title={[
+            subStage && inSubStage !== null ? `Na microetapa "${subStage.name}" há ${formatDays(inSubStage)}` : "",
+            `Na etapa atual há ${formatDays(inStage)}`,
+            `No funil há ${formatDays(inFunnel)}`,
+            lastContact !== null ? `Último contato: ${formatDays(lastContact)}${lastContact ? " atrás" : ""}` : "Sem contato registrado",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        >
+          <HiOutlineClock className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            {subStage && inSubStage !== null ? (
+              <>
+                <strong className="font-semibold text-charcoal/70">{inSubStage}d</strong> micro ·{" "}
+              </>
+            ) : null}
+            <strong className="font-semibold text-charcoal/70">{inStage}d</strong> etapa ·{" "}
+            <strong className="font-semibold text-charcoal/70">{inFunnel}d</strong> funil
+          </span>
+        </p>
+      ) : null}
+
       <div className="mt-3 flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-charcoal">{formatCurrencyBRL(lead.value || 0)}</span>
+        <span data-money className="text-sm font-semibold text-charcoal">{formatCurrencyBRL(lead.value || 0)}</span>
         <div className="flex items-center gap-2 text-xs text-charcoal/50">
           {lead.commentsCount ? (
             <span className="inline-flex items-center gap-0.5" title="Pareceres">
@@ -162,6 +201,21 @@ export default function LeadCard({
         >
           Excluir
         </MenuItem>
+        {subStages.length ? <Divider /> : null}
+        {subStages.length ? <ListSubheader sx={{ lineHeight: "32px", fontSize: 12 }}>Microetapa</ListSubheader> : null}
+        {subStages.map((sub) => (
+          <MenuItem
+            key={sub._id}
+            dense
+            selected={sub._id === lead.subStageId}
+            onClick={() => {
+              close();
+              if (sub._id !== lead.subStageId) onSubStage(lead, sub._id);
+            }}
+          >
+            {sub.name}
+          </MenuItem>
+        ))}
         <Divider />
         <ListSubheader sx={{ lineHeight: "32px", fontSize: 12 }}>Mover para</ListSubheader>
         {stages

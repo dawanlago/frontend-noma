@@ -35,6 +35,67 @@ export function filterLeads(leads: Lead[], filters: LeadFilters, now = new Date(
   });
 }
 
+/** Dias corridos desde a data (0 = hoje). */
+export function daysSince(date: string | undefined, now = new Date()): number | null {
+  if (!date) return null;
+  const time = new Date(date).getTime();
+  if (Number.isNaN(time)) return null;
+  return Math.max(0, Math.floor((now.getTime() - time) / 86_400_000));
+}
+
+/** "hoje", "1 dia", "12 dias". */
+export function formatDays(days: number): string {
+  if (days === 0) return "hoje";
+  return `${days} dia${days === 1 ? "" : "s"}`;
+}
+
+/** Desconto do fechamento: oferecido − fechado (null se não informado ou sem desconto). */
+export function leadDiscount(lead: Pick<Lead, "offeredValue" | "closedValue">) {
+  const offered = Number(lead.offeredValue) || 0;
+  const closed = lead.closedValue;
+  if (!offered || closed === undefined || closed === null || closed >= offered) return null;
+  const value = Math.round((offered - closed) * 100) / 100;
+  return { value, percent: value / offered };
+}
+
+export interface StageTime {
+  id: string;
+  name: string;
+  count: number;
+  /** Média de dias parados (negociações em aberto). */
+  averageDays: number;
+  /** Negociações sem contato há mais de 7 dias. */
+  stale: number;
+  subStages: { id: string; name: string; count: number; averageDays: number }[];
+}
+
+/** Quanto tempo as negociações em aberto estão paradas em cada etapa e microetapa. */
+export function timeByStage(leads: Lead[], funnel: Funnel, now = new Date()): StageTime[] {
+  const average = (items: Lead[], pick: (lead: Lead) => string | undefined) =>
+    items.length ? Math.round(items.reduce((sum, lead) => sum + (daysSince(pick(lead), now) || 0), 0) / items.length) : 0;
+  return funnel.stages
+    .filter((stage) => stage.kind === "open")
+    .map((stage) => {
+      const items = leads.filter((lead) => lead.status === "open" && lead.stageId === stage._id);
+      return {
+        id: stage._id,
+        name: stage.name,
+        count: items.length,
+        averageDays: average(items, (lead) => lead.stageEnteredAt || lead.createdAt),
+        stale: items.filter((lead) => (daysSince(lead.lastContactAt || lead.createdAt, now) || 0) > 7).length,
+        subStages: (stage.subStages || []).map((sub) => {
+          const inSub = items.filter((lead) => lead.subStageId === sub._id);
+          return {
+            id: sub._id,
+            name: sub.name,
+            count: inSub.length,
+            averageDays: average(inSub, (lead) => lead.subStageEnteredAt || lead.stageEnteredAt || lead.createdAt),
+          };
+        }),
+      };
+    });
+}
+
 export interface LeadMetrics {
   total: number;
   openValue: number;

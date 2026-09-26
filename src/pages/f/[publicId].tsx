@@ -241,7 +241,7 @@ export default function PublicFormPage() {
                 </p>
                 <dl className="mt-8 space-y-3">
                   {(form.answers || []).map((answer) => (
-                    <div key={answer.label} className="rounded-xl bg-white px-4 py-3 shadow-soft">
+                    <div key={answer.label} className="rounded-xl bg-surface px-4 py-3 shadow-soft">
                       <dt className="text-xs font-medium text-charcoal/45">{answer.label}</dt>
                       <dd className="mt-1 whitespace-pre-line text-charcoal">{answer.value || "—"}</dd>
                     </div>
@@ -401,7 +401,7 @@ function QuestionInput({
               aria-checked={active}
               onClick={() => onChoose(option)}
               className={`flex items-center gap-3 rounded-xl border-2 px-3 py-3 text-left text-lg transition active:scale-[0.99] ${
-                active ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)]" : "border-charcoal/10 bg-white hover:border-charcoal/25"
+                active ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)]" : "border-charcoal/10 bg-surface hover:border-charcoal/25"
               }`}
             >
               <span

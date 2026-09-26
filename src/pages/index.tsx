@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { HiOutlineArrowRight, HiOutlineChartBar } from "react-icons/hi2";
 import BirthdayCard from "@/components/base/BirthdayCard";
 import TaskChecklist from "@/components/tasks/TaskChecklist";
+import HideValuesToggle from "@/components/ui/HideValuesToggle";
 import MetricCard from "@/components/ui/MetricCard";
 import OwnerFilter from "@/components/tools/OwnerFilter";
 import { useAuth } from "@/contexts/AuthContext";
@@ -64,7 +65,7 @@ export default function HomePage() {
         <div className="mt-6 flex flex-wrap gap-3">
           {can("crm") ? (
             <Link href="/crm?novo=1" className="btn-primary">
-              Nova venda <HiOutlineArrowRight />
+              Nova negociação <HiOutlineArrowRight />
             </Link>
           ) : null}
           {can("propostas") ? (
@@ -83,6 +84,7 @@ export default function HomePage() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-charcoal">Seu momento</h2>
         <div className="flex flex-wrap items-center gap-2">
+          <HideValuesToggle />
           {can("crm") ? (
             <Link href="/crm" className="btn-secondary">
               <HiOutlineChartBar className="h-4 w-4" /> Métricas do CRM <HiOutlineArrowRight className="h-4 w-4" />
@@ -96,14 +98,14 @@ export default function HomePage() {
           <Link href="/crm" className="block rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lift" title="Ver métricas no CRM">
             <MetricCard
               label="Potencial em aberto"
-              value={formatCurrencyBRL(data?.openPipeline || 0)}
+              value={formatCurrencyBRL(data?.openPipeline || 0)} money
               hint={`${data?.leadsCount || 0} negociações no CRM →`}
             />
           </Link>
         ) : (
           <MetricCard
             label="Potencial em aberto"
-            value={formatCurrencyBRL(data?.openPipeline || 0)}
+            value={formatCurrencyBRL(data?.openPipeline || 0)} money
             hint={`${data?.leadsCount || 0} negociações no CRM`}
           />
         )}
@@ -111,15 +113,15 @@ export default function HomePage() {
           <>
             <MetricCard
               label="Recebido no mês"
-              value={formatCurrencyBRL(data?.finance?.monthReceived || 0)}
+              value={formatCurrencyBRL(data?.finance?.monthReceived || 0)} money
               hint={`Resultado ${formatCurrencyBRL(data?.finance?.monthResult || 0)}`}
               tone="sage"
             />
-            <MetricCard label="A receber no mês" value={formatCurrencyBRL(data?.finance?.monthPending || 0)} tone="gold" />
+            <MetricCard label="A receber no mês" value={formatCurrencyBRL(data?.finance?.monthPending || 0)} tone="gold" money />
           </>
         ) : (
           <>
-            <MetricCard label="Vendas feitas" value={formatCurrencyBRL(data?.wonValue || 0)} tone="sage" />
+            <MetricCard label="Vendas feitas" value={formatCurrencyBRL(data?.wonValue || 0)} tone="sage" money />
             <MetricCard
               label="Atividades pendentes"
               value={String(data?.tasks.pending || 0)}

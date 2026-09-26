@@ -1,9 +1,12 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import BudgetCatalogFields from "@/components/budget/BudgetCatalogFields";
 import OptionListEditor from "@/components/options/OptionListEditor";
 import SettingsHeader from "@/components/settings/SettingsHeader";
+import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { BUDGET_ITEM_LIST } from "@/lib/budget/catalog";
 import { MESSAGE_LISTS, OPTION_LISTS } from "@/lib/options";
 
 const AREAS = [...new Set(OPTION_LISTS.map((item) => item.area))];
@@ -11,6 +14,7 @@ const AREAS = [...new Set(OPTION_LISTS.map((item) => item.area))];
 export default function OptionListsPage() {
   const router = useRouter();
   const { optionsOf } = useWorkspace();
+  const { can } = useAuth();
   const selectedKey = typeof router.query.lista === "string" ? router.query.lista : OPTION_LISTS[0].key;
   const selected = OPTION_LISTS.find((item) => item.key === selectedKey) || OPTION_LISTS[0];
 
@@ -66,7 +70,18 @@ export default function OptionListsPage() {
               .
             </p>
           ) : null}
-          <OptionListEditor key={selected.key} list={selected.key} />
+          {selected.key === BUDGET_ITEM_LIST ? (
+            <p className="mb-4 text-sm text-charcoal/60">Ao lado de cada item: unidade e valor padrão usados ao adicioná-lo na calculadora.</p>
+          ) : null}
+          <OptionListEditor
+            key={selected.key}
+            list={selected.key}
+            renderExtra={
+              selected.key === BUDGET_ITEM_LIST
+                ? (item) => <BudgetCatalogFields item={item} editable={can("configuracoes")} />
+                : undefined
+            }
+          />
         </section>
       </div>
     </>

@@ -75,7 +75,7 @@ export default function CompanyProfilePage() {
           <>
             {can("crm") ? (
               <Link href={`/crm?novo=1&empresa=${company._id}`} className="btn-secondary">
-                Nova venda
+                Nova negociação
               </Link>
             ) : null}
             <button type="button" className="btn-primary" onClick={() => setDialog("edit")}>

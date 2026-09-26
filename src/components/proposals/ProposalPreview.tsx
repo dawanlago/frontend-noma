@@ -12,7 +12,7 @@ interface ProposalPreviewProps {
   onOpenFull: () => void;
 }
 
-const PAGE_BG: Record<ProposalData["identity"]["template"], string> = {
+export const PAGE_BG: Record<ProposalData["identity"]["template"], string> = {
   dark: "#0A0A0B",
   light: "#FBFAF8",
   editorial: "#F1EBE0",

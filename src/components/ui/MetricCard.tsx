@@ -13,6 +13,8 @@ interface MetricCardProps {
   hint?: string;
   tone?: "default" | "gold" | "burgundy" | "sage";
   icon?: ReactNode;
+  /** Valor em R$: some com o "olho" de esconder valores. */
+  money?: boolean;
 }
 
 const chipColor = {
@@ -28,6 +30,7 @@ export default function MetricCard({
   hint,
   tone = "default",
   icon,
+  money,
 }: MetricCardProps) {
   return (
     <Card variant="outlined" sx={{ height: "100%" }}>
@@ -53,7 +56,7 @@ export default function MetricCard({
             </Box>
           ) : null}
         </Stack>
-        <Typography variant="h4" sx={{ mt: 2, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums" }}>
+        <Typography variant="h4" data-money={money || undefined} sx={{ mt: 2, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums" }}>
           <AnimatedValue value={value} />
         </Typography>
         {hint ? (
@@ -62,6 +65,7 @@ export default function MetricCard({
             color={chipColor[tone]}
             variant="outlined"
             label={hint}
+            data-money={money && hint.includes("R$") ? true : undefined}
             sx={{ mt: 1.5 }}
           />
         ) : null}

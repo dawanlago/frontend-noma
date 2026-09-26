@@ -112,7 +112,7 @@ export default function GeneralSettingsPage() {
                   <input
                     type="color"
                     aria-label="Cor"
-                    className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-charcoal/15 bg-white p-1"
+                    className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-charcoal/15 bg-surface p-1"
                     value={color.hex}
                     onChange={(e) => updateColor(index, { hex: e.target.value.toUpperCase() })}
                   />

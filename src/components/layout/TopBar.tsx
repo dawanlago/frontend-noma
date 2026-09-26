@@ -28,6 +28,7 @@ import {
 } from "react-icons/hi2";
 import type { ModuleKey } from "@/types";
 import LogoMark from "@/components/ui/LogoMark";
+import AppearancePicker from "./AppearancePicker";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanyName } from "@/contexts/WorkspaceContext";
 import { USER_ROLE_LABELS } from "@/lib/constants";
@@ -43,7 +44,7 @@ interface CreateItem {
 }
 
 const CREATE_ITEMS: CreateItem[] = [
-  { label: "Negociação", hint: "Nova venda no funil", href: "/crm?novo=1", module: "crm", icon: <HiOutlineBriefcase /> },
+  { label: "Negociação", hint: "Nova negociação no funil", href: "/crm?novo=1", module: "crm", icon: <HiOutlineBriefcase /> },
   { label: "Contato", hint: "Pessoa da base", href: "/contatos?novo=contato", module: "base", icon: <HiOutlineUser /> },
   { label: "Empresa", hint: "Cliente, fornecedor ou parceiro", href: "/empresas?novo=empresa", module: "base", icon: <HiOutlineBuildingOffice2 /> },
   { label: "Atividade", hint: "Tarefa do checklist", href: "/atividades?novo=1", module: "atividades", icon: <HiOutlineCheckCircle /> },
@@ -167,6 +168,8 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
             {user?.role ? USER_ROLE_LABELS[user.role] : "Administrador"}
           </Typography>
         </Box>
+        <Divider />
+        <AppearancePicker />
         <Divider />
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>

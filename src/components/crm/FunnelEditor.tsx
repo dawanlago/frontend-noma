@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineTrash } from "react-icons/hi2";
+import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineTrash, HiXMark } from "react-icons/hi2";
 import Select from "@/components/ui/Select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
@@ -18,6 +18,7 @@ interface DraftStage {
   name: string;
   kind: StageKind;
   color: string;
+  subStages?: { _id?: string; name: string }[];
 }
 
 const NEW_FUNNEL: DraftStage[] = [
@@ -46,7 +47,11 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
 
   useEffect(() => {
     setName(funnel?.name || "");
-    setStages(funnel ? funnel.stages.map((stage) => ({ ...stage })) : NEW_FUNNEL.map((stage) => ({ ...stage })));
+    setStages(
+      funnel
+        ? funnel.stages.map((stage) => ({ ...stage, subStages: (stage.subStages || []).map((sub) => ({ ...sub })) }))
+        : NEW_FUNNEL.map((stage) => ({ ...stage })),
+    );
     setError("");
   }, [funnel]);
 
@@ -72,7 +77,10 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
     setBusy(true);
     setError("");
     try {
-      const payload = { name: name.trim(), stages: clean as Funnel["stages"] };
+      const payload = {
+        name: name.trim(),
+        stages: clean.map((stage) => ({ ...stage, subStages: (stage.subStages || []).filter((sub) => sub.name.trim()) })) as Funnel["stages"],
+      };
       const saved = funnel ? await resources.funnels.update(funnel._id, payload) : await resources.funnels.create(payload);
       setFunnels(funnel ? funnels.map((item) => (item._id === saved._id ? saved : item)) : [...funnels, saved]);
       onSaved?.(saved);
@@ -128,6 +136,10 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
                 <HiOutlineTrash className="h-4 w-4" />
               </button>
             </div>
+            <SubStagesEditor
+              value={stage.subStages || []}
+              onChange={(subStages) => updateStage(index, { subStages })}
+            />
           </li>
         ))}
       </ul>
@@ -139,7 +151,8 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
         + Adicionar etapa
       </button>
       <p className="mt-3 text-xs text-charcoal/50">
-        Ao remover uma etapa, as negociações dela vão para a primeira etapa “Em andamento”. O botão “Venda feita” move a
+        Microetapas dividem uma etapa em passos menores (ex.: “Proposta enviada” → “Aguardando retorno”, “Em ajuste”) e
+        medem quantos dias a negociação fica em cada uma. Ao remover uma etapa, as negociações dela vão para a primeira etapa “Em andamento”. O botão “Venda feita” move a
         negociação para a primeira etapa do tipo “Venda feita”.
       </p>
 
@@ -156,6 +169,53 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
           {busy ? "Salvando..." : funnel ? "Salvar funil" : "Criar funil"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Microetapas de uma etapa: pílulas removíveis + campo para adicionar. */
+function SubStagesEditor({ value, onChange }: { value: { _id?: string; name: string }[]; onChange: (next: { _id?: string; name: string }[]) => void }) {
+  const [draft, setDraft] = useState("");
+  function add() {
+    if (!draft.trim()) return;
+    onChange([...value, { name: draft.trim() }]);
+    setDraft("");
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 sm:col-span-3">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-charcoal/40">Microetapas</span>
+      {value.map((sub, index) => (
+        <span key={sub._id || `new-${index}`} className="inline-flex items-center gap-0.5 rounded-full bg-tan/10 py-0.5 pl-2.5 pr-1 text-xs font-medium text-tan">
+          <input
+            className="w-auto min-w-[3ch] bg-transparent focus:outline-none"
+            size={Math.max(3, sub.name.length)}
+            value={sub.name}
+            aria-label="Nome da microetapa"
+            onChange={(event) => onChange(value.map((item, i) => (i === index ? { ...item, name: event.target.value } : item)))}
+          />
+          <button
+            type="button"
+            className="flex h-4 w-4 items-center justify-center rounded-full hover:bg-tan/20"
+            aria-label={`Remover microetapa ${sub.name}`}
+            onClick={() => onChange(value.filter((_, i) => i !== index))}
+          >
+            <HiXMark className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        className="h-7 min-w-[140px] flex-1 rounded-full border border-dashed border-charcoal/15 bg-transparent px-3 text-xs text-charcoal placeholder:text-charcoal/40 focus:border-tan focus:outline-none"
+        value={draft}
+        placeholder="+ Adicionar microetapa (Enter)"
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            add();
+          }
+        }}
+        onBlur={add}
+      />
     </div>
   );
 }

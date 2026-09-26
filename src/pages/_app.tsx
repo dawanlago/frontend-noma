@@ -1,13 +1,12 @@
 import { useEffect } from "react";
 import type { AppProps } from "next/app";
-import { CssBaseline, ThemeProvider } from "@mui/material";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthGate from "@/components/auth/AuthGate";
 import DialogHost from "@/components/ui/DialogHost";
+import { AppearanceProvider } from "@/contexts/AppearanceContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { isPublicRoute } from "@/lib/routes";
-import { nomaTheme } from "@/theme";
 import { inter } from "@/theme/font";
 import "@/styles/globals.css";
 
@@ -24,8 +23,8 @@ export default function App({ Component, pageProps, router }: AppProps) {
   }, []);
 
   return (
-    <ThemeProvider theme={nomaTheme}>
-      <CssBaseline />
+    // Formulário, NPS e proposta públicos são vistos pelo cliente: sempre no tema claro.
+    <AppearanceProvider forceLight={isPublic && router.pathname !== "/login"}>
       <div className={`${inter.className} ${inter.variable} h-full`}>
         <AuthProvider>
           <WorkspaceProvider>
@@ -42,6 +41,6 @@ export default function App({ Component, pageProps, router }: AppProps) {
           <DialogHost />
         </AuthProvider>
       </div>
-    </ThemeProvider>
+    </AppearanceProvider>
   );
 }

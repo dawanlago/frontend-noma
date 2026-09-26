@@ -219,9 +219,8 @@ function BudgetEditor({ id }: { id: string }) {
           <BudgetForm data={data} result={result} onChange={update} />
           <aside className="self-start lg:sticky lg:top-20">
             <BudgetResultPanel
+              data={data}
               result={result}
-              marginPercent={data.marginPercent}
-              operationalPercent={data.operationalPercent}
               onUseValue={() => void sendToProposal()}
             />
           </aside>

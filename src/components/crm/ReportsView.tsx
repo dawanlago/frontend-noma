@@ -1,4 +1,4 @@
-import { computeLeadMetrics, conversionByStage, formatPercent, groupBySource } from "@/lib/crm/metrics";
+import { computeLeadMetrics, conversionByStage, formatPercent, groupBySource, leadDiscount, timeByStage } from "@/lib/crm/metrics";
 import type { Funnel, Lead } from "@/types";
 import { formatCurrencyBRL } from "@/utils/format";
 
@@ -13,14 +13,31 @@ function Bar({ rate, tone = "bg-tan" }: { rate: number; tone?: string }) {
 export default function ReportsView({ leads, funnel }: { leads: Lead[]; funnel: Funnel }) {
   const stages = conversionByStage(leads, funnel);
   const sources = groupBySource(leads);
+  const times = timeByStage(leads, funnel);
+  const longest = Math.max(1, ...times.map((item) => item.averageDays));
   const metrics = computeLeadMetrics(leads);
+  const discounts = leads
+    .filter((lead) => lead.status === "won")
+    .map(leadDiscount)
+    .filter((item): item is NonNullable<ReturnType<typeof leadDiscount>> => Boolean(item));
 
   const summary = [
     { label: "Negociações", value: String(metrics.total) },
     { label: "Vendas feitas", value: `${metrics.wonCount} (${formatPercent(metrics.conversionRate)})` },
     { label: "Perdidas", value: String(metrics.lostCount) },
-    { label: "Potencial em aberto", value: formatCurrencyBRL(metrics.openValue) },
-    { label: "Valor vendido", value: formatCurrencyBRL(metrics.wonValue) },
+    { label: "Potencial em aberto", value: formatCurrencyBRL(metrics.openValue), money: true },
+    { label: "Valor vendido", value: formatCurrencyBRL(metrics.wonValue), money: true },
+    ...(discounts.length
+      ? [
+          {
+            label: `Descontos concedidos (${discounts.length})`,
+            value: `${formatCurrencyBRL(discounts.reduce((sum, item) => sum + item.value, 0))} · média ${formatPercent(
+              discounts.reduce((sum, item) => sum + item.percent, 0) / discounts.length,
+            )}`,
+            money: true,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -45,6 +62,41 @@ export default function ReportsView({ leads, funnel }: { leads: Lead[]; funnel: 
         </section>
 
         <section className="card p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-charcoal">Tempo parado por etapa</h2>
+          <p className="mt-1 text-sm text-charcoal/55">
+            Média de dias das negociações em aberto na etapa e em cada microetapa. “Sem contato” = mais de 7 dias sem parecer ou atividade concluída.
+          </p>
+          <ul className="mt-5 grid gap-4">
+            {times.map((item) => (
+              <li key={item.id}>
+                <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium text-charcoal">
+                    {item.name} <span className="text-charcoal/45">· {item.count}</span>
+                  </span>
+                  <span className="tabular-nums text-charcoal/55">
+                    {item.stale ? <span className="mr-2 text-burgundy">{item.stale} sem contato</span> : null}
+                    <strong className="text-charcoal">{item.count ? `${item.averageDays} dias` : "—"}</strong>
+                  </span>
+                </div>
+                <Bar rate={item.averageDays / longest} tone={item.stale ? "bg-gold" : "bg-tan"} />
+                {item.subStages.length ? (
+                  <ul className="mt-2 grid gap-1 border-l-2 border-charcoal/[0.06] pl-3">
+                    {item.subStages.map((sub) => (
+                      <li key={sub.id} className="flex items-center justify-between gap-3 text-xs text-charcoal/60">
+                        <span>
+                          ↳ {sub.name} <span className="text-charcoal/40">· {sub.count}</span>
+                        </span>
+                        <span className="tabular-nums">{sub.count ? `${sub.averageDays} dias` : "—"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="card p-5 sm:p-6">
           <h2 className="text-base font-semibold text-charcoal">Origem das negociações</h2>
           <p className="mt-1 text-sm text-charcoal/55">De onde vêm as suas oportunidades.</p>
           {sources.length ? (
@@ -54,7 +106,7 @@ export default function ReportsView({ leads, funnel }: { leads: Lead[]; funnel: 
                   <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
                     <span className="font-medium text-charcoal">{item.label}</span>
                     <span className="tabular-nums text-charcoal/55">
-                      {item.count} · {formatCurrencyBRL(item.value)}
+                      {item.count} · <span data-money>{formatCurrencyBRL(item.value)}</span>
                     </span>
                   </div>
                   <Bar rate={item.share} tone="bg-gold" />
@@ -73,7 +125,7 @@ export default function ReportsView({ leads, funnel }: { leads: Lead[]; funnel: 
           {summary.map((item) => (
             <div key={item.label} className="flex items-center justify-between gap-3 py-3 text-sm">
               <dt className="text-charcoal/60">{item.label}</dt>
-              <dd className="font-semibold tabular-nums text-charcoal">{item.value}</dd>
+              <dd data-money={"money" in item || undefined} className="font-semibold tabular-nums text-charcoal">{item.value}</dd>
             </div>
           ))}
         </dl>

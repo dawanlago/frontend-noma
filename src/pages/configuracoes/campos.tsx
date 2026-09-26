@@ -100,7 +100,7 @@ export default function CustomFieldsPage() {
               aria-selected={entity === item.value}
               onClick={() => setEntity(item.value)}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                entity === item.value ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+                entity === item.value ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
               }`}
             >
               {item.label}

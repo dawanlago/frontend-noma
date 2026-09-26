@@ -105,7 +105,7 @@ export function Toggle({
         }`}
       >
         <span
-          className={`absolute h-5 w-5 rounded-full bg-white shadow transition-all ${checked ? "left-[22px]" : "left-0.5"}`}
+          className={`absolute h-5 w-5 rounded-full bg-surface shadow transition-all ${checked ? "left-[22px]" : "left-0.5"}`}
         />
       </span>
     </button>
@@ -132,7 +132,7 @@ export function SmallIconButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-charcoal/10 bg-white transition disabled:cursor-not-allowed disabled:opacity-30 ${
+      className={`inline-flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-charcoal/10 bg-surface transition disabled:cursor-not-allowed disabled:opacity-30 ${
         tone === "danger" ? "text-burgundy hover:bg-burgundy/10" : "text-charcoal/60 hover:bg-beige hover:text-charcoal"
       }`}
     >

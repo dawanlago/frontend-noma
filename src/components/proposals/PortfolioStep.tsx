@@ -132,7 +132,7 @@ export default function PortfolioStep({ data, setData }: StepProps) {
               const update = (patch: Partial<typeof item>) =>
                 setItems((list) => list.map((current) => (current.id === item.id ? { ...current, ...patch } : current)));
               return (
-                <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-charcoal/10 bg-white p-3 sm:flex-row">
+                <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-charcoal/10 bg-surface p-3 sm:flex-row">
                   <Thumb key={id || "invalid"} id={id} />
                   <div className="min-w-0 flex-1 space-y-2">
                     <TextInput value={item.title} onChange={(title) => update({ title })} placeholder="Título do trabalho" />

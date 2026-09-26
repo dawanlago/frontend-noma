@@ -5,6 +5,7 @@ import Field from "@/components/tools/Field";
 import Modal from "@/components/ui/Modal";
 import Select from "@/components/ui/Select";
 import { apiError } from "@/lib/errors";
+import { renderNpsMessage } from "@/lib/nps";
 import { resources } from "@/lib/resources";
 import type { Contact, NPSInvite, NPSSurvey } from "@/types";
 import { whatsappLink } from "@/utils/format";
@@ -28,6 +29,8 @@ export default function SendNpsDialog({ open, onClose, contactId, leadId }: Send
   const [surveyId, setSurveyId] = useState("");
   const [contact, setContact] = useState(contactId || "");
   const [invite, setInvite] = useState<NPSInvite | null>(null);
+  /** Mensagem pronta para enviar; pode ser ajustada antes de copiar. */
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -55,7 +58,16 @@ export default function SendNpsDialog({ open, onClose, contactId, leadId }: Send
     setBusy(true);
     setError("");
     try {
-      setInvite(await resources.nps.invite({ surveyId, contactId: contact, leadId }));
+      const created = await resources.nps.invite({ surveyId, contactId: contact, leadId });
+      const survey = surveys.find((item) => item._id === surveyId);
+      setInvite(created);
+      setMessage(
+        renderNpsMessage(survey?.messageTemplate, {
+          nome: created.contactName.split(" ")[0],
+          link: npsUrl(created.token),
+          pesquisa: created.surveyName,
+        }),
+      );
     } catch (err) {
       setError(apiError(err, "Não foi possível gerar o link."));
     } finally {
@@ -64,7 +76,6 @@ export default function SendNpsDialog({ open, onClose, contactId, leadId }: Send
   }
 
   const url = invite ? npsUrl(invite.token) : "";
-  const message = invite ? `Olá, ${invite.contactName.split(" ")[0]}! Pode nos contar como foi a sua experiência? Leva menos de 1 minuto: ${url}` : "";
 
   return (
     <Modal
@@ -93,6 +104,9 @@ export default function SendNpsDialog({ open, onClose, contactId, leadId }: Send
             {invite.status === "answered" ? " (já respondido)" : ""}:
           </p>
           <p className="break-all rounded-lg bg-beige px-3 py-2 text-xs text-charcoal/70">{url}</p>
+          <Field label="Mensagem" hint="O texto padrão vem da pesquisa (página NPS → Editar). Aqui você ajusta só este envio.">
+            <textarea className="input-search min-h-[96px] resize-y" value={message} onChange={(event) => setMessage(event.target.value)} />
+          </Field>
           <div className="flex flex-wrap gap-2">
             <CopyButton text={url} label="Copiar link" className="btn-primary" />
             <CopyButton text={message} label="Copiar mensagem" className="btn-secondary" />

@@ -3,6 +3,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineTrash } from "react-icons/hi2";
+import LogoUpload from "@/components/contracts/LogoUpload";
 import CopyButton from "@/components/tools/CopyButton";
 import Field from "@/components/tools/Field";
 import Select from "@/components/ui/Select";
@@ -11,6 +12,7 @@ import { apiError } from "@/lib/errors";
 import { answerText, draftForm, FORM_FIELD_TARGETS, FORM_FIELD_TYPES, newField, publicFormUrl } from "@/lib/forms";
 import { resources } from "@/lib/resources";
 import type { CaptureForm, FormField, FormResponse } from "@/types";
+import { normalizeHex } from "@/theme/appearance";
 import { downloadFile, slugify } from "@/utils/document";
 import { formatDateTime } from "@/utils/format";
 import { confirmDialog } from "@/components/ui/DialogHost";
@@ -213,8 +215,14 @@ export default function FormEditorPage() {
     setIsSaving(true);
     setStatus("");
     try {
+      const accentColor = form.accentColor?.trim() ? normalizeHex(form.accentColor) : "";
+      if (form.accentColor?.trim() && !accentColor) {
+        setStatus("Cor inválida: use o formato #RRGGBB (ex.: #C8102E).");
+        return;
+      }
       const payload = {
         ...form,
+        accentColor,
         fields: form.fields.map((field) => ({ ...field, options: field.options.map((option) => option.trim()).filter(Boolean) })),
       };
       if (isNew) {
@@ -224,6 +232,8 @@ export default function FormEditorPage() {
           isActive: payload.isActive,
           fields: payload.fields,
           successMessage: payload.successMessage,
+          logo: payload.logo,
+          accentColor: payload.accentColor,
           createLead: payload.createLead,
           funnelId: payload.funnelId,
           stageId: payload.stageId,
@@ -305,7 +315,7 @@ export default function FormEditorPage() {
             type="button"
             onClick={() => setTab(item.value)}
             className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              tab === item.value ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+              tab === item.value ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
             }`}
           >
             {item.label}
@@ -384,6 +394,36 @@ export default function FormEditorPage() {
               ) : null}
               <Field label="Mensagem depois do envio">
                 <textarea className="input-search min-h-[64px] resize-y" value={form.successMessage} onChange={(e) => update({ successMessage: e.target.value })} />
+              </Field>
+            </section>
+            <section className="card space-y-4 p-5">
+              <p className="text-sm font-semibold text-charcoal">Aparência do link</p>
+              <Field label="Logo" hint="Sem logo, usa a de Configurações → Geral." group>
+                <LogoUpload folder="marca" value={form.logo || ""} onChange={(logo) => update({ logo })} />
+              </Field>
+              <Field label="Cor" hint="Botões, barra de progresso e destaques. Em branco = cor padrão da marca.">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    aria-label="Seletor de cor"
+                    className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-charcoal/15 bg-surface p-1"
+                    value={normalizeHex(form.accentColor || "") || "#c8102e"}
+                    onChange={(e) => update({ accentColor: e.target.value })}
+                  />
+                  <input
+                    className="input-search font-mono uppercase"
+                    value={form.accentColor || ""}
+                    maxLength={7}
+                    placeholder="#C8102E"
+                    aria-label="Cor em hexadecimal"
+                    onChange={(e) => update({ accentColor: e.target.value })}
+                  />
+                  {form.accentColor ? (
+                    <button type="button" className="shrink-0 text-xs font-semibold text-tan hover:underline" onClick={() => update({ accentColor: "" })}>
+                      Padrão
+                    </button>
+                  ) : null}
+                </div>
               </Field>
             </section>
             <section className="card p-5">

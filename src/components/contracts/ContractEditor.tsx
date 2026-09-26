@@ -69,7 +69,7 @@ function Checkbox({
   return (
     <div
       className={`rounded-xl border p-4 transition duration-150 ${
-        checked ? "border-tan/40 bg-tan/[0.04]" : "border-charcoal/10 bg-white"
+        checked ? "border-tan/40 bg-tan/[0.04]" : "border-charcoal/10 bg-surface"
       }`}
     >
       <label className="flex cursor-pointer items-start gap-3">

@@ -108,11 +108,18 @@ export interface Label {
   updatedAt: string;
 }
 
+/** Microetapa: subdivisão de uma etapa do funil. */
+export interface FunnelSubStage {
+  _id: string;
+  name: string;
+}
+
 export interface FunnelStage {
   _id: string;
   name: string;
   kind: StageKind;
   color: string;
+  subStages?: FunnelSubStage[];
 }
 
 export interface Funnel {
@@ -169,6 +176,17 @@ export interface Lead extends Owned {
   commentsCount?: number;
   wonAt?: string;
   lostAt?: string;
+  /** Quando entrou no funil atual e na etapa atual. */
+  funnelEnteredAt?: string;
+  stageEnteredAt?: string;
+  /** Microetapa atual e desde quando está nela. */
+  subStageId?: string;
+  subStageEnteredAt?: string;
+  /** Último parecer ou atividade concluída. */
+  lastContactAt?: string;
+  /** Fechamento: valor oferecido e valor fechado (a diferença é o desconto). */
+  offeredValue?: number;
+  closedValue?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -178,6 +196,8 @@ export type TaskStatus = "todo" | "doing" | "done";
 export interface Task extends Owned {
   _id: string;
   title: string;
+  /** Valor da lista `taskType` (reunião, ligação...). */
+  type?: string;
   /** YYYY-MM-DD ou vazio. */
   dueDate: string;
   /** HH:MM ou vazio. */
@@ -244,6 +264,9 @@ export interface CaptureForm extends Owned {
   isActive: boolean;
   fields: FormField[];
   successMessage: string;
+  /** Aparência própria do link (vazio = identidade da produtora). */
+  logo?: string;
+  accentColor?: string;
   createLead: boolean;
   funnelId?: string;
   stageId?: string;
@@ -280,8 +303,37 @@ export interface FinanceEntry extends Owned {
   leadId?: string;
   contactId?: string;
   companyId?: string;
+  /** Já distribuída nas caixas de distribuição (só na listagem do mês). */
+  distributed?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Caixa de distribuição (Operacional, Imposto, Lucro...) com o saldo acumulado. */
+export interface DistributionBucket {
+  _id: string;
+  name: string;
+  percentage: number;
+  color: string;
+  order: number;
+  received?: number;
+  withdrawn?: number;
+  balance?: number;
+}
+
+export interface BucketMovement extends Owned {
+  _id: string;
+  kind: "in" | "out";
+  bucketId: string;
+  bucketName: string;
+  value: number;
+  percentage?: number;
+  date: string;
+  description: string;
+  groupId?: string;
+  entryId?: string;
+  cashbox: string;
+  createdAt: string;
 }
 
 export interface FinanceMonthSummary {
@@ -299,6 +351,31 @@ export interface ToolDocument<T = Record<string, unknown>> extends Owned {
   data: T;
   createdAt: string;
   updatedAt: string;
+  /** Só na listagem de propostas: resumo do link público. */
+  share?: ProposalShareSummary | null;
+}
+
+export interface ProposalShareSummary {
+  isActive: boolean;
+  viewsCount: number;
+  lastViewedAt: string | null;
+}
+
+/** Sessão de visualização do link público de uma proposta. */
+export interface ProposalViewSession {
+  _id: string;
+  openedAt: string;
+  lastSeenAt: string;
+  durationSeconds: number;
+  device: "mobile" | "tablet" | "desktop" | "unknown";
+  os: string;
+  browser: string;
+}
+
+export interface ProposalShare {
+  link: { token: string; isActive: boolean; createdAt: string } | null;
+  stats: { views: number; totalSeconds: number; firstViewedAt: string | null; lastViewedAt: string | null };
+  sessions: ProposalViewSession[];
 }
 
 export interface BrandColor {
@@ -386,6 +463,8 @@ export interface ProfileHistory {
   entries: FinanceEntry[];
   files: StoredFile[];
   totals: ProfileTotals;
+  /** Datas calculadas pelo sistema. */
+  system?: { firstLeadAt: string | null; lastInteractionAt: string | null };
 }
 
 export interface ContactProfile extends ProfileHistory {
@@ -404,6 +483,11 @@ export interface NPSSurvey {
   question: string;
   commentPrompt: string;
   thankYouMessage: string;
+  /** Mensagem enviada ao cliente; aceita {nome}, {link} e {pesquisa}. */
+  messageTemplate?: string;
+  /** Aparência da página de resposta. */
+  logo?: string;
+  accentColor?: string;
   isActive: boolean;
   createdAt: string;
 }

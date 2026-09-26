@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { HiOutlineTrash } from "react-icons/hi2";
+import LogoUpload from "@/components/contracts/LogoUpload";
 import SendNpsDialog from "@/components/nps/SendNpsDialog";
 import Field from "@/components/tools/Field";
 import MetricCard from "@/components/ui/MetricCard";
@@ -9,6 +10,8 @@ import Modal from "@/components/ui/Modal";
 import PageHeader from "@/components/ui/PageHeader";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { apiError } from "@/lib/errors";
+import { DEFAULT_NPS_MESSAGE, renderNpsMessage } from "@/lib/nps";
+import { normalizeHex } from "@/theme/appearance";
 import { resources } from "@/lib/resources";
 import type { NPSSurvey } from "@/types";
 import { formatDate } from "@/utils/format";
@@ -19,6 +22,9 @@ const EMPTY_SURVEY = {
   question: "Em uma escala de 0 a 10, o quanto você recomendaria a nossa produtora para um amigo ou colega?",
   commentPrompt: "O que motivou a sua nota?",
   thankYouMessage: "Obrigado pela sua resposta. Ela nos ajuda a evoluir.",
+  messageTemplate: DEFAULT_NPS_MESSAGE,
+  logo: "",
+  accentColor: "",
   isActive: true,
 };
 
@@ -51,11 +57,17 @@ export default function NpsPage() {
       setFormError("Informe o nome e a pergunta.");
       return;
     }
+    const accentColor = editing.form.accentColor.trim() ? normalizeHex(editing.form.accentColor) : "";
+    if (editing.form.accentColor.trim() && !accentColor) {
+      setFormError("Cor inválida: use o formato #RRGGBB (ex.: #C8102E).");
+      return;
+    }
     setBusy(true);
     setFormError("");
     try {
-      if (editing.survey) await resources.nps.surveys.update(editing.survey._id, editing.form);
-      else await resources.nps.surveys.create(editing.form);
+      const payload = { ...editing.form, accentColor };
+      if (editing.survey) await resources.nps.surveys.update(editing.survey._id, payload);
+      else await resources.nps.surveys.create(payload);
       setEditing(null);
       await surveysData.reload();
     } catch (err) {
@@ -155,6 +167,9 @@ export default function NpsPage() {
                                 question: survey.question,
                                 commentPrompt: survey.commentPrompt,
                                 thankYouMessage: survey.thankYouMessage,
+                                messageTemplate: survey.messageTemplate || DEFAULT_NPS_MESSAGE,
+                                logo: survey.logo || "",
+                                accentColor: survey.accentColor || "",
                                 isActive: survey.isActive,
                               },
                             })
@@ -278,6 +293,51 @@ export default function NpsPage() {
                 value={editing.form.thankYouMessage}
                 onChange={(e) => setEditing({ ...editing, form: { ...editing.form, thankYouMessage: e.target.value } })}
               />
+            </Field>
+            <Field
+              label="Mensagem para o cliente"
+              hint="Vai no WhatsApp junto com o link. Use {nome} para o primeiro nome, {link} para o link e {pesquisa} para o nome da pesquisa."
+            >
+              <textarea
+                className="input-search min-h-[96px] resize-y"
+                value={editing.form.messageTemplate}
+                onChange={(e) => setEditing({ ...editing, form: { ...editing.form, messageTemplate: e.target.value } })}
+              />
+            </Field>
+            <p className="-mt-2 whitespace-pre-line rounded-lg bg-beige px-3 py-2 text-xs text-charcoal/65">
+              <span className="font-semibold text-charcoal/75">Prévia: </span>
+              {renderNpsMessage(editing.form.messageTemplate, {
+                nome: "Dawan",
+                link: "https://…/nps/responder/…",
+                pesquisa: editing.form.name || "Pesquisa",
+              })}
+            </p>
+            <Field label="Logo da página de resposta" hint="Opcional. Sem logo, aparece a da Noma." group>
+              <LogoUpload folder="marca" value={editing.form.logo} onChange={(logo) => setEditing({ ...editing, form: { ...editing.form, logo } })} />
+            </Field>
+            <Field label="Cor da página de resposta" hint="Botões e destaques. Deixe em branco para usar a cor padrão.">
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label="Seletor de cor"
+                  className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-charcoal/15 bg-surface p-1"
+                  value={normalizeHex(editing.form.accentColor) || "#0a74f0"}
+                  onChange={(e) => setEditing({ ...editing, form: { ...editing.form, accentColor: e.target.value } })}
+                />
+                <input
+                  className="input-search font-mono uppercase"
+                  value={editing.form.accentColor}
+                  maxLength={7}
+                  placeholder="#C8102E"
+                  aria-label="Cor em hexadecimal"
+                  onChange={(e) => setEditing({ ...editing, form: { ...editing.form, accentColor: e.target.value } })}
+                />
+                {editing.form.accentColor ? (
+                  <button type="button" className="shrink-0 text-xs font-semibold text-tan hover:underline" onClick={() => setEditing({ ...editing, form: { ...editing.form, accentColor: "" } })}>
+                    Padrão
+                  </button>
+                ) : null}
+              </div>
             </Field>
             <label className="flex items-center gap-2 text-sm text-charcoal">
               <input

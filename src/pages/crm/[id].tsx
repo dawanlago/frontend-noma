@@ -23,6 +23,7 @@ import TaskChecklist from "@/components/tasks/TaskChecklist";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { LEAD_STATUS_LABELS } from "@/lib/constants";
+import { daysSince, formatDays, leadDiscount } from "@/lib/crm/metrics";
 import { formToPayload, leadDateOnly, type LeadFormState } from "@/lib/crm/model";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
@@ -216,6 +217,8 @@ export default function LeadDashboardPage() {
 
   const funnel = funnels.find((item) => item._id === lead.funnelId);
   const stage = funnel?.stages.find((item) => item._id === lead.stageId);
+  const subStage = stage?.subStages?.find((item) => item._id === lead.subStageId);
+  const discount = leadDiscount(lead);
 
   async function run(action: () => Promise<Lead>, message = "") {
     setNotice("");
@@ -365,6 +368,27 @@ export default function LeadDashboardPage() {
               );
             })}
           </ol>
+          {stage?.subStages?.length ? (
+            <div className="mt-2 flex min-w-max flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-charcoal/40">Microetapa</span>
+              {[{ _id: "", name: "Nenhuma" }, ...stage.subStages].map((sub) => {
+                const active = (lead.subStageId || "") === sub._id;
+                return (
+                  <button
+                    key={sub._id || "none"}
+                    type="button"
+                    disabled={active}
+                    onClick={() => void run(() => resources.leads.update(lead._id, { subStageId: sub._id }))}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      active ? "bg-tan/15 text-tan ring-1 ring-tan/30" : "bg-beige text-charcoal/55 hover:bg-charcoal/[0.08] hover:text-charcoal"
+                    }`}
+                  >
+                    {sub.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -425,7 +449,24 @@ export default function LeadDashboardPage() {
               <Info label="Origem" value={lead.source ? labelOf("leadSource", lead.source) : ""} />
               <Info label="Próxima ação" value={date ? formatDateOnly(date) : ""} />
               <Info label="Criada em" value={formatDateTime(lead.createdAt)} />
+              <Info label="Tempo no funil" value={formatDays(daysSince(lead.funnelEnteredAt || lead.createdAt) ?? 0)} />
+              <Info label="Na etapa atual" value={formatDays(daysSince(lead.stageEnteredAt || lead.funnelEnteredAt || lead.createdAt) ?? 0)} />
+              {subStage ? (
+                <Info
+                  label={`Na microetapa (${subStage.name})`}
+                  value={formatDays(daysSince(lead.subStageEnteredAt || lead.stageEnteredAt || lead.createdAt) ?? 0)}
+                />
+              ) : null}
+              <Info
+                label="Último contato"
+                value={lead.lastContactAt ? `${formatDateTime(lead.lastContactAt)} (há ${formatDays(daysSince(lead.lastContactAt) ?? 0)})`.replace("(há hoje)", "(hoje)") : "Nenhum registrado"}
+              />
               {lead.wonAt ? <Info label="Venda feita em" value={formatDateTime(lead.wonAt)} /> : null}
+              {lead.offeredValue ? <Info label="Valor oferecido" value={formatCurrencyBRL(lead.offeredValue)} /> : null}
+              {lead.closedValue !== undefined && lead.closedValue !== null ? <Info label="Valor fechado" value={formatCurrencyBRL(lead.closedValue)} /> : null}
+              {discount ? (
+                <Info label="Desconto" value={`${formatCurrencyBRL(discount.value)} (${(discount.percent * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%)`} />
+              ) : null}
               {customDisplay.map((item) => (
                 <Info key={item.label} label={item.label} value={item.value} />
               ))}
@@ -489,6 +530,7 @@ export default function LeadDashboardPage() {
         mode={launchMode}
         onClose={() => setWonLead(null)}
         onLaunched={(saved) => setPayments((current) => [...current, ...saved])}
+        onLeadSaved={setLead}
       />
       <SendNpsDialog open={npsOpen} onClose={() => setNpsOpen(false)} contactId={lead.contactId} leadId={lead._id} />
     </>

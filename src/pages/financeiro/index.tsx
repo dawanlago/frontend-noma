@@ -12,6 +12,7 @@ import {
 } from "react-icons/hi2";
 import ClientRankingCard from "@/components/finance/ClientRankingCard";
 import DeleteEntryModal from "@/components/finance/DeleteEntryModal";
+import DistributionView from "@/components/finance/DistributionView";
 import EntryList from "@/components/finance/EntryList";
 import EntryModal, { useCategoryDefaults } from "@/components/finance/EntryModal";
 import GoalCard from "@/components/finance/GoalCard";
@@ -41,7 +42,7 @@ import { resources } from "@/lib/resources";
 import type { FinanceEntry, TransactionType } from "@/types";
 import { currentMonthISO, formatCurrencyBRL, todayISO } from "@/utils/format";
 
-type View = "month" | "year" | "sheet";
+type View = "month" | "year" | "sheet" | "distribution";
 
 function apiError(err: unknown, fallback: string) {
   return (err as { response?: { data?: { error?: string } } }).response?.data?.error || fallback;
@@ -75,6 +76,8 @@ export default function FinancePage() {
     entry: null,
   });
   const [deleting, setDeleting] = useState<FinanceEntry | null>(null);
+  /** Entrada recebida que vai ser distribuída nas caixas. */
+  const [distributing, setDistributing] = useState<FinanceEntry | null>(null);
   const [goalOpen, setGoalOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -266,8 +269,8 @@ export default function FinancePage() {
                 onClick={() => setCashbox(item.value)}
                 className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
                   cashbox === item.value
-                    ? "border-charcoal bg-charcoal text-white"
-                    : "border-charcoal/10 bg-white text-charcoal/60 hover:border-charcoal/25 hover:text-charcoal"
+                    ? "border-charcoal bg-charcoal text-surface"
+                    : "border-charcoal/10 bg-surface text-charcoal/60 hover:border-charcoal/25 hover:text-charcoal"
                 }`}
               >
                 {item.label}
@@ -299,6 +302,7 @@ export default function FinancePage() {
                 { value: "month", label: "Visão do mês" },
                 { value: "year", label: "Visão do ano" },
                 { value: "sheet", label: "Planilha" },
+                { value: "distribution", label: "Distribuição" },
               ] as { value: View; label: string }[]
             ).map((item) => (
               <button
@@ -308,7 +312,7 @@ export default function FinancePage() {
                 aria-selected={view === item.value}
                 onClick={() => switchView(item.value)}
                 className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  view === item.value ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+                  view === item.value ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
                 }`}
               >
                 {item.label}
@@ -328,7 +332,15 @@ export default function FinancePage() {
         </div>
       ) : null}
 
-      {view === "sheet" ? (
+      {view === "distribution" ? (
+        <DistributionView
+          year={year}
+          ownerId={ownerId}
+          cashbox={cashbox}
+          pending={distributing}
+          onPendingDone={() => setDistributing(null)}
+        />
+      ) : view === "sheet" ? (
         <YearSheet year={year} ownerId={ownerId} cashbox={cashbox} version={sheetVersion} onEdit={openEdit} />
       ) : view === "year" ? (
         <YearView
@@ -412,6 +424,11 @@ export default function FinancePage() {
               onSettle={handleSettle}
               onEdit={openEdit}
               onDelete={setDeleting}
+              onDistribute={(entry) => {
+                setYear(entry.date.slice(0, 4));
+                setDistributing(entry);
+                setView("distribution");
+              }}
             />
             <aside className="grid gap-6 self-start lg:sticky lg:top-20">
               <GoalCard goal={goal} received={totals.received} canEdit={canEditGoal} onEdit={() => setGoalOpen(true)} />

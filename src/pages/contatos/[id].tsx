@@ -13,8 +13,13 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { ContactProfile } from "@/types";
-import { formatDateOnly, instagramLink, whatsappLink } from "@/utils/format";
+import { formatDate, formatDateOnly, formatDateTime, instagramLink, whatsappLink } from "@/utils/format";
 import { confirmDialog } from "@/components/ui/DialogHost";
+
+/** O primeiro contato é o que veio antes: o cadastro na base ou a primeira negociação. */
+function firstContactAt(createdAt: string, firstLeadAt?: string | null) {
+  return firstLeadAt && firstLeadAt < createdAt ? firstLeadAt : createdAt;
+}
 
 export default function ContactProfilePage() {
   const router = useRouter();
@@ -88,7 +93,7 @@ export default function ContactProfilePage() {
           <>
             {can("crm") ? (
               <Link href={`/crm?novo=1&contato=${contact._id}${contact.companyId ? `&empresa=${contact.companyId}` : ""}`} className="btn-secondary">
-                Nova venda
+                Nova negociação
               </Link>
             ) : null}
             {can("nps", "crm", "base") ? (
@@ -139,6 +144,15 @@ export default function ContactProfilePage() {
             ]}
           />
           {contact.notes ? <p className="mt-4 whitespace-pre-line rounded-lg bg-beige px-3 py-2 text-sm text-charcoal/75">{contact.notes}</p> : null}
+          <h2 className="mb-2 mt-6 text-base font-semibold text-charcoal">Informações do sistema</h2>
+          <InfoList
+            items={[
+              { label: "Primeiro contato", value: formatDate(firstContactAt(contact.createdAt, profile.system?.firstLeadAt)) },
+              { label: "Última interação", value: profile.system?.lastInteractionAt ? formatDateTime(profile.system.lastInteractionAt) : null },
+              { label: "Criado em", value: formatDateTime(contact.createdAt) },
+              { label: "Atualizado em", value: formatDateTime(contact.updatedAt) },
+            ]}
+          />
         </aside>
         <ProfileHistory history={profile} />
       </div>

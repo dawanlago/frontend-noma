@@ -6,6 +6,7 @@ import MoneyInput from "@/components/ui/MoneyInput";
 import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { leadDiscount } from "@/lib/crm/metrics";
 import { apiError } from "@/lib/errors";
 import { splitInstallments } from "@/lib/finance/model";
 import { resources } from "@/lib/resources";
@@ -18,6 +19,8 @@ interface WonNoticeProps {
   /** "won" = acabou de virar venda; "launch" = aberto pelo botão da negociação. */
   mode?: "won" | "launch";
   onLaunched?: (entries: FinanceEntry[]) => void;
+  /** Negociação atualizada com o valor oferecido/fechado. */
+  onLeadSaved?: (lead: Lead) => void;
 }
 
 const COUNT_OPTIONS = Array.from({ length: 24 }, (_, index) => ({
@@ -34,11 +37,34 @@ interface Parcel {
  * Venda feita → lançamento no financeiro. A pessoa escolhe se lança agora (à vista ou parcelado),
  * em qual caixa e banco, ou se deixa para depois. Nada é lançado sem confirmação, para evitar duplicidade.
  */
-export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: WonNoticeProps) {
+/** Valor oferecido x valor fechado, com o desconto calculado. */
+function ClosingFields({ offered, closed, onOffered, onClosed }: { offered: string; closed: string; onOffered: (value: string) => void; onClosed?: (value: string) => void }) {
+  const discount = leadDiscount({ offeredValue: parseCurrencyBRL(offered), closedValue: closed ? parseCurrencyBRL(closed) : undefined });
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="Valor oferecido" hint="O que foi proposto antes da negociação.">
+        <MoneyInput value={offered} onChange={onOffered} />
+      </Field>
+      {onClosed ? (
+        <Field label="Valor fechado">
+          <MoneyInput value={closed} onChange={onClosed} />
+        </Field>
+      ) : null}
+      <p className={`text-sm sm:col-span-2 ${discount ? "font-semibold text-gold" : "text-charcoal/50"}`}>
+        {discount
+          ? `Desconto de ${formatCurrencyBRL(discount.value)} (${(discount.percent * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%)`
+          : "Sem desconto."}
+      </p>
+    </div>
+  );
+}
+
+export default function WonNotice({ lead, onClose, mode = "won", onLaunched, onLeadSaved }: WonNoticeProps) {
   const { can } = useAuth();
   const { optionsOf } = useWorkspace();
   const canLaunch = can("financeiro");
   const [total, setTotal] = useState("");
+  const [offered, setOffered] = useState("");
   const [count, setCount] = useState("1");
   const [firstDate, setFirstDate] = useState(todayISO);
   const [parcels, setParcels] = useState<Parcel[]>([]);
@@ -54,7 +80,8 @@ export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: W
 
   useEffect(() => {
     if (!lead) return;
-    setTotal(lead.value ? maskCurrencyBRL(lead.value) : "");
+    setTotal(lead.closedValue ?? lead.value ? maskCurrencyBRL(lead.closedValue ?? lead.value) : "");
+    setOffered(lead.offeredValue ?? lead.value ? maskCurrencyBRL(lead.offeredValue ?? lead.value) : "");
     setCount("1");
     setFirstDate(todayISO());
     setPayment(optionsOf("paymentMethod")[0]?.value || "Pix");
@@ -88,8 +115,27 @@ export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: W
     setParcels((current) => current.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
+  /** Guarda o valor oferecido e o fechado na negociação (para medir descontos). */
+  async function saveClosing() {
+    if (!lead) return;
+    const offeredValue = offered ? parseCurrencyBRL(offered) : null;
+    const closedValue = total ? parseCurrencyBRL(total) : null;
+    if (offeredValue === (lead.offeredValue ?? null) && closedValue === (lead.closedValue ?? null)) return;
+    try {
+      onLeadSaved?.(await resources.leads.update(lead._id, { offeredValue, closedValue }));
+    } catch {
+      // O lançamento segue; o desconto pode ser ajustado depois na negociação.
+    }
+  }
+
+  function close() {
+    void saveClosing();
+    onClose();
+  }
+
   async function launch() {
     if (!lead) return;
+    void saveClosing();
     if (parcels.some((item) => parseCurrencyBRL(item.value) <= 0 || !item.date)) {
       setError("Informe valor e data de cada parcela.");
       return;
@@ -126,11 +172,11 @@ export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: W
     return (
       <Modal
         open={Boolean(lead)}
-        onClose={onClose}
+        onClose={close}
         title={title}
         description={lead ? `${lead.name} · ${formatCurrencyBRL(lead.value || 0)}` : ""}
         footer={
-          <button type="button" className="btn-primary" onClick={onClose}>
+          <button type="button" className="btn-primary" onClick={close}>
             Fechar
           </button>
         }
@@ -138,6 +184,9 @@ export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: W
         <p className="text-sm text-charcoal/65">
           A negociação foi marcada como venda feita{lead?.contactName ? ` e fica no histórico de ${lead.contactName}` : ""}.
         </p>
+        <div className="mt-4">
+          <ClosingFields offered={offered} closed={total} onOffered={setOffered} onClosed={setTotal} />
+        </div>
       </Modal>
     );
   }
@@ -146,7 +195,7 @@ export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: W
     <Modal
       variant="drawer"
       open={Boolean(lead)}
-      onClose={onClose}
+      onClose={close}
       size="lg"
       title={title}
       description={
@@ -156,7 +205,7 @@ export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: W
       }
       footer={
         <>
-          <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>
+          <button type="button" className="btn-secondary" onClick={close} disabled={saving}>
             {mode === "won" ? "Não lançar agora" : "Cancelar"}
           </button>
           <button type="button" className="btn-primary" onClick={() => void launch()} disabled={saving || !parcels.length}>
@@ -173,8 +222,13 @@ export default function WonNotice({ lead, onClose, mode = "won", onLaunched }: W
           </p>
         ) : null}
 
+        <div className="rounded-xl border border-charcoal/10 p-4">
+          <p className="mb-3 text-[13px] font-semibold text-charcoal">Fechamento</p>
+          <ClosingFields offered={offered} closed={total} onOffered={setOffered} />
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Valor total">
+          <Field label="Valor fechado">
             <MoneyInput value={total} onChange={setTotal} />
           </Field>
           <Field label="Parcelas">

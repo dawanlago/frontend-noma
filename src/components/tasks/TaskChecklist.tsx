@@ -6,6 +6,8 @@ import { resources } from "@/lib/resources";
 import type { Task } from "@/types";
 import { formatDateOnly, todayISO } from "@/utils/format";
 import { confirmDialog } from "@/components/ui/DialogHost";
+import OptionSelect from "@/components/options/OptionSelect";
+import { TaskTypeBadge } from "./TaskType";
 
 interface TaskChecklistProps {
   tasks: Task[];
@@ -33,6 +35,7 @@ function dueTone(task: Task, today: string) {
 export default function TaskChecklist({ tasks, onChange, leadId, showLead, showOwner, readOnly, emptyText, addInputId }: TaskChecklistProps) {
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [type, setType] = useState("");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<{ id: string; title: string; dueDate: string } | null>(null);
   const today = todayISO();
@@ -57,7 +60,7 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
   function add() {
     if (!title.trim()) return;
     void run(async () => {
-      const saved = await resources.tasks.create({ title: title.trim(), dueDate, leadId });
+      const saved = await resources.tasks.create({ title: title.trim(), type, dueDate, leadId });
       onChange([...tasks, saved]);
       setTitle("");
       setDueDate("");
@@ -88,12 +91,13 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
     <div>
       {!readOnly ? (
         <form
-          className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_auto]"
+          className="mb-3 grid gap-2 sm:grid-cols-[150px_minmax(0,1fr)_160px_auto]"
           onSubmit={(event) => {
             event.preventDefault();
             add();
           }}
         >
+          <OptionSelect list="taskType" value={type} onChange={setType} emptyLabel="Tipo" />
           <input id={addInputId} className="input-search" value={title} placeholder="Nova atividade" onChange={(e) => setTitle(e.target.value)} />
           <input className="input-search" type="date" value={dueDate} aria-label="Prazo" onChange={(e) => setDueDate(e.target.value)} />
           <button type="submit" className="btn-primary" disabled={!title.trim()}>
@@ -155,6 +159,7 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
                   {task.title}
                 </p>
                 <p className="flex flex-wrap gap-x-3 text-xs">
+                  <TaskTypeBadge type={task.type} />
                   {task.dueDate ? <span className={dueTone(task, today)}>{task.dueDate < today && !task.done ? "Atrasada · " : ""}{formatDateOnly(task.dueDate)}</span> : null}
                   {showLead && task.leadId ? (
                     <Link href={`/crm/${task.leadId}`} className="text-tan hover:underline">

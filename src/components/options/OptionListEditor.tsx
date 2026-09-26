@@ -109,7 +109,7 @@ export default function OptionListEditor({ list, onCreated, autoFocus, renderExt
       <ul className="mt-4 divide-y divide-charcoal/[0.06] rounded-lg border border-charcoal/[0.08]">
         {items.length === 0 ? <li className="px-3 py-4 text-sm text-charcoal/50">Nenhuma opção cadastrada.</li> : null}
         {items.map((item, index) => (
-          <li key={item._id} className="flex items-center gap-2 px-3 py-2">
+          <li key={item._id} className="flex flex-wrap items-center gap-2 px-3 py-2">
             {editing?.id === item._id ? (
               <>
                 <input

@@ -1,5 +1,5 @@
 export function isPublicRoute(pathname: string): boolean {
-  return pathname === "/login" || pathname === "/f/[publicId]" || pathname === "/nps/responder/[token]";
+  return pathname === "/login" || pathname === "/f/[publicId]" || pathname === "/nps/responder/[token]" || pathname === "/p/[token]";
 }
 
 export function isAdminRoute(pathname: string): boolean {

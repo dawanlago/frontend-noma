@@ -3,12 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(0, 0%, 99%);
-  --foreground: hsl(220, 30%, 6%);
-  --tan: hsl(210, 98%, 48%);
-  --burgundy: hsl(0, 90%, 40%);
-  --gold: hsl(45, 90%, 40%);
-  --ink: hsl(220, 30%, 6%);
+  /* Canais HSL das cores do tema (o Tailwind aplica a opacidade). */
+  --accent-light: 210 98% 48%;
+  --accent-dark: 210 95% 62%;
+  --c-tan: var(--accent-light);
+  --c-ink: 220 30% 6%;
+  --c-surface: 0 0% 100%;
+  --c-canvas: 0 0% 99%;
+  --c-beige: 220 35% 97%;
+  --c-mist: 220 20% 88%;
+  --c-burgundy: 0 90% 40%;
+  --c-gold: 45 90% 40%;
+  --c-sage: 120 44% 53%;
+
+  --background: hsl(var(--c-canvas));
+  --foreground: hsl(var(--c-ink));
+  --tan: hsl(var(--c-tan));
+  --burgundy: hsl(var(--c-burgundy));
+  --gold: hsl(var(--c-gold));
+  --ink: hsl(var(--c-ink));
 
   /* Movimento: sai rápido e pousa suave; interface vive entre 0,4 e 0,8s. */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -16,6 +29,19 @@
   --dur-ui: 0.45s;
   --dur-enter: 0.6s;
   --stagger: 60ms;
+}
+
+/* Tema escuro: "charcoal" vira o tom claro do texto, e as superfícies escurecem. */
+[data-theme="dark"] {
+  --c-tan: var(--accent-dark);
+  --c-ink: 220 20% 92%;
+  --c-surface: 222 18% 11%;
+  --c-canvas: 222 22% 7%;
+  --c-beige: 222 16% 15%;
+  --c-mist: 222 12% 26%;
+  --c-burgundy: 0 80% 62%;
+  --c-gold: 45 85% 56%;
+  --c-sage: 120 40% 56%;
 }
 
 html,
@@ -28,15 +54,15 @@ body,
 @layer components {
   .btn-primary,
   .btn-gold {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-tan px-4 py-2.5 text-sm font-semibold text-white transition duration-300 ease-out-expo hover:bg-[#0062d1] focus:outline-none focus:ring-2 focus:ring-tan/30 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-tan px-4 py-2.5 text-sm font-semibold text-white transition duration-300 ease-out-expo hover:bg-tan/90 focus:outline-none focus:ring-2 focus:ring-tan/30 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100;
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-burgundy px-4 py-2.5 text-sm font-semibold text-white transition duration-300 ease-out-expo hover:bg-[#b81414] focus:outline-none focus:ring-2 focus:ring-burgundy/40 active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-burgundy px-4 py-2.5 text-sm font-semibold text-white transition duration-300 ease-out-expo hover:bg-burgundy/90 focus:outline-none focus:ring-2 focus:ring-burgundy/40 active:scale-[0.97];
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-charcoal/10 bg-white px-4 py-2.5 text-sm font-semibold text-charcoal transition duration-300 ease-out-expo hover:bg-beige focus:outline-none focus:ring-2 focus:ring-tan/20 active:scale-[0.97] disabled:active:scale-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-charcoal/10 bg-surface px-4 py-2.5 text-sm font-semibold text-charcoal transition duration-300 ease-out-expo hover:bg-beige focus:outline-none focus:ring-2 focus:ring-tan/20 active:scale-[0.97] disabled:active:scale-100;
   }
 
   .btn-ghost {
@@ -44,7 +70,7 @@ body,
   }
 
   .card {
-    @apply rounded-xl border border-charcoal/[0.08] bg-white;
+    @apply rounded-xl border border-charcoal/[0.08] bg-surface;
   }
 
   .card-muted {
@@ -52,7 +78,7 @@ body,
   }
 
   .input-search {
-    @apply w-full rounded-lg border border-charcoal/15 bg-white px-3.5 py-2.5 text-sm text-charcoal placeholder:text-charcoal/35 transition duration-200 focus:border-tan focus:outline-none focus:ring-[3px] focus:ring-tan/15;
+    @apply w-full rounded-lg border border-charcoal/15 bg-surface px-3.5 py-2.5 text-sm text-charcoal placeholder:text-charcoal/35 transition duration-200 focus:border-tan focus:outline-none focus:ring-[3px] focus:ring-tan/15;
   }
 
   .chip {
@@ -92,7 +118,7 @@ body,
 
   .bg-mesh {
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(210, 100%, 90%), transparent);
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(var(--c-tan) / 0.14), transparent);
   }
 
   .skeleton {
@@ -103,13 +129,13 @@ body,
 /* Barra de rolagem discreta do menu. */
 .noma-scroll {
   scrollbar-width: thin;
-  scrollbar-color: hsla(220, 30%, 6%, 0.12) transparent;
+  scrollbar-color: hsl(var(--c-ink) / 0.12) transparent;
 }
 .noma-scroll::-webkit-scrollbar {
   width: 6px;
 }
 .noma-scroll::-webkit-scrollbar-thumb {
-  background: hsla(220, 30%, 6%, 0.12);
+  background: hsl(var(--c-ink) / 0.12);
   border-radius: 999px;
 }
 
@@ -187,4 +213,35 @@ body,
   .btn-secondary {
     transform: none !important;
   }
+}
+
+/* "Olho" dos valores: números em R$ ficam desfocados até mostrar de novo. */
+.noma-hide-values [data-money] {
+  filter: blur(7px);
+  user-select: none;
+  transition: filter 0.2s var(--ease-out);
+}
+
+/* Folhas de documento (contrato, proposta...) continuam claras no tema escuro. */
+.noma-paper {
+  --c-ink: 220 30% 6%;
+  --c-surface: 0 0% 100%;
+  --c-canvas: 0 0% 99%;
+  --c-beige: 220 35% 97%;
+  --c-mist: 220 20% 88%;
+  --c-burgundy: 0 90% 40%;
+  --c-gold: 45 90% 40%;
+  --c-sage: 120 44% 53%;
+  color-scheme: light;
+}
+
+/* Menu compacto: o painel do grupo desliza da barra de ícones. */
+@keyframes noma-flyout {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+.noma-flyout {
+  animation: noma-flyout 0.22s var(--ease-out) both;
 }

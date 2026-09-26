@@ -14,6 +14,7 @@ interface PipelineBoardProps {
   onEdit: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
   onMove: (lead: Lead, stageId: string) => void;
+  onSubStage: (lead: Lead, subStageId: string) => void;
   onWon: (lead: Lead) => void;
   /** Negociação que acabou de virar venda feita. */
   celebrateId?: string | null;
@@ -32,6 +33,7 @@ export default function PipelineBoard({
   onEdit,
   onDelete,
   onMove,
+  onSubStage,
   onWon,
   celebrateId,
 }: PipelineBoardProps) {
@@ -83,9 +85,9 @@ export default function PipelineBoard({
               <header className="mb-3 px-1">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold text-charcoal">{column.stage.name}</h3>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-charcoal/60">{column.leads.length}</span>
+                  <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-charcoal/60">{column.leads.length}</span>
                 </div>
-                <p className={`mt-0.5 text-sm font-medium ${headerTone[column.stage.kind]}`}>{formatCurrencyBRL(column.total)}</p>
+                <p data-money className={`mt-0.5 text-sm font-medium ${headerTone[column.stage.kind]}`}>{formatCurrencyBRL(column.total)}</p>
               </header>
               <div className="flex min-h-[140px] flex-1 flex-col gap-2.5">
                 {column.leads.map((lead) => (
@@ -102,6 +104,7 @@ export default function PipelineBoard({
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onMove={onMove}
+                    onSubStage={onSubStage}
                     onWon={onWon}
                     onDragStart={handleDragStart}
                     onDragEnd={reset}

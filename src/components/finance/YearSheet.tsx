@@ -116,7 +116,7 @@ export default function YearSheet({ year, ownerId, cashbox = "", onEdit, version
   const renderRows = (rows: typeof sheet.income, entryType: TransactionType) =>
     rows.map((row) => (
       <tr key={row.category} className="cursor-pointer" onClick={() => filterByCategory(entryType, row.category)} title="Ver lançamentos desta categoria">
-        <td className="sticky left-0 bg-white px-4 py-2 font-medium text-charcoal">{categoryLabel(entryType, row.category)}</td>
+        <td className="sticky left-0 bg-surface px-4 py-2 font-medium text-charcoal">{categoryLabel(entryType, row.category)}</td>
         {row.months.map((value, index) => (
           <td key={index} className={`px-3 py-2 text-right tabular-nums ${value ? "text-charcoal" : "text-charcoal/25"}`}>
             {money(value)}
@@ -160,7 +160,7 @@ export default function YearSheet({ year, ownerId, cashbox = "", onEdit, version
                   aria-pressed={mode === item.value}
                   onClick={() => setMode(item.value)}
                   className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                    mode === item.value ? "bg-white text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+                    mode === item.value ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
                   }`}
                 >
                   {item.label}

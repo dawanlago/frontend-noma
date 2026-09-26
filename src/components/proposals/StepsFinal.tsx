@@ -199,7 +199,7 @@ export function IdentityStep({ data, setData }: StepProps) {
       <div>
         <span className="mb-2 block text-[13px] font-semibold text-charcoal">Cor principal</span>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="relative flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-charcoal/15 bg-white pl-1.5 pr-3">
+          <label className="relative flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-charcoal/15 bg-surface pl-1.5 pr-3">
             <input
               type="color"
               value={identity.color}
@@ -301,7 +301,7 @@ export function PreviewStep({ data, pages, onGoToSlide, onDownload, onOpenFull }
             <button
               type="button"
               onClick={() => onGoToSlide(index)}
-              className="flex w-full items-center gap-3 rounded-lg border border-charcoal/10 bg-white px-3 py-2 text-left text-sm transition hover:border-tan/40 hover:bg-tan/[0.04]"
+              className="flex w-full items-center gap-3 rounded-lg border border-charcoal/10 bg-surface px-3 py-2 text-left text-sm transition hover:border-tan/40 hover:bg-tan/[0.04]"
             >
               <span className="font-mono text-xs text-charcoal/40">{String(index + 1).padStart(2, "0")}</span>
               <span className="font-medium text-charcoal">{PAGE_LABELS[page.kind]}</span>
