@@ -109,9 +109,8 @@ export default function PublicFormPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={form.brand.logo} alt={form.brand.companyName || "Noma"} className="max-h-14 max-w-[180px] object-contain" />
             ) : (
-              <p className="text-center text-sm font-bold tracking-tight text-charcoal">
-                {form?.brand?.companyName || "Noma"} · Produtora audiovisual
-              </p>
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/brand/noma-vermelho.png" alt={form?.brand?.companyName || "Noma"} className="h-9 w-auto" />
             )}
           </div>
           <div className="card p-6 sm:p-8">

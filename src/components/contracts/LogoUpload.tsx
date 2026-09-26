@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useBrandLogo } from "@/hooks/useBrandLogo";
 import { uploadImage, type UploadFolder } from "@/lib/upload";
 
 interface LogoUploadProps {
@@ -16,7 +16,7 @@ export default function LogoUpload({ value, onChange, folder = "contratos" }: Lo
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   // No próprio cadastro da marca não faz sentido oferecer "usar a logo da marca".
-  const workspaceLogo = useWorkspace().settings?.brand?.logo || "";
+  const workspaceLogo = useBrandLogo();
   const brandLogo = folder === "marca" ? "" : workspaceLogo;
 
   async function handleFile(file?: File) {

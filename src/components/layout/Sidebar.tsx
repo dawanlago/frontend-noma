@@ -208,14 +208,10 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col border-r border-charcoal/[0.08] bg-white text-charcoal">
       <div className="flex items-center justify-between px-4 pb-4 pt-5">
-        <Link href="/" onClick={onNavigate} className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-tan to-[hsl(222,90%,40%)] text-[15px] font-extrabold tracking-tight shadow-[0_6px_18px_-6px_hsl(210,98%,48%)]">
-            N
-          </span>
-          <span className="min-w-0 leading-tight">
-            <span className="block text-[15px] font-bold tracking-tight">Noma</span>
-            <span className="block truncate text-[11px] text-charcoal/45">{companyName}</span>
-          </span>
+        <Link href="/" onClick={onNavigate} className="flex min-w-0 flex-col gap-1.5" aria-label="Início">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/noma-vermelho.png" alt="Noma" className="h-7 w-auto self-start" />
+          <span className="block truncate text-[11px] text-charcoal/45">{companyName}</span>
         </Link>
         <button
           type="button"
