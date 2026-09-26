@@ -8,6 +8,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { briefingsApi } from "@/lib/briefing/api";
 import { defaultData, titleOf } from "@/lib/briefing/model";
+import { alertDialog, confirmDialog } from "@/components/ui/DialogHost";
 
 function apiError(err: unknown, fallback: string) {
   return (err as { response?: { data?: { error?: string } } }).response?.data?.error || fallback;
@@ -43,7 +44,7 @@ function BriefingList({ onOpen }: { onOpen: (id: string) => void }) {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Excluir este briefing? Esta ação não pode ser desfeita.")) return;
+    if (!(await confirmDialog({ title: "Excluir este briefing?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
     setActionError("");
     try {
       await briefingsApi.remove(id);
@@ -107,16 +108,16 @@ export default function BriefingPage() {
           const copy = await briefingsApi.duplicate(id);
           open(copy._id);
         } catch (err) {
-          window.alert(apiError(err, "Não foi possível duplicar o briefing."));
+          void alertDialog({ title: "Não foi possível duplicar", message: apiError(err, "Tente de novo em instantes.") });
         }
       }}
       onDelete={async () => {
-        if (!window.confirm("Excluir este briefing? Esta ação não pode ser desfeita.")) return;
+        if (!(await confirmDialog({ title: "Excluir este briefing?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
         try {
           await briefingsApi.remove(id);
           back();
         } catch (err) {
-          window.alert(apiError(err, "Não foi possível excluir o briefing."));
+          void alertDialog({ title: "Não foi possível excluir", message: apiError(err, "Tente de novo em instantes.") });
         }
       }}
     />

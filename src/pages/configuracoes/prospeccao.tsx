@@ -8,6 +8,7 @@ import { DEFAULT_SEGMENTS, goalTexts, opportunityTexts, type SegmentCopy } from 
 import { STYLES } from "@/lib/prospecting/options";
 import { resources } from "@/lib/resources";
 import type { OptionItem } from "@/types";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 type Tab = "prospectOpportunity" | "prospectGoal" | "prospectSegment";
 
@@ -74,8 +75,8 @@ function MessageCard({ item }: { item: OptionItem }) {
     }
   }
 
-  function restore() {
-    if (!window.confirm("Voltar ao texto padrão do sistema?")) return;
+  async function restore() {
+    if (!(await confirmDialog({ title: "Voltar ao texto padrão?", message: "O texto que você escreveu para este item será substituído pelo padrão do sistema.", confirmLabel: "Restaurar" }))) return;
     const meta = { ...(item.meta || {}) };
     delete meta[metaKey];
     const none = { metaOf: () => undefined };

@@ -13,6 +13,7 @@ import { useToolDocument } from "@/hooks/useToolDocument";
 import { budgetsApi } from "@/lib/budget/api";
 import { calculateBudget } from "@/lib/budget/calc";
 import { defaultData, normalize, titleOf, type BudgetData } from "@/lib/budget/model";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 const api = budgetsApi;
 const DESCRIPTION = "Some custos, horas de trabalho e margem para chegar a um preço seguro — e saiba quanto vale sua hora.";
@@ -66,7 +67,7 @@ function BudgetList() {
   }
 
   async function handleDelete(docId: string) {
-    if (!window.confirm("Excluir este orçamento? Essa ação não pode ser desfeita.")) return;
+    if (!(await confirmDialog({ title: "Excluir este orçamento?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
     setError("");
     try {
       await api.remove(docId);
@@ -147,7 +148,7 @@ function BudgetEditor({ id }: { id: string }) {
   }
 
   async function handleDelete() {
-    if (!window.confirm("Excluir este orçamento? Essa ação não pode ser desfeita.")) return;
+    if (!(await confirmDialog({ title: "Excluir este orçamento?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
     setActionError("");
     try {
       await api.remove(id);

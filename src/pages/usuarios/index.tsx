@@ -12,6 +12,7 @@ import { ALL_MODULE_KEYS, MODULES } from "@/lib/modules";
 import { resources } from "@/lib/resources";
 import { getInitials } from "@/utils/format";
 import type { ModuleKey, User, UserRole } from "@/types";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 /** Acessos sugeridos por papel (mesma regra do servidor). */
 const ROLE_DEFAULTS: Record<UserRole, ModuleKey[]> = {
@@ -95,7 +96,7 @@ export default function UsersPage() {
   }
 
   async function handleDelete(user: User) {
-    if (!window.confirm(`Excluir usuário ${user.name}?`)) return;
+    if (!(await confirmDialog({ title: `Excluir o usuário ${user.name}?`, message: "Ele perde o acesso ao sistema. Os registros dele continuam.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.users.remove(user._id);
     await reload();
   }

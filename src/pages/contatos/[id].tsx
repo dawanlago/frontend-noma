@@ -13,6 +13,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { ContactProfile } from "@/types";
 import { formatDateOnly, instagramLink, whatsappLink } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 export default function ContactProfilePage() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function ContactProfilePage() {
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Excluir o contato ${contact.name}? As negociações continuam no CRM.`)) return;
+    if (!(await confirmDialog({ title: `Excluir o contato ${contact.name}?`, message: "As negociações dele continuam no CRM.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.contacts.remove(contact._id);
     void router.push("/contatos");
   }

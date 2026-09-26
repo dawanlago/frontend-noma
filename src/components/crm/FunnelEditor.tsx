@@ -5,6 +5,7 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { Funnel, StageKind } from "@/types";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 export const STAGE_KINDS: { value: StageKind; label: string }[] = [
   { value: "open", label: "Em andamento" },
@@ -83,7 +84,7 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
   }
 
   async function handleDelete() {
-    if (!funnel || !window.confirm(`Excluir o funil "${funnel.name}"?`)) return;
+    if (!funnel || !(await confirmDialog({ title: `Excluir o funil "${funnel.name}"?`, confirmLabel: "Excluir", danger: true }))) return;
     setBusy(true);
     setError("");
     try {

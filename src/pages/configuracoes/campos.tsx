@@ -8,6 +8,7 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { CustomField, CustomFieldEntity, CustomFieldType } from "@/types";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 const ENTITIES: { value: CustomFieldEntity; label: string; description: string }[] = [
   { value: "lead", label: "Negociações", description: "Aparecem no cadastro e no painel de cada negociação do CRM." },
@@ -74,8 +75,8 @@ export default function CustomFieldsPage() {
     );
   }
 
-  function handleDelete(field: CustomField) {
-    if (!window.confirm(`Excluir o campo "${field.label}"? Os valores já preenchidos deixam de aparecer.`)) return;
+  async function handleDelete(field: CustomField) {
+    if (!(await confirmDialog({ title: `Excluir o campo "${field.label}"?`, message: "Os valores já preenchidos nele deixam de aparecer.", confirmLabel: "Excluir", danger: true }))) return;
     void run(() => resources.customFields.remove(field._id));
   }
 

@@ -14,6 +14,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { CompanyProfile } from "@/types";
 import { instagramLink } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 export default function CompanyProfilePage() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function CompanyProfilePage() {
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Excluir a empresa ${company.name}? Os contatos continuam na base, sem empresa.`)) return;
+    if (!(await confirmDialog({ title: `Excluir a empresa ${company.name}?`, message: "Os contatos continuam na base, sem empresa.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.companies.remove(company._id);
     void router.push("/empresas");
   }

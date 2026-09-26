@@ -9,6 +9,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { Note, NoteGroup } from "@/types";
 import { formatDateTime } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 /** Id do destino "Anotações sem grupo" ao arrastar. */
 const NO_GROUP = "__none__";
@@ -116,8 +117,8 @@ export default function NotesPage() {
     });
   }
 
-  function deleteGroup(group: NoteGroup) {
-    if (!window.confirm(`Excluir o grupo "${group.name}"? As anotações dele vão para "Anotações sem grupo".`)) return;
+  async function deleteGroup(group: NoteGroup) {
+    if (!(await confirmDialog({ title: `Excluir o grupo "${group.name}"?`, message: "As anotações dele não são apagadas: vão para \"Anotações sem grupo\".", confirmLabel: "Excluir", danger: true }))) return;
     void run(async () => {
       await resources.notes.groups.remove(group._id);
       setGroups((current) => current.filter((item) => item._id !== group._id));
@@ -138,8 +139,8 @@ export default function NotesPage() {
     void run(async () => replaceNote(await resources.notes.update(selected._id, { [field]: draft[field] })));
   }
 
-  function deleteSelected() {
-    if (!selected || !isOwner || !window.confirm("Excluir esta anotação? Essa ação não pode ser desfeita.")) return;
+  async function deleteSelected() {
+    if (!selected || !isOwner || !(await confirmDialog({ title: "Excluir esta anotação?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
     void run(async () => {
       await resources.notes.remove(selected._id);
       setNotes((current) => current.filter((note) => note._id !== selected._id));

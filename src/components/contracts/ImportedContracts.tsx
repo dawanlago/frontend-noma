@@ -9,6 +9,7 @@ import { apiError } from "@/lib/errors";
 import { formatBytes, MAX_FILE_BYTES, openStoredFile, uploadFile } from "@/lib/files";
 import { resources } from "@/lib/resources";
 import { formatDate } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 const ACCEPT = ".pdf,.doc,.docx,.odt,.txt,.png,.jpg,.jpeg";
 
@@ -72,7 +73,7 @@ export default function ImportedContracts({ ownerId }: { ownerId: string }) {
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Excluir o contrato "${name}"?`)) return;
+    if (!(await confirmDialog({ title: `Excluir o contrato "${name}"?`, message: "O arquivo também é apagado do armazenamento.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.files.remove(id);
     await reload();
   }

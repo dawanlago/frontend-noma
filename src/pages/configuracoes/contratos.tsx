@@ -8,6 +8,7 @@ import { buildFromTemplate, systemContractAsTemplate, TEMPLATE_VARIABLES } from 
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { ContractTemplate } from "@/types";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 /** Dados de exemplo para a prévia do modelo. */
 function sampleData() {
@@ -110,7 +111,7 @@ export default function ContractTemplatesPage() {
   }
 
   async function handleDelete() {
-    if (!selected || !window.confirm(`Excluir o modelo "${selected.name}"?`)) return;
+    if (!selected || !(await confirmDialog({ title: `Excluir o modelo "${selected.name}"?`, confirmLabel: "Excluir", danger: true }))) return;
     await resources.contractTemplates.remove(selected._id);
     setSelectedId(null);
     setDraft(null);

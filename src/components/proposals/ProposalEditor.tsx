@@ -24,6 +24,7 @@ import ProposalPreview from "./ProposalPreview";
 import { ClientStep, CompanyStep, ExperienceStep, ObjectivesStep, StructureStep } from "./StepsIntro";
 import { ClosingStep, IdentityStep, PreviewStep } from "./StepsFinal";
 import { Callout } from "./ui";
+import { alertDialog } from "@/components/ui/DialogHost";
 
 const STEPS = [
   { title: "Cliente", description: "Para quem é a proposta e até quando ela vale." },
@@ -106,7 +107,7 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
     if (!data) return;
     const url = URL.createObjectURL(new Blob([renderProposalHtml(data, { start: slide })], { type: "text/html;charset=utf-8" }));
     const win = window.open(url, "_blank");
-    if (!win) window.alert("Permita pop-ups para abrir a proposta em tela cheia.");
+    if (!win) void alertDialog({ title: "Pop-up bloqueado", message: "Permita pop-ups para este site no navegador para abrir a proposta em tela cheia." });
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 

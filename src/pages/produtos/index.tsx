@@ -7,6 +7,7 @@ import { productPrice } from "@/lib/crm/model";
 import { resources } from "@/lib/resources";
 import { formatCurrencyBRL } from "@/utils/format";
 import type { Product } from "@/types";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 export default function ProductsPage() {
   const { data: products, isLoading, error, reload } = useAsyncData(() => resources.products.list());
@@ -20,7 +21,7 @@ export default function ProductsPage() {
   }, [products, search]);
 
   async function handleDelete(product: Product) {
-    if (!window.confirm(`Excluir produto ${product.name}?`)) return;
+    if (!(await confirmDialog({ title: `Excluir o produto ${product.name}?`, message: "Negociações que já usam o produto mantêm o nome e o valor salvos.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.products.remove(product._id);
     await reload();
   }

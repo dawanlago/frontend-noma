@@ -1,3 +1,5 @@
+import { alertDialog } from "@/components/ui/DialogHost";
+
 export async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -22,7 +24,7 @@ export function escapeHtml(value: string) {
 export function printDocument(title: string, bodyHtml: string, extraCss = "") {
   const win = window.open("", "_blank");
   if (!win) {
-    window.alert("Permita pop-ups para gerar o PDF.");
+    void alertDialog({ title: "Pop-up bloqueado", message: "Permita pop-ups para este site no navegador para gerar o PDF." });
     return;
   }
   win.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>

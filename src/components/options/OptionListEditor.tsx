@@ -12,6 +12,7 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { OptionItem } from "@/types";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 interface OptionListEditorProps {
   list: string;
@@ -64,8 +65,8 @@ export default function OptionListEditor({ list, onCreated, autoFocus, renderExt
     });
   }
 
-  function handleDelete(item: OptionItem) {
-    if (!window.confirm(`Excluir a opção "${item.label}"? Registros que já usam essa opção continuam com o texto salvo.`)) return;
+  async function handleDelete(item: OptionItem) {
+    if (!(await confirmDialog({ title: `Excluir a opção "${item.label}"?`, message: "Registros que já usam essa opção continuam com o texto salvo.", confirmLabel: "Excluir", danger: true }))) return;
     void run(async () => {
       await resources.options.remove(item._id);
       dropOption(item._id);

@@ -22,6 +22,7 @@ import {
   type QualityChip,
 } from "@/lib/prospecting/generate";
 import { CHANNEL_OPTIONS, DEFAULT_PROSPECT, normalizeProspect, type ProspectForm } from "@/lib/prospecting/options";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 const qualityBox: Record<BaseQuality, string> = {
   good: "border-sage/25 bg-sage/[0.06]",
@@ -100,8 +101,8 @@ export default function ProspectingPage() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => {
-                if (window.confirm("Limpar o formulário e começar de novo?")) reset();
+              onClick={async () => {
+                if (await confirmDialog({ title: "Limpar e começar de novo?", message: "O que foi preenchido nesta prospecção será apagado.", confirmLabel: "Limpar", danger: true })) reset();
               }}
             >
               Limpar

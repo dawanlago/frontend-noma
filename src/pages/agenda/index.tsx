@@ -12,6 +12,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { Task, TaskStatus } from "@/types";
 import { formatDateOnly } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 const STATUSES: { value: TaskStatus; label: string; tone: string }[] = [
   { value: "todo", label: "A fazer", tone: "bg-gold/15 text-gold" },
@@ -130,7 +131,7 @@ export default function AgendaPage() {
   }
 
   async function handleDelete(task: Task) {
-    if (!window.confirm(`Excluir o compromisso "${task.title}"?`)) return;
+    if (!(await confirmDialog({ title: `Excluir o compromisso "${task.title}"?`, confirmLabel: "Excluir", danger: true }))) return;
     await resources.tasks.remove(task._id);
     setData((current) => (current || []).filter((item) => item._id !== task._id));
     setOpenTaskId(null);

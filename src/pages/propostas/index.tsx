@@ -9,6 +9,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { defaultData, moneyText, titleOf, type ProposalData } from "@/lib/proposals/model";
 import { resources } from "@/lib/resources";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 function queryValue(value: string | string[] | undefined) {
   return (Array.isArray(value) ? value[0] : value || "").trim();
@@ -88,7 +89,7 @@ export default function ProposalsPage() {
   }
 
   async function remove(docId: string) {
-    if (!window.confirm("Excluir esta proposta? Essa ação não pode ser desfeita.")) return;
+    if (!(await confirmDialog({ title: "Excluir esta proposta?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
     setError("");
     try {
       await resources.tools.proposals.remove(docId);

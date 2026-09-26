@@ -12,6 +12,7 @@ import { useAsyncData } from "@/hooks/useAsyncData";
 import { contractsApi } from "@/lib/contracts/api";
 import { defaultData, titleOf } from "@/lib/contracts/model";
 import { resources } from "@/lib/resources";
+import { alertDialog, confirmDialog } from "@/components/ui/DialogHost";
 
 function apiError(err: unknown, fallback: string) {
   return (err as { response?: { data?: { error?: string } } }).response?.data?.error || fallback;
@@ -51,7 +52,7 @@ function ContractList({ onOpen }: { onOpen: (id: string) => void }) {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Excluir este contrato? Esta ação não pode ser desfeita.")) return;
+    if (!(await confirmDialog({ title: "Excluir este contrato?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
     setActionError("");
     try {
       await contractsApi.remove(id);
@@ -125,16 +126,16 @@ export default function ContractsPage() {
           const copy = await contractsApi.duplicate(id);
           open(copy._id);
         } catch (err) {
-          window.alert(apiError(err, "Não foi possível duplicar o contrato."));
+          void alertDialog({ title: "Não foi possível duplicar", message: apiError(err, "Tente de novo em instantes.") });
         }
       }}
       onDelete={async () => {
-        if (!window.confirm("Excluir este contrato? Esta ação não pode ser desfeita.")) return;
+        if (!(await confirmDialog({ title: "Excluir este contrato?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
         try {
           await contractsApi.remove(id);
           back();
         } catch (err) {
-          window.alert(apiError(err, "Não foi possível excluir o contrato."));
+          void alertDialog({ title: "Não foi possível excluir", message: apiError(err, "Tente de novo em instantes.") });
         }
       }}
     />

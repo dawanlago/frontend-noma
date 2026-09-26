@@ -5,6 +5,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { Task } from "@/types";
 import { formatDateOnly, todayISO } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 interface TaskChecklistProps {
   tasks: Task[];
@@ -60,8 +61,8 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
     });
   }
 
-  function remove(task: Task) {
-    if (!window.confirm(`Excluir a atividade "${task.title}"?`)) return;
+  async function remove(task: Task) {
+    if (!(await confirmDialog({ title: `Excluir a atividade "${task.title}"?`, confirmLabel: "Excluir", danger: true }))) return;
     void run(async () => {
       await resources.tasks.remove(task._id);
       onChange(tasks.filter((item) => item._id !== task._id));

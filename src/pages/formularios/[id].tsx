@@ -13,6 +13,7 @@ import { resources } from "@/lib/resources";
 import type { CaptureForm, FormField, FormResponse } from "@/types";
 import { downloadFile, slugify } from "@/utils/document";
 import { formatDateTime } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 type Tab = "builder" | "responses";
 
@@ -96,7 +97,7 @@ function Responses({ form }: { form: CaptureForm }) {
   }
 
   async function remove(response: FormResponse) {
-    if (!window.confirm("Excluir esta resposta? O contato e a negociação criados continuam na base.")) return;
+    if (!(await confirmDialog({ title: "Excluir esta resposta?", message: "O contato e a negociação criados continuam na base.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.forms.removeResponse(form._id, response._id);
     setResponses((current) => (current || []).filter((item) => item._id !== response._id));
   }
@@ -248,7 +249,7 @@ export default function FormEditorPage() {
       void router.push("/formularios");
       return;
     }
-    if (!form || !window.confirm(`Excluir o formulário "${form.name}" e todas as respostas?`)) return;
+    if (!form || !(await confirmDialog({ title: `Excluir o formulário "${form.name}"?`, message: "Todas as respostas dele também serão excluídas.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.forms.remove(form._id);
     void router.push("/formularios");
   }

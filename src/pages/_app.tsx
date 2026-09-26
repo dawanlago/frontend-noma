@@ -3,6 +3,7 @@ import type { AppProps } from "next/app";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthGate from "@/components/auth/AuthGate";
+import DialogHost from "@/components/ui/DialogHost";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { isPublicRoute } from "@/lib/routes";
@@ -38,6 +39,7 @@ export default function App({ Component, pageProps, router }: AppProps) {
               )}
             </AuthGate>
           </WorkspaceProvider>
+          <DialogHost />
         </AuthProvider>
       </div>
     </ThemeProvider>

@@ -1,26 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Collapse from "@mui/material/Collapse";
 import Tooltip from "@mui/material/Tooltip";
-import { HiChevronDown, HiOutlineMagnifyingGlass } from "react-icons/hi2";
-import Avatar from "@mui/material/Avatar";
-import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
+import { HiChevronDown, HiOutlineMagnifyingGlass, HiXMark } from "react-icons/hi2";
+import { useCompanyName } from "@/contexts/WorkspaceContext";
 import Drawer from "@mui/material/Drawer";
-import IconButton from "@mui/material/IconButton";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import AccountBalanceWalletOutlined from "@mui/icons-material/AccountBalanceWalletOutlined";
 import AssignmentOutlined from "@mui/icons-material/AssignmentOutlined";
 import BusinessOutlined from "@mui/icons-material/BusinessOutlined";
 import CalculateOutlined from "@mui/icons-material/CalculateOutlined";
-import CloseRounded from "@mui/icons-material/CloseRounded";
 import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
 import GavelOutlined from "@mui/icons-material/GavelOutlined";
 import GroupOutlined from "@mui/icons-material/GroupOutlined";
@@ -37,7 +26,6 @@ import TaskAltOutlined from "@mui/icons-material/TaskAltOutlined";
 import StickyNote2Outlined from "@mui/icons-material/StickyNote2Outlined";
 import DynamicFormOutlined from "@mui/icons-material/DynamicFormOutlined";
 import HandshakeOutlined from "@mui/icons-material/HandshakeOutlined";
-import LogoMark from "@/components/ui/LogoMark";
 import { useAuth } from "@/contexts/AuthContext";
 import { USER_ROLE_LABELS } from "@/lib/constants";
 import type { ModuleKey } from "@/types";
@@ -132,22 +120,30 @@ interface SidebarProps {
 function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate?: () => void }) {
   const Icon = item.icon;
   return (
-    <ListItem disablePadding>
-      <ListItemButton component={Link} href={item.href} selected={active} onClick={onNavigate} sx={{ py: 0.5, minHeight: 36 }}>
-        <ListItemIcon sx={{ minWidth: 32, color: active ? "primary.main" : "text.secondary" }}>
-          <Icon sx={{ fontSize: 19 }} />
-        </ListItemIcon>
-        <ListItemText primary={item.label} slotProps={{ primary: { noWrap: true, sx: { fontWeight: active ? 600 : 500, fontSize: 14 } } }} />
-      </ListItemButton>
-    </ListItem>
+    <li>
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
+        className={`group relative flex h-9 items-center gap-3 rounded-lg px-3 text-[13.5px] transition-colors duration-150 ${
+          active ? "bg-white/[0.09] font-semibold text-white" : "font-medium text-white/60 hover:bg-white/[0.05] hover:text-white"
+        }`}
+      >
+        {active ? <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-tan" aria-hidden /> : null}
+        <Icon sx={{ fontSize: 18 }} className={active ? "text-tan" : "text-white/45 transition-colors group-hover:text-white/80"} />
+        <span className="truncate">{item.label}</span>
+      </Link>
+    </li>
   );
 }
 
 function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
   const { user, isAdmin, can } = useAuth();
+  const companyName = useCompanyName();
   const [search, setSearch] = useState("");
   const [openGroups, setOpenGroups] = useState<string[]>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const allowed = (item: NavItem) => (!item.adminOnly || isAdmin) && (!item.module || can(item.module));
   const visibleGroups = groups
@@ -165,6 +161,21 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
     }
     setOpenGroups(activeGroup && !saved.includes(activeGroup) ? [...saved, activeGroup] : saved);
   }, [activeGroup]);
+
+  // ⌘K / Ctrl+K foca a busca do menu.
+  useEffect(() => {
+    function handleKey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        const input = searchRef.current;
+        if (!input || input.offsetParent === null) return;
+        event.preventDefault();
+        input.focus();
+        input.select();
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   function toggle(label: string) {
     setOpenGroups((current) => {
@@ -185,38 +196,61 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
         .filter((item) => normalize(item.label).includes(term))
     : [];
 
+  function goTo(href: string) {
+    setSearch("");
+    void router.push(href);
+    onNavigate?.();
+  }
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1.5 }}>
-        <LogoMark withWordmark />
-        <IconButton onClick={onNavigate} sx={{ display: { lg: "none" } }} aria-label="Fechar navegação">
-          <CloseRounded />
-        </IconButton>
-      </Box>
-      <Box sx={{ px: 1.5, pb: 1 }}>
+    <div className="flex h-full flex-col bg-[hsl(222,32%,9%)] text-white">
+      <div className="flex items-center justify-between px-4 pb-4 pt-5">
+        <Link href="/" onClick={onNavigate} className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-tan to-[hsl(222,90%,40%)] text-[15px] font-extrabold tracking-tight shadow-[0_6px_18px_-6px_hsl(210,98%,48%)]">
+            N
+          </span>
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[15px] font-bold tracking-tight">Noma</span>
+            <span className="block truncate text-[11px] text-white/45">{companyName}</span>
+          </span>
+        </Link>
+        <button
+          type="button"
+          onClick={onNavigate}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 lg:hidden"
+          aria-label="Fechar navegação"
+        >
+          <HiXMark className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="px-3 pb-3">
         <label className="relative block">
           <span className="sr-only">Buscar no menu</span>
-          <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal/35" />
+          <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
           <input
-            className="w-full rounded-lg border border-charcoal/10 bg-beige/60 py-1.5 pl-8 pr-2 text-sm text-charcoal placeholder:text-charcoal/35 focus:border-tan focus:outline-none"
+            ref={searchRef}
+            className="h-9 w-full rounded-lg border border-white/[0.08] bg-white/[0.05] pl-9 pr-12 text-[13px] text-white placeholder:text-white/35 transition focus:border-tan/60 focus:bg-white/[0.08] focus:outline-none"
             placeholder="Ir para..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && searchResults[0]) {
-                void router.push(searchResults[0].href);
+              if (event.key === "Enter" && searchResults[0]) goTo(searchResults[0].href);
+              if (event.key === "Escape") {
                 setSearch("");
-                onNavigate?.();
+                event.currentTarget.blur();
               }
-              if (event.key === "Escape") setSearch("");
             }}
           />
+          <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 font-sans text-[10px] text-white/40 lg:block">
+            ⌘K
+          </kbd>
         </label>
-      </Box>
-      <Divider />
-      <Box sx={{ flex: 1, overflowY: "auto", px: 1.5, py: 1 }}>
+      </div>
+
+      <nav className="noma-scroll flex-1 overflow-y-auto px-3 pb-3">
         {term ? (
-          <List dense disablePadding>
+          <ul className="space-y-0.5">
             {searchResults.length ? (
               searchResults.map((item) => (
                 <NavLink
@@ -230,79 +264,88 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
                 />
               ))
             ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ px: 1.5, py: 1 }}>
-                Nada encontrado.
-              </Typography>
+              <li className="px-3 py-2 text-[13px] text-white/40">Nada encontrado.</li>
             )}
-          </List>
+          </ul>
         ) : (
           <>
-            <List dense disablePadding>
+            <ul className="space-y-0.5">
               {topItems.filter(allowed).map((item) => (
                 <NavLink key={item.href} item={item} active={isActivePath(router.pathname, item.href)} onNavigate={onNavigate} />
               ))}
-            </List>
+            </ul>
             {visibleGroups.map((group) => {
               const expanded = openGroups.includes(group.label);
-              const hasActive = group.label === activeGroup;
               return (
-                <Box key={group.label} sx={{ mt: 0.5 }}>
+                <div key={group.label} className="mt-4">
                   <button
                     type="button"
                     onClick={() => toggle(group.label)}
                     aria-expanded={expanded}
-                    className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-[11px] font-bold uppercase tracking-[0.08em] transition hover:bg-beige ${
-                      hasActive ? "text-tan" : "text-charcoal/45"
-                    }`}
+                    className="group flex w-full items-center justify-between px-3 pb-1.5 text-left"
                   >
-                    <span>{group.label}</span>
-                    <span className="flex items-center gap-1.5">
-                      {!expanded ? <span className="rounded-full bg-charcoal/[0.06] px-1.5 text-[10px] font-semibold text-charcoal/45">{group.items.length}</span> : null}
-                      <HiChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                    <span
+                      className={`text-[10.5px] font-semibold uppercase tracking-[0.14em] transition-colors ${
+                        group.label === activeGroup ? "text-white/70" : "text-white/35 group-hover:text-white/60"
+                      }`}
+                    >
+                      {group.label}
                     </span>
+                    <HiChevronDown
+                      className={`h-3.5 w-3.5 text-white/30 transition-transform duration-200 group-hover:text-white/60 ${expanded ? "" : "-rotate-90"}`}
+                    />
                   </button>
-                  <Collapse in={expanded} timeout={150} unmountOnExit>
-                    <List dense disablePadding>
+                  <Collapse in={expanded} timeout={180} unmountOnExit>
+                    <ul className="space-y-0.5">
                       {group.items.map((item) => (
                         <NavLink key={item.href} item={item} active={isActivePath(router.pathname, item.href)} onNavigate={onNavigate} />
                       ))}
-                    </List>
+                    </ul>
                   </Collapse>
-                </Box>
+                </div>
               );
             })}
-            <List dense disablePadding sx={{ mt: 0.5 }}>
-              {bottomItems.filter(allowed).map((item) => (
-                <NavLink key={item.href} item={item} active={isActivePath(router.pathname, item.href)} onNavigate={onNavigate} />
-              ))}
-            </List>
+            {bottomItems.some(allowed) ? (
+              <ul className="mt-4 space-y-0.5 border-t border-white/[0.06] pt-4">
+                {bottomItems.filter(allowed).map((item) => (
+                  <NavLink key={item.href} item={item} active={isActivePath(router.pathname, item.href)} onNavigate={onNavigate} />
+                ))}
+              </ul>
+            ) : null}
           </>
         )}
-      </Box>
-      <Divider />
-      <Stack direction="row" spacing={1} sx={{ px: 1.5, py: 1.25, alignItems: "center" }}>
-        <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 12 }}>{getInitials(user?.name)}</Avatar>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography noWrap sx={{ fontWeight: 600, fontSize: 13 }}>
-            {user?.name || "Noma"}
-          </Typography>
-          <Typography noWrap variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.2 }}>
-            {user?.role ? USER_ROLE_LABELS[user.role] : "Equipe"}
-          </Typography>
-        </Box>
-        {footerItems.filter(allowed).map((item) => {
-          const Icon = item.icon;
-          const active = isActivePath(router.pathname, item.href);
-          return (
-            <Tooltip key={item.href} title={item.label}>
-              <IconButton component={Link} href={item.href} onClick={onNavigate} size="small" aria-label={item.label} color={active ? "primary" : "default"}>
-                <Icon sx={{ fontSize: 19 }} />
-              </IconButton>
-            </Tooltip>
-          );
-        })}
-      </Stack>
-    </Box>
+      </nav>
+
+      <div className="border-t border-white/[0.06] p-3">
+        <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.04] p-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold text-white">
+            {getInitials(user?.name)}
+          </span>
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block truncate text-[13px] font-semibold">{user?.name || "Noma"}</span>
+            <span className="block truncate text-[11px] text-white/45">{user?.role ? USER_ROLE_LABELS[user.role] : "Equipe"}</span>
+          </span>
+          {footerItems.filter(allowed).map((item) => {
+            const Icon = item.icon;
+            const active = isActivePath(router.pathname, item.href);
+            return (
+              <Tooltip key={item.href} title={item.label}>
+                <Link
+                  href={item.href}
+                  onClick={onNavigate}
+                  aria-label={item.label}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
+                    active ? "bg-white/10 text-tan" : "text-white/50 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <Icon sx={{ fontSize: 18 }} />
+                </Link>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -316,7 +359,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: "block", lg: "none" },
-          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box" },
+          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box", border: 0, bgcolor: "hsl(222,32%,9%)" },
         }}
       >
         <MenuBody onNavigate={onClose} />
@@ -327,7 +370,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           display: { xs: "none", lg: "block" },
           width: DRAWER_WIDTH,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box" },
+          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box", border: 0, bgcolor: "hsl(222,32%,9%)" },
         }}
         open
       >

@@ -12,6 +12,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { NPSSurvey } from "@/types";
 import { formatDate } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 const EMPTY_SURVEY = {
   name: "",
@@ -65,13 +66,13 @@ export default function NpsPage() {
   }
 
   async function handleDelete(survey: NPSSurvey) {
-    if (!window.confirm(`Excluir a pesquisa "${survey.name}"? As respostas já recebidas continuam.`)) return;
+    if (!(await confirmDialog({ title: `Excluir a pesquisa "${survey.name}"?`, message: "As respostas já recebidas continuam.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.nps.surveys.remove(survey._id);
     await surveysData.reload();
   }
 
   async function removeRating(id: string) {
-    if (!window.confirm("Excluir esta resposta?")) return;
+    if (!(await confirmDialog({ title: "Excluir esta resposta?", confirmLabel: "Excluir", danger: true }))) return;
     await resources.nps.removeRating(id);
     await ratingsData.reload();
   }

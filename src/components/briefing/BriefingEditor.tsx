@@ -19,6 +19,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import { printDocument } from "@/utils/document";
 import BriefingPreview from "./BriefingPreview";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 interface BriefingEditorProps {
   id: string;
@@ -210,8 +211,8 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
     }
   }
 
-  function handleClear() {
-    if (!window.confirm("Limpar o briefing e voltar aos valores padrão? Os dados preenchidos serão perdidos.")) return;
+  async function handleClear() {
+    if (!(await confirmDialog({ title: "Limpar o briefing?", message: "Tudo volta aos valores padrão e os dados preenchidos serão perdidos.", confirmLabel: "Limpar", danger: true }))) return;
     setData(defaultData());
   }
 

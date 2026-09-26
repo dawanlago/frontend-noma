@@ -25,6 +25,7 @@ import {
   type FollowupForm,
   type FollowupTiming,
 } from "@/lib/followup/options";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 const toneStyles: Record<RecommendationTone, { box: string; chip: string }> = {
   now: { box: "border-sage/25 bg-sage/[0.06]", chip: "bg-sage/10 text-sage" },
@@ -59,8 +60,8 @@ export default function FollowupPage() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => {
-                if (window.confirm("Limpar o formulário e começar de novo?")) reset();
+              onClick={async () => {
+                if (await confirmDialog({ title: "Limpar e começar de novo?", message: "O que foi preenchido neste follow-up será apagado.", confirmLabel: "Limpar", danger: true })) reset();
               }}
             >
               Limpar

@@ -27,6 +27,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { Contact, Lead, LeadComment, LeadStatus, Task } from "@/types";
 import { formatCurrencyBRL, formatDateOnly, formatDateTime, instagramLink, whatsappLink } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 function Section({ title, children, actions }: { title: string; children: React.ReactNode; actions?: React.ReactNode }) {
   return (
@@ -65,8 +66,8 @@ function Comments({ lead, onChange }: { lead: Lead; onChange: (lead: Lead) => vo
     }
   }
 
-  function remove(comment: LeadComment) {
-    if (!window.confirm("Apagar este parecer?")) return;
+  async function remove(comment: LeadComment) {
+    if (!(await confirmDialog({ title: "Apagar este parecer?", confirmLabel: "Apagar", danger: true }))) return;
     void run(() => resources.leads.removeComment(lead._id, comment._id));
   }
 

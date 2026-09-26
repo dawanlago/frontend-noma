@@ -21,6 +21,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { Lead } from "@/types";
 import { formatCurrencyBRL, todayISO } from "@/utils/format";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 type CrmTab = "pipeline" | "list" | "reports";
 
@@ -101,7 +102,7 @@ export default function CrmPage() {
   }
 
   async function quickDelete(lead: Lead) {
-    if (!window.confirm(`Excluir a negociação "${lead.name}"? Essa ação não pode ser desfeita.`)) return;
+    if (!(await confirmDialog({ title: `Excluir a negociação "${lead.name}"?`, message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
     try {
       await handleDelete(lead);
     } catch (err) {

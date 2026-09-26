@@ -37,6 +37,7 @@ import { printDocument } from "@/utils/document";
 import ContractPreview from "./ContractPreview";
 import LogoUpload from "./LogoUpload";
 import PartyFields from "./PartyFields";
+import { confirmDialog } from "@/components/ui/DialogHost";
 
 interface ContractEditorProps {
   id: string;
@@ -191,8 +192,8 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
     }
   }
 
-  function handleClear() {
-    if (!window.confirm("Limpar o contrato e voltar aos valores padrão? Os dados preenchidos serão perdidos.")) return;
+  async function handleClear() {
+    if (!(await confirmDialog({ title: "Limpar o contrato?", message: "Tudo volta aos valores padrão e os dados preenchidos serão perdidos.", confirmLabel: "Limpar", danger: true }))) return;
     setData(defaultData());
   }
 
