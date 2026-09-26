@@ -139,6 +139,13 @@ export interface InstallmentsPayload {
   firstReceived?: boolean;
   installments: { value: number; date: string }[];
 }
+export interface GoogleStatus {
+  /** Integração ligada no servidor. */
+  configured: boolean;
+  connected: boolean;
+  email: string;
+}
+
 export type LeadPayload = Partial<Omit<Lead, "nextActionDate">> & { nextActionDate?: string | null };
 
 export const resources = {
@@ -193,6 +200,11 @@ export const resources = {
     },
   },
   tasks: crud<Task>("/tasks"),
+  google: {
+    status: () => getOne<GoogleStatus>("/google/status"),
+    connectUrl: async () => (await getOne<{ url: string }>("/google/connect")).url,
+    disconnect: () => remove("/google"),
+  },
   notes: {
     list: () => listData<Note>("/notes"),
     create: (payload: Partial<Note>) => create<Note>("/notes", payload),

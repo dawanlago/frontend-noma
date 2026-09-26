@@ -188,6 +188,10 @@ export interface Task extends Owned {
   leadId?: string;
   leadName?: string;
   notes: string;
+  /** Duração em minutos (compromissos com hora). */
+  duration?: number;
+  /** Evento no Google Agenda do responsável, quando sincronizado. */
+  googleEventId?: string;
   createdAt: string;
   updatedAt: string;
 }

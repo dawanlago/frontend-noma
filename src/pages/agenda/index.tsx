@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
+import GoogleCalendarConnect from "@/components/agenda/GoogleCalendarConnect";
 import EntityPicker from "@/components/base/EntityPicker";
+import Select from "@/components/ui/Select";
 import Field from "@/components/tools/Field";
 import OwnerFilter from "@/components/tools/OwnerFilter";
 import Modal from "@/components/ui/Modal";
@@ -35,10 +37,23 @@ function longDay(value: string) {
   return fromIso(value).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 }
 
+const DURATIONS = [
+  { value: "15", label: "15 min" },
+  { value: "30", label: "30 min" },
+  { value: "45", label: "45 min" },
+  { value: "60", label: "1 hora" },
+  { value: "90", label: "1h30" },
+  { value: "120", label: "2 horas" },
+  { value: "180", label: "3 horas" },
+  { value: "240", label: "4 horas" },
+  { value: "480", label: "Dia de gravação (8h)" },
+];
+
 interface Draft {
   title: string;
   date: string;
   time: string;
+  duration: string;
   leadId: string;
   notes: string;
 }
@@ -56,6 +71,7 @@ export default function AgendaPage() {
   const [editor, setEditor] = useState<{ task: Task | null; draft: Draft } | null>(null);
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
 
   const tasks = useMemo(() => (data || []).filter((task) => task.dueDate), [data]);
   const byDay = useMemo(() => {
@@ -101,13 +117,21 @@ export default function AgendaPage() {
 
   function openCreate(date = selectedDate) {
     setFormError("");
-    setEditor({ task: null, draft: { title: "", date, time: "10:00", leadId: "", notes: "" } });
+    setEditor({ task: null, draft: { title: "", date, time: "10:00", duration: "60", leadId: "", notes: "" } });
   }
 
   function openEdit(task: Task) {
     setOpenTaskId(null);
     setFormError("");
-    setEditor({ task, draft: { title: task.title, date: task.dueDate, time: task.time, leadId: task.leadId || "", notes: task.notes } });
+    setEditor({ task, draft: {
+        title: task.title,
+        date: task.dueDate,
+        time: task.time,
+        duration: String(task.duration || 60),
+        leadId: task.leadId || "",
+        notes: task.notes,
+      },
+    });
   }
 
   const upsert = (saved: Task) =>
@@ -128,7 +152,14 @@ export default function AgendaPage() {
     setBusy(true);
     setFormError("");
     try {
-      const payload = { title: draft.title.trim(), dueDate: draft.date, time: draft.time, leadId: draft.leadId, notes: draft.notes };
+      const payload = {
+        title: draft.title.trim(),
+        dueDate: draft.date,
+        time: draft.time,
+        duration: Number(draft.duration) || 60,
+        leadId: draft.leadId,
+        notes: draft.notes,
+      };
       const saved = task ? await resources.tasks.update(task._id, payload) : await resources.tasks.create(payload);
       upsert(saved);
       setEditor(null);
@@ -167,9 +198,12 @@ export default function AgendaPage() {
         title="Agenda"
         description="Clique no dia para ver a agenda, dê dois cliques para marcar um compromisso e abra para atualizar o status. Atividades com data também aparecem aqui."
         actions={
-          <button type="button" className="btn-primary" onClick={() => openCreate()}>
-            Novo compromisso
-          </button>
+          <>
+            <GoogleCalendarConnect onChange={(status) => setGoogleConnected(status.connected)} />
+            <button type="button" className="btn-primary" onClick={() => openCreate()}>
+              Novo compromisso
+            </button>
+          </>
         }
       />
       {isAdmin ? (
@@ -466,12 +500,19 @@ export default function AgendaPage() {
                 onChange={(event) => setEditor({ ...editor, draft: { ...editor.draft, date: event.target.value } })}
               />
             </Field>
-            <Field label="Horário">
+            <Field label="Horário" hint={googleConnected ? "Com horário, vai para o seu Google Agenda." : undefined}>
               <input
                 className="input-search"
                 type="time"
                 value={editor.draft.time}
                 onChange={(event) => setEditor({ ...editor, draft: { ...editor.draft, time: event.target.value } })}
+              />
+            </Field>
+            <Field label="Duração">
+              <Select
+                value={editor.draft.duration}
+                onChange={(duration) => setEditor({ ...editor, draft: { ...editor.draft, duration } })}
+                options={DURATIONS}
               />
             </Field>
             <Field label="Negociação" full group hint="Opcional. Vincule se o compromisso for de uma venda.">
