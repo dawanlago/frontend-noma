@@ -1,7 +1,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { HiOutlineArrowRight } from "react-icons/hi2";
+import { HiOutlineArrowRight, HiOutlineChartBar } from "react-icons/hi2";
 import BirthdayCard from "@/components/base/BirthdayCard";
 import TaskChecklist from "@/components/tasks/TaskChecklist";
 import MetricCard from "@/components/ui/MetricCard";
@@ -82,14 +82,31 @@ export default function HomePage() {
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-charcoal">Seu momento</h2>
-        <OwnerFilter value={ownerId} onChange={setOwnerId} />
+        <div className="flex flex-wrap items-center gap-2">
+          {can("crm") ? (
+            <Link href="/crm" className="btn-secondary">
+              <HiOutlineChartBar className="h-4 w-4" /> Métricas do CRM <HiOutlineArrowRight className="h-4 w-4" />
+            </Link>
+          ) : null}
+          <OwnerFilter value={ownerId} onChange={setOwnerId} />
+        </div>
       </div>
       <section className="noma-stagger mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Potencial em aberto"
-          value={formatCurrencyBRL(data?.openPipeline || 0)}
-          hint={`${data?.leadsCount || 0} negociações no CRM`}
-        />
+        {can("crm") ? (
+          <Link href="/crm" className="block rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lift" title="Ver métricas no CRM">
+            <MetricCard
+              label="Potencial em aberto"
+              value={formatCurrencyBRL(data?.openPipeline || 0)}
+              hint={`${data?.leadsCount || 0} negociações no CRM →`}
+            />
+          </Link>
+        ) : (
+          <MetricCard
+            label="Potencial em aberto"
+            value={formatCurrencyBRL(data?.openPipeline || 0)}
+            hint={`${data?.leadsCount || 0} negociações no CRM`}
+          />
+        )}
         {data?.finance !== null ? (
           <>
             <MetricCard
