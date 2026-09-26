@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HiOutlineCog6Tooth, HiOutlinePlus } from "react-icons/hi2";
 import EmptyState from "@/components/crm/EmptyState";
+import FunnelPicker from "@/components/crm/FunnelPicker";
 import LeadModal from "@/components/crm/LeadModal";
 import LeadsTable from "@/components/crm/LeadsTable";
 import PipelineBoard from "@/components/crm/PipelineBoard";
@@ -29,6 +30,8 @@ import { confirmDialog } from "@/components/ui/DialogHost";
 
 type CrmTab = "pipeline" | "list" | "reports";
 
+const FUNNEL_KEY = "noma:crm:funnel";
+
 const TABS: { value: CrmTab; label: string }[] = [
   { value: "pipeline", label: "Funil" },
   { value: "list", label: "Lista" },
@@ -50,8 +53,37 @@ export default function CrmPage() {
   const [notice, setNotice] = useState("");
   const today = todayISO();
 
-  const funnel = funnels.find((item) => item._id === funnelId) || funnels[0];
   const { data, isLoading, error, setData } = useAsyncData(() => resources.leads.list({ ownerId }), [ownerId]);
+  const openCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (data || []).forEach((lead) => {
+      if (lead.status === "open") counts[lead.funnelId] = (counts[lead.funnelId] || 0) + 1;
+    });
+    return counts;
+  }, [data]);
+  // Funil aberto: o escolhido; senão o último usado neste navegador; senão o que tem mais negociações em aberto.
+  const funnel = useMemo(() => {
+    const chosen = funnels.find((item) => item._id === funnelId);
+    if (chosen) return chosen;
+    let saved = "";
+    try {
+      saved = localStorage.getItem(FUNNEL_KEY) || "";
+    } catch {
+      saved = "";
+    }
+    const remembered = funnels.find((item) => item._id === saved);
+    if (remembered) return remembered;
+    return [...funnels].sort((a, b) => (openCounts[b._id] || 0) - (openCounts[a._id] || 0))[0];
+  }, [funnels, funnelId, openCounts]);
+
+  function pickFunnel(id: string) {
+    setFunnelId(id);
+    try {
+      localStorage.setItem(FUNNEL_KEY, id);
+    } catch {
+      // Sem armazenamento local: só não lembra a escolha.
+    }
+  }
   const leads = useMemo(() => (data || []).filter((lead) => lead.funnelId === funnel?._id), [data, funnel]);
   const filtered = useMemo(() => filterLeads(leads, filters), [leads, filters]);
   const metrics = useMemo(() => computeLeadMetrics(filtered), [filtered]);
@@ -117,7 +149,7 @@ export default function CrmPage() {
     } else {
       const saved = await resources.leads.create(payload);
       setData((current) => [{ ...saved, ownerName: saved.ownerName || user?.name }, ...(current || [])]);
-      if (saved.funnelId !== funnel?._id) setFunnelId(saved.funnelId);
+      if (saved.funnelId !== funnel?._id) pickFunnel(saved.funnelId);
     }
     setModal({ open: false, lead: null });
   }
@@ -258,28 +290,8 @@ export default function CrmPage() {
         title="CRM"
         aside={
           <>
-          {funnels.length > 1 ? (
-            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-              <div className="flex min-w-max gap-1.5">
-                {funnels.map((item) => {
-                  const active = item._id === funnel?._id;
-                  const count = (data || []).filter((lead) => lead.funnelId === item._id && lead.status === "open").length;
-                  return (
-                    <button
-                      key={item._id}
-                      type="button"
-                      onClick={() => setFunnelId(item._id)}
-                      className={`rounded-full px-3 py-1 text-sm font-semibold transition ${
-                        active ? "bg-charcoal text-white" : "text-charcoal/55 hover:bg-charcoal/[0.05] hover:text-charcoal"
-                      }`}
-                    >
-                      {item.name}
-                      <span className={`ml-1.5 text-xs ${active ? "text-white/65" : "text-charcoal/35"}`}>{count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          {funnels.length ? (
+            <FunnelPicker funnels={funnels} value={funnel?._id || ""} counts={openCounts} canManage={can("configuracoes")} onChange={pickFunnel} />
           ) : null}
           </>
         }
