@@ -42,6 +42,9 @@ const config: Config = {
       letterSpacing: {
         label: "0.12em",
       },
+      transitionTimingFunction: {
+        "out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
     },
   },
   plugins: [],

@@ -42,6 +42,7 @@ export default function CrmPage() {
   const [modal, setModal] = useState<{ open: boolean; lead: Lead | null }>({ open: false, lead: null });
   const [preset, setPreset] = useState<{ contactId?: string; companyId?: string }>({});
   const [wonLead, setWonLead] = useState<Lead | null>(null);
+  const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const today = todayISO();
 
@@ -118,7 +119,7 @@ export default function CrmPage() {
     );
     try {
       replaceLead(await resources.leads.update(lead._id, { stageId }));
-      if (stage?.kind === "won") setWonLead(lead);
+      if (stage?.kind === "won") celebrate(lead);
     } catch (err) {
       setData(previous);
       setNotice(apiError(err, `Não foi possível mover "${lead.name}".`));
@@ -129,10 +130,17 @@ export default function CrmPage() {
     try {
       const saved = await resources.leads.setStatus(lead._id, "won");
       replaceLead(saved);
-      setWonLead(saved);
+      celebrate(saved);
     } catch (err) {
       setNotice(apiError(err, "Não foi possível registrar a venda."));
     }
+  }
+
+  // Pulso de comemoração no card; o modal de "Venda registrada" abre logo depois.
+  function celebrate(lead: Lead) {
+    setCelebrateId(lead._id);
+    window.setTimeout(() => setCelebrateId((current) => (current === lead._id ? null : current)), 1000);
+    window.setTimeout(() => setWonLead(lead), 650);
   }
 
   const openLead = (lead: Lead) => void router.push(`/crm/${lead._id}`);
@@ -176,6 +184,7 @@ export default function CrmPage() {
           onDelete={(lead) => void quickDelete(lead)}
           onMove={(lead, stageId) => void moveLead(lead, stageId)}
           onWon={(lead) => void markWon(lead)}
+          celebrateId={celebrateId}
         />
       );
     }
@@ -244,7 +253,7 @@ export default function CrmPage() {
         </div>
       ) : null}
 
-      <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <MetricCard label="Potencial em aberto" value={formatCurrencyBRL(metrics.openValue)} />
         <MetricCard label="Vendas feitas" value={formatCurrencyBRL(metrics.wonValue)} hint={`${metrics.wonCount} vendas`} tone="sage" />
         <MetricCard label="Ticket médio" value={formatCurrencyBRL(metrics.averageTicket)} />

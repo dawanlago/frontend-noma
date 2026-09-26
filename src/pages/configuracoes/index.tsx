@@ -96,7 +96,7 @@ export default function SettingsPage() {
         description="Ajuste campos, opções, funis, mensagens e a identidade da produtora."
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="noma-stagger grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {links.map((item) => {
           const Icon = item.icon;
 
@@ -113,7 +113,7 @@ export default function SettingsPage() {
               <p className="mt-2 text-sm leading-6 text-charcoal/50">{item.description}</p>
               <p className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-tan">
                 Abrir
-                <HiOutlineArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                <HiOutlineArrowRight className="h-4 w-4 transition duration-300 ease-out-expo group-hover:translate-x-1" />
               </p>
             </Link>
           );

@@ -15,13 +15,26 @@ interface PipelineBoardProps {
   onDelete: (lead: Lead) => void;
   onMove: (lead: Lead, stageId: string) => void;
   onWon: (lead: Lead) => void;
+  /** Negociação que acabou de virar venda feita. */
+  celebrateId?: string | null;
 }
 
 const DRAG_TYPE = "text/plain";
 
 const headerTone = { open: "text-charcoal/50", won: "text-sage", lost: "text-burgundy" };
 
-export default function PipelineBoard({ funnel, leads, today, showOwner, onOpen, onEdit, onDelete, onMove, onWon }: PipelineBoardProps) {
+export default function PipelineBoard({
+  funnel,
+  leads,
+  today,
+  showOwner,
+  onOpen,
+  onEdit,
+  onDelete,
+  onMove,
+  onWon,
+  celebrateId,
+}: PipelineBoardProps) {
   const { labelOf } = useWorkspace();
   const columns = groupByStage(leads, funnel);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -48,7 +61,7 @@ export default function PipelineBoard({ funnel, leads, today, showOwner, onOpen,
 
   return (
     <div className="-mx-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
-      <div className="flex min-w-max gap-3">
+      <div className="noma-stagger flex min-w-max gap-3">
         {columns.map((column) => {
           const isOver = overStage === column.stage._id && draggingId !== null;
           return (
@@ -84,6 +97,7 @@ export default function PipelineBoard({ funnel, leads, today, showOwner, onOpen,
                     showOwner={showOwner}
                     serviceLabel={lead.service ? labelOf("leadService", lead.service) : ""}
                     isDragging={draggingId === lead._id}
+                    celebrating={celebrateId === lead._id}
                     onOpen={onOpen}
                     onEdit={onEdit}
                     onDelete={onDelete}

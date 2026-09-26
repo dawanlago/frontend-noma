@@ -45,6 +45,13 @@ export const red = {
 const base = createTheme();
 
 export const nomaTheme = createTheme({
+  // Mesma curva do CSS (--ease-out): menus, colapsos e modais saem rápido e pousam suave.
+  transitions: {
+    easing: {
+      easeOut: "cubic-bezier(0.16, 1, 0.3, 1)",
+      easeInOut: "cubic-bezier(0.16, 1, 0.3, 1)",
+    },
+  },
   palette: {
     mode: "light",
     primary: {

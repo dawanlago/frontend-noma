@@ -9,6 +9,13 @@
   --burgundy: hsl(0, 90%, 40%);
   --gold: hsl(45, 90%, 40%);
   --ink: hsl(220, 30%, 6%);
+
+  /* Movimento: sai rápido e pousa suave; interface vive entre 0,4 e 0,8s. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: linear(0, 0.6 18%, 1.02 38%, 0.99 60%, 1);
+  --dur-ui: 0.45s;
+  --dur-enter: 0.6s;
+  --stagger: 60ms;
 }
 
 html,
@@ -21,15 +28,15 @@ body,
 @layer components {
   .btn-primary,
   .btn-gold {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-tan px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-[#0062d1] focus:outline-none focus:ring-2 focus:ring-tan/30 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-tan px-4 py-2.5 text-sm font-semibold text-white transition duration-300 ease-out-expo hover:bg-[#0062d1] focus:outline-none focus:ring-2 focus:ring-tan/30 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100;
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-burgundy px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-[#b81414] focus:outline-none focus:ring-2 focus:ring-burgundy/40;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-burgundy px-4 py-2.5 text-sm font-semibold text-white transition duration-300 ease-out-expo hover:bg-[#b81414] focus:outline-none focus:ring-2 focus:ring-burgundy/40 active:scale-[0.97];
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-charcoal/10 bg-white px-4 py-2.5 text-sm font-semibold text-charcoal transition duration-200 hover:bg-beige focus:outline-none focus:ring-2 focus:ring-tan/20;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-charcoal/10 bg-white px-4 py-2.5 text-sm font-semibold text-charcoal transition duration-300 ease-out-expo hover:bg-beige focus:outline-none focus:ring-2 focus:ring-tan/20 active:scale-[0.97] disabled:active:scale-100;
   }
 
   .btn-ghost {
@@ -104,4 +111,80 @@ body,
 .noma-scroll::-webkit-scrollbar-thumb {
   background: hsla(220, 30%, 6%, 0.12);
   border-radius: 999px;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Movimento (desligado para quem pede "reduzir movimento" no sistema)          */
+/* -------------------------------------------------------------------------- */
+
+@keyframes noma-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes noma-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+@keyframes noma-won {
+  0% {
+    box-shadow: 0 0 0 0 hsla(120, 44%, 53%, 0.55);
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.04);
+  }
+  100% {
+    box-shadow: 0 0 0 14px hsla(120, 44%, 53%, 0);
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Entrada de página: o conteúdo pousa de leve ao trocar de tela. */
+  .noma-page-enter {
+    animation: noma-up var(--dur-ui) var(--ease-out) both;
+  }
+
+  /* Cartões em sequência: 60ms entre cada um, no máximo 8 passos. */
+  .noma-stagger > * {
+    animation: noma-up var(--dur-enter) var(--ease-out) both;
+  }
+  .noma-stagger > *:nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
+  .noma-stagger > *:nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+  .noma-stagger > *:nth-child(4) { animation-delay: calc(var(--stagger) * 3); }
+  .noma-stagger > *:nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
+  .noma-stagger > *:nth-child(6) { animation-delay: calc(var(--stagger) * 5); }
+  .noma-stagger > *:nth-child(7) { animation-delay: calc(var(--stagger) * 6); }
+  .noma-stagger > *:nth-child(n + 8) { animation-delay: calc(var(--stagger) * 7); }
+
+  /* Modais sobem e crescem um pouco ao abrir. */
+  .MuiDialog-paper {
+    animation: noma-rise var(--dur-ui) var(--ease-out) both;
+  }
+
+  /* "Venda feita": pulso verde que assenta com mola (curva padrão onde linear() não existe). */
+  .noma-won {
+    animation: noma-won 0.9s var(--ease-out) both;
+  }
+  @supports (animation-timing-function: linear(0, 1)) {
+    .noma-won {
+      animation-timing-function: var(--ease-spring);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary,
+  .btn-gold,
+  .btn-danger,
+  .btn-secondary {
+    transform: none !important;
+  }
 }

@@ -83,7 +83,7 @@ export default function HomePage() {
         <h2 className="text-lg font-semibold text-charcoal">Seu momento</h2>
         <OwnerFilter value={ownerId} onChange={setOwnerId} />
       </div>
-      <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="noma-stagger mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Potencial em aberto"
           value={formatCurrencyBRL(data?.openPipeline || 0)}
@@ -149,7 +149,7 @@ export default function HomePage() {
 
       <h2 className="text-lg font-semibold text-charcoal">Ferramentas da Noma</h2>
       <p className="mb-4 text-sm text-charcoal/55">Tudo o que você precisa para organizar a rotina comercial e operacional.</p>
-      <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="noma-stagger mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {tools.map((tool, index) => (
           <Link
             key={tool.href}
@@ -163,7 +163,7 @@ export default function HomePage() {
             <p className="mt-2 flex-1 text-sm leading-6 text-charcoal/55">{tool.description}</p>
             <p className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-tan">
               Abrir ferramenta
-              <HiOutlineArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+              <HiOutlineArrowRight className="h-4 w-4 transition duration-300 ease-out-expo group-hover:translate-x-1" />
             </p>
           </Link>
         ))}

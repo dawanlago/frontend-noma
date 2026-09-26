@@ -19,7 +19,7 @@ export default function YearView({ year, months, isLoading, error, onOpenMonth }
 
   return (
     <div className="grid gap-6">
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="noma-stagger grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Faturamento recebido no ano"
           value={formatCurrencyBRL(totals.received)}

@@ -98,7 +98,7 @@ export default function NpsPage() {
         }
       />
 
-      <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="NPS" value={String(summary?.score ?? 0)} hint={`${total} respostas`} tone={(summary?.score || 0) >= 50 ? "sage" : (summary?.score || 0) >= 0 ? "gold" : "burgundy"} />
         <MetricCard label="Promotores (9–10)" value={String(summary?.promoters || 0)} tone="sage" />
         <MetricCard label="Neutros (7–8)" value={String(summary?.passives || 0)} tone="gold" />

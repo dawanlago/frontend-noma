@@ -299,7 +299,7 @@ export default function FinancePage() {
         />
       ) : (
         <>
-          <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Entradas recebidas"
               value={formatCurrencyBRL(totals.received)}

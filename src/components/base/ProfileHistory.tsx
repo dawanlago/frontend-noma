@@ -14,7 +14,7 @@ export default function ProfileHistory({ history, showCompany }: { history: Hist
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="noma-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Vendas feitas" value={formatCurrencyBRL(history.totals.wonValue)} hint={`${history.totals.wonCount} vendas`} tone="sage" />
         <MetricCard label="Em negociação" value={formatCurrencyBRL(history.totals.openValue)} hint={`${history.totals.openCount} abertas`} />
         <MetricCard label="Recebido no financeiro" value={formatCurrencyBRL(history.totals.received)} tone="gold" />

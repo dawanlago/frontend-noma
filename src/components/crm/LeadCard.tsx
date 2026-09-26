@@ -21,6 +21,8 @@ interface LeadCardProps {
   today: string;
   showOwner: boolean;
   isDragging: boolean;
+  /** Acabou de virar venda feita: toca o pulso de comemoração. */
+  celebrating?: boolean;
   serviceLabel: string;
   onOpen: (lead: Lead) => void;
   onEdit: (lead: Lead) => void;
@@ -37,6 +39,7 @@ export default function LeadCard({
   today,
   showOwner,
   isDragging,
+  celebrating,
   serviceLabel,
   onOpen,
   onEdit,
@@ -63,7 +66,7 @@ export default function LeadCard({
       onClick={() => onOpen(lead)}
       className={`group cursor-pointer rounded-lg border bg-white p-3.5 transition duration-150 hover:border-charcoal/20 hover:shadow-soft active:cursor-grabbing ${
         lead.status === "won" ? "border-sage/40" : lead.status === "lost" ? "border-burgundy/20 opacity-70" : "border-charcoal/[0.08]"
-      } ${isDragging ? "opacity-40" : ""}`}
+      } ${isDragging ? "opacity-40" : ""} ${celebrating ? "noma-won" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">

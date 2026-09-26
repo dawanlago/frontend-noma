@@ -296,7 +296,12 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
                       className={`h-3.5 w-3.5 text-charcoal/30 transition-transform duration-200 group-hover:text-charcoal/60 ${expanded ? "" : "-rotate-90"}`}
                     />
                   </button>
-                  <Collapse in={expanded} timeout={180} unmountOnExit>
+                  <Collapse
+                    in={expanded}
+                    timeout={320}
+                    easing={{ enter: "cubic-bezier(0.16, 1, 0.3, 1)", exit: "cubic-bezier(0.16, 1, 0.3, 1)" }}
+                    unmountOnExit
+                  >
                     <ul className="space-y-0.5">
                       {group.items.map((item) => (
                         <NavLink key={item.href} item={item} active={isActivePath(router.pathname, item.href)} onNavigate={onNavigate} />

@@ -5,6 +5,7 @@ import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import AnimatedValue from "./AnimatedValue";
 
 interface MetricCardProps {
   label: string;
@@ -52,8 +53,8 @@ export default function MetricCard({
             </Box>
           ) : null}
         </Stack>
-        <Typography variant="h4" sx={{ mt: 2, letterSpacing: -0.4 }}>
-          {value}
+        <Typography variant="h4" sx={{ mt: 2, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums" }}>
+          <AnimatedValue value={value} />
         </Typography>
         {hint ? (
           <Chip

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AnimatedValue from "@/components/ui/AnimatedValue";
 
 type Tone = "default" | "sage" | "burgundy" | "gold";
 
@@ -35,7 +36,9 @@ export default function StatCard({ label, value, text, tone = "default", icon, l
       {loading ? (
         <div className="skeleton mt-3 h-8 w-32" />
       ) : (
-        <p className={`mt-2 text-[26px] font-semibold tabular-nums tracking-tight ${valueTone[tone]}`}>{value}</p>
+        <p className={`mt-2 text-[26px] font-semibold tabular-nums tracking-tight ${valueTone[tone]}`}>
+          <AnimatedValue value={value} />
+        </p>
       )}
       {text ? <p className="mt-1.5 text-[13px] leading-5 text-charcoal/55">{text}</p> : null}
     </div>

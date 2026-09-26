@@ -41,7 +41,7 @@ export default function FormsPage() {
           <p className="mt-1 text-sm text-charcoal/55">Crie um formulário de contato, pré-briefing ou pesquisa e compartilhe o link.</p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="noma-stagger grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.map((form) => (
             <article key={form._id} className="card flex flex-col p-5">
               <div className="flex items-start justify-between gap-2">
