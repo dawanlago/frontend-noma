@@ -22,7 +22,8 @@ import GavelOutlined from "@mui/icons-material/GavelOutlined";
 import GroupOutlined from "@mui/icons-material/GroupOutlined";
 import HomeOutlined from "@mui/icons-material/HomeOutlined";
 import Inventory2Outlined from "@mui/icons-material/Inventory2Outlined";
-import LibraryMusicOutlined from "@mui/icons-material/LibraryMusicOutlined";
+import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
+import SentimentSatisfiedAltOutlined from "@mui/icons-material/SentimentSatisfiedAltOutlined";
 import PeopleOutlined from "@mui/icons-material/PeopleOutlined";
 import ReplayOutlined from "@mui/icons-material/ReplayOutlined";
 import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
@@ -53,6 +54,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/", label: "Início", icon: HomeOutlined },
       { href: "/atividades", label: "Atividades", icon: TaskAltOutlined, module: "atividades" },
+      { href: "/agenda", label: "Agenda", icon: CalendarMonthOutlined, module: "agenda" },
       { href: "/anotacoes", label: "Anotações", icon: StickyNote2Outlined, module: "anotacoes" },
     ],
   },
@@ -61,6 +63,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/crm", label: "CRM Comercial", icon: ViewKanbanOutlined, module: "crm" },
       { href: "/formularios", label: "Formulários", icon: DynamicFormOutlined, module: "formularios" },
+      { href: "/nps", label: "NPS", icon: SentimentSatisfiedAltOutlined, module: "nps" },
       { href: "/propostas", label: "Gerador de Propostas", icon: DescriptionOutlined, module: "propostas" },
       { href: "/prospeccao", label: "Gerador de Prospecção", icon: TravelExploreOutlined, module: "prospeccao" },
       { href: "/follow-up", label: "Gerador de Follow-up", icon: ReplayOutlined, module: "followup" },
@@ -78,7 +81,6 @@ const groups: { label: string; items: NavItem[] }[] = [
     label: "Gestão",
     items: [
       { href: "/financeiro", label: "Financeiro", icon: AccountBalanceWalletOutlined, module: "financeiro" },
-      { href: "/biblioteca", label: "Biblioteca Audiovisual", icon: LibraryMusicOutlined, module: "biblioteca" },
     ],
   },
   {

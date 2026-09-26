@@ -11,7 +11,9 @@ import {
   HiOutlineXCircle,
 } from "react-icons/hi2";
 import EntityAvatar from "@/components/base/Avatar";
+import LeadForms from "@/components/crm/LeadForms";
 import LeadModal from "@/components/crm/LeadModal";
+import SendNpsDialog from "@/components/nps/SendNpsDialog";
 import StageChip from "@/components/crm/StageChip";
 import { TemperatureBadge } from "@/components/crm/Temperature";
 import WonNotice from "@/components/crm/WonNotice";
@@ -162,6 +164,7 @@ export default function LeadDashboardPage() {
   const [notice, setNotice] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [wonLead, setWonLead] = useState<Lead | null>(null);
+  const [npsOpen, setNpsOpen] = useState(false);
   const customDisplay = useCustomFieldDisplay("lead", lead?.custom);
 
   useEffect(() => {
@@ -295,6 +298,11 @@ export default function LeadDashboardPage() {
                 Lançar no financeiro
               </Link>
             ) : null}
+            {lead.contactId && can("nps", "crm") ? (
+              <button type="button" className="btn-secondary" onClick={() => setNpsOpen(true)}>
+                Enviar NPS
+              </button>
+            ) : null}
             {can("propostas") ? (
               <button type="button" className="btn-secondary" onClick={openProposal}>
                 <HiOutlineDocumentText className="h-4 w-4" /> Gerar proposta
@@ -343,6 +351,9 @@ export default function LeadDashboardPage() {
         <div className="min-w-0 space-y-6">
           <Section title="Pareceres">
             <Comments lead={lead} onChange={setLead} />
+          </Section>
+          <Section title="Formulários">
+            <LeadForms lead={lead} phone={contact?.phone} />
           </Section>
           <Section title="Atividades">
             <TaskChecklist tasks={tasks} onChange={setTasks} leadId={lead._id} emptyText="Nenhuma atividade para esta negociação." />
@@ -440,6 +451,7 @@ export default function LeadDashboardPage() {
         onDelete={() => handleDelete()}
       />
       <WonNotice lead={wonLead} onClose={() => setWonLead(null)} />
+      <SendNpsDialog open={npsOpen} onClose={() => setNpsOpen(false)} contactId={lead.contactId} leadId={lead._id} />
     </>
   );
 }

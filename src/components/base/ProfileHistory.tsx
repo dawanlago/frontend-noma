@@ -18,7 +18,12 @@ export default function ProfileHistory({ history, showCompany }: { history: Hist
         <MetricCard label="Vendas feitas" value={formatCurrencyBRL(history.totals.wonValue)} hint={`${history.totals.wonCount} vendas`} tone="sage" />
         <MetricCard label="Em negociação" value={formatCurrencyBRL(history.totals.openValue)} hint={`${history.totals.openCount} abertas`} />
         <MetricCard label="Recebido no financeiro" value={formatCurrencyBRL(history.totals.received)} tone="gold" />
-        <MetricCard label="Pareceres" value={String(history.comments.length)} />
+        <MetricCard
+          label="NPS"
+          value={history.nps.length ? String(history.nps[0].rating) : "—"}
+          hint={history.nps.length ? `${history.nps.length} resposta(s) · última nota` : "Sem respostas"}
+          tone={!history.nps.length ? "default" : history.nps[0].rating >= 9 ? "sage" : history.nps[0].rating >= 7 ? "gold" : "burgundy"}
+        />
       </section>
 
       <section className="card overflow-hidden">
@@ -106,6 +111,22 @@ export default function ProfileHistory({ history, showCompany }: { history: Hist
               <p className="text-sm text-charcoal/50">Nenhum lançamento vinculado.</p>
             )}
           </section>
+          {history.nps.length ? (
+            <section className="card p-5 sm:p-6">
+              <h2 className="mb-4 text-base font-semibold text-charcoal">Respostas de NPS</h2>
+              <ul className="space-y-2 text-sm">
+                {history.nps.map((item) => (
+                  <li key={item._id} className="flex gap-3">
+                    <span className="chip h-fit bg-tan/10 text-tan">{item.rating}</span>
+                    <span className="text-charcoal/70">
+                      {item.comment || "Sem comentário"}
+                      <span className="block text-xs text-charcoal/45">{formatDate(item.date)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           <section className="card p-5 sm:p-6">
             <h2 className="mb-4 text-base font-semibold text-charcoal">Contratos importados</h2>
             {history.files.length ? (

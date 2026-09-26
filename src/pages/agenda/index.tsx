@@ -1,0 +1,459 @@
+import { useMemo, useState } from "react";
+import Head from "next/head";
+import Link from "next/link";
+import EntityPicker from "@/components/base/EntityPicker";
+import Field from "@/components/tools/Field";
+import OwnerFilter from "@/components/tools/OwnerFilter";
+import Modal from "@/components/ui/Modal";
+import PageHeader from "@/components/ui/PageHeader";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAsyncData } from "@/hooks/useAsyncData";
+import { apiError } from "@/lib/errors";
+import { resources } from "@/lib/resources";
+import type { Task, TaskStatus } from "@/types";
+import { formatDateOnly } from "@/utils/format";
+
+const STATUSES: { value: TaskStatus; label: string; tone: string }[] = [
+  { value: "todo", label: "A fazer", tone: "bg-gold/15 text-gold" },
+  { value: "doing", label: "Em andamento", tone: "bg-tan/15 text-tan" },
+  { value: "done", label: "Concluído", tone: "bg-sage/15 text-sage" },
+];
+const statusOf = (task: Task) => STATUSES.find((item) => item.value === (task.status || (task.done ? "done" : "todo"))) || STATUSES[0];
+const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+function iso(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function fromIso(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function longDay(value: string) {
+  return fromIso(value).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+}
+
+interface Draft {
+  title: string;
+  date: string;
+  time: string;
+  leadId: string;
+  notes: string;
+}
+
+export default function AgendaPage() {
+  const { isAdmin } = useAuth();
+  const [ownerId, setOwnerId] = useState("");
+  const { data, isLoading, error, setData } = useAsyncData(() => resources.tasks.list({ ownerId }), [ownerId]);
+  const leads = useAsyncData(() => resources.leads.list().catch(() => []));
+  const today = iso(new Date());
+  const [cursor, setCursor] = useState(() => today.slice(0, 7));
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [editor, setEditor] = useState<{ task: Task | null; draft: Draft } | null>(null);
+  const [formError, setFormError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const tasks = useMemo(() => (data || []).filter((task) => task.dueDate), [data]);
+  const byDay = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    tasks.forEach((task) => map.set(task.dueDate, [...(map.get(task.dueDate) || []), task]));
+    map.forEach((list) => list.sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99")));
+    return map;
+  }, [tasks]);
+
+  const monthStart = fromIso(`${cursor}-01`);
+  const blanks = monthStart.getDay();
+  const totalDays = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+  const upcoming = tasks
+    .filter((task) => task.dueDate >= today && !task.done)
+    .sort((a, b) => `${a.dueDate} ${a.time || "99"}`.localeCompare(`${b.dueDate} ${b.time || "99"}`))
+    .slice(0, 3);
+  const dayTasks = byDay.get(selectedDate) || [];
+  const openTask = (data || []).find((task) => task._id === openTaskId) || null;
+
+  function goToMonth(offset: number) {
+    const next = new Date(monthStart.getFullYear(), monthStart.getMonth() + offset, 1);
+    setCursor(iso(next).slice(0, 7));
+  }
+
+  function openCreate(date = selectedDate) {
+    setFormError("");
+    setEditor({ task: null, draft: { title: "", date, time: "10:00", leadId: "", notes: "" } });
+  }
+
+  function openEdit(task: Task) {
+    setOpenTaskId(null);
+    setFormError("");
+    setEditor({ task, draft: { title: task.title, date: task.dueDate, time: task.time, leadId: task.leadId || "", notes: task.notes } });
+  }
+
+  const upsert = (saved: Task) =>
+    setData((current) => {
+      const list = current || [];
+      return list.some((task) => task._id === saved._id)
+        ? list.map((task) => (task._id === saved._id ? { ...task, ...saved, ownerName: task.ownerName } : task))
+        : [...list, saved];
+    });
+
+  async function handleSave() {
+    if (!editor) return;
+    const { task, draft } = editor;
+    if (!draft.title.trim() || !draft.date) {
+      setFormError("Informe o título e a data.");
+      return;
+    }
+    setBusy(true);
+    setFormError("");
+    try {
+      const payload = { title: draft.title.trim(), dueDate: draft.date, time: draft.time, leadId: draft.leadId, notes: draft.notes };
+      const saved = task ? await resources.tasks.update(task._id, payload) : await resources.tasks.create(payload);
+      upsert(saved);
+      setEditor(null);
+      setSelectedDate(draft.date);
+      setCursor(draft.date.slice(0, 7));
+    } catch (err) {
+      setFormError(apiError(err, "Não foi possível salvar o compromisso."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setStatus(task: Task, status: TaskStatus) {
+    setBusy(true);
+    try {
+      upsert(await resources.tasks.update(task._id, { status }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(task: Task) {
+    if (!window.confirm(`Excluir o compromisso "${task.title}"?`)) return;
+    await resources.tasks.remove(task._id);
+    setData((current) => (current || []).filter((item) => item._id !== task._id));
+    setOpenTaskId(null);
+  }
+
+  return (
+    <>
+      <Head>
+        <title>Agenda | Noma</title>
+      </Head>
+      <PageHeader
+        eyebrow="Visão geral"
+        title="Agenda"
+        description="Clique no dia para ver a agenda, dê dois cliques para marcar um compromisso e abra para atualizar o status. Atividades com data também aparecem aqui."
+        actions={
+          <button type="button" className="btn-primary" onClick={() => openCreate()}>
+            Novo compromisso
+          </button>
+        }
+      />
+      {isAdmin ? (
+        <div className="mb-4 flex justify-end">
+          <OwnerFilter value={ownerId} onChange={setOwnerId} />
+        </div>
+      ) : null}
+      {error ? <p className="mb-4 text-sm text-burgundy">{error}</p> : null}
+
+      <section className="mb-6">
+        <p className="eyebrow">Na fila</p>
+        <h2 className="mb-3 text-lg font-semibold text-charcoal">Próximos compromissos</h2>
+        {upcoming.length === 0 ? (
+          <p className="card px-5 py-6 text-sm text-charcoal/50">Nenhum compromisso futuro.</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-3">
+            {upcoming.map((task) => {
+              const status = statusOf(task);
+              return (
+                <button
+                  key={task._id}
+                  type="button"
+                  onClick={() => {
+                    setCursor(task.dueDate.slice(0, 7));
+                    setSelectedDate(task.dueDate);
+                    setOpenTaskId(task._id);
+                  }}
+                  className="card p-4 text-left transition hover:border-tan/40"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-medium capitalize text-charcoal/45">
+                      {fromIso(task.dueDate).toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}
+                      {task.time ? ` · ${task.time}` : ""}
+                    </p>
+                    <span className={`chip ${status.tone}`}>{status.label}</span>
+                  </div>
+                  <p className="mt-2 font-semibold text-charcoal">{task.title}</p>
+                  <p className="mt-1 text-xs text-charcoal/45">{task.leadName || "Sem negociação"}</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="card p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="eyebrow">Calendário</p>
+              <h2 className="text-lg font-semibold capitalize">{monthStart.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</h2>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" className="btn-secondary !py-1.5" onClick={() => goToMonth(-1)}>
+                Anterior
+              </button>
+              <button
+                type="button"
+                className="btn-secondary !py-1.5"
+                onClick={() => {
+                  setCursor(today.slice(0, 7));
+                  setSelectedDate(today);
+                }}
+              >
+                Hoje
+              </button>
+              <button type="button" className="btn-secondary !py-1.5" onClick={() => goToMonth(1)}>
+                Próximo
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-charcoal/40">
+            {WEEKDAYS.map((day) => (
+              <div key={day}>{day}</div>
+            ))}
+          </div>
+          {isLoading ? (
+            <div className="mt-2 grid grid-cols-7 gap-2">
+              {Array.from({ length: 35 }).map((_, index) => (
+                <div key={index} className="skeleton h-[92px]" />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-2 grid grid-cols-7 gap-2">
+              {Array.from({ length: blanks }).map((_, index) => (
+                <div key={`blank-${index}`} />
+              ))}
+              {Array.from({ length: totalDays }).map((_, index) => {
+                const date = `${cursor}-${String(index + 1).padStart(2, "0")}`;
+                const items = byDay.get(date) || [];
+                const isToday = date === today;
+                const isSelected = date === selectedDate;
+                return (
+                  <button
+                    key={date}
+                    type="button"
+                    onClick={() => setSelectedDate(date)}
+                    onDoubleClick={() => {
+                      setSelectedDate(date);
+                      openCreate(date);
+                    }}
+                    className={`min-h-[92px] rounded-xl border p-2 text-left transition ${
+                      isSelected
+                        ? "border-tan bg-tan/[0.08] shadow-soft"
+                        : isToday
+                          ? "border-tan/40 bg-tan/[0.04]"
+                          : "border-charcoal/[0.06] bg-white hover:border-tan/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <p className={`text-xs font-semibold ${isToday || isSelected ? "text-tan" : "text-charcoal"}`}>{index + 1}</p>
+                      {items.length ? (
+                        <span className="rounded-full bg-charcoal/5 px-1.5 text-[10px] font-semibold text-charcoal/50">{items.length}</span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1 space-y-1">
+                      {items.slice(0, 2).map((task) => (
+                        <p key={task._id} className={`truncate rounded-full px-2 py-0.5 text-[11px] ${statusOf(task).tone}`}>
+                          {task.time ? `${task.time} ` : ""}
+                          {task.title}
+                        </p>
+                      ))}
+                      {items.length > 2 ? <p className="text-[10px] text-tan">+{items.length - 2}</p> : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <aside className="card self-start p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow">Agenda do dia</p>
+              <h2 className="mt-1 text-lg font-semibold capitalize text-charcoal">{longDay(selectedDate)}</h2>
+              <p className="mt-1 text-xs text-charcoal/45">
+                {dayTasks.length ? `${dayTasks.length} compromisso${dayTasks.length > 1 ? "s" : ""}` : "Nenhum compromisso neste dia"}
+              </p>
+            </div>
+            <button type="button" className="btn-primary !px-3 !py-2 text-sm" onClick={() => openCreate()}>
+              Novo
+            </button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {dayTasks.length === 0 ? (
+              <p className="rounded-xl bg-beige/60 px-4 py-6 text-sm text-charcoal/50">Clique em Novo para marcar um horário.</p>
+            ) : (
+              dayTasks.map((task) => {
+                const status = statusOf(task);
+                return (
+                  <button
+                    key={task._id}
+                    type="button"
+                    onClick={() => setOpenTaskId(task._id)}
+                    className="w-full rounded-xl border border-charcoal/10 bg-white px-4 py-3 text-left transition hover:border-tan/40 hover:bg-beige/40"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-charcoal">{task.title}</p>
+                        <p className="mt-1 text-xs text-charcoal/45">
+                          {task.time || "Sem horário"}
+                          {task.leadName ? ` · ${task.leadName}` : ""}
+                          {isAdmin && task.ownerName ? ` · ${task.ownerName}` : ""}
+                        </p>
+                      </div>
+                      <span className={`chip shrink-0 ${status.tone}`}>{status.label}</span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </aside>
+      </div>
+
+      <Modal
+        open={Boolean(openTask)}
+        title={openTask?.title || "Compromisso"}
+        description={openTask ? `${formatDateOnly(openTask.dueDate)}${openTask.time ? ` às ${openTask.time}` : ""}` : undefined}
+        onClose={() => setOpenTaskId(null)}
+        footer={
+          openTask ? (
+            <div className="flex w-full flex-wrap justify-between gap-2">
+              <button type="button" className="btn-secondary !text-burgundy" onClick={() => void handleDelete(openTask)}>
+                Excluir
+              </button>
+              <div className="flex gap-2">
+                {openTask.leadId ? (
+                  <Link href={`/crm/${openTask.leadId}`} className="btn-secondary">
+                    Abrir negociação
+                  </Link>
+                ) : null}
+                <button type="button" className="btn-primary" onClick={() => openEdit(openTask)}>
+                  Editar
+                </button>
+              </div>
+            </div>
+          ) : null
+        }
+      >
+        {openTask ? (
+          <div className="space-y-5">
+            <dl className="space-y-3">
+              <div>
+                <dt className="text-xs font-medium text-charcoal/45">Negociação</dt>
+                <dd className="mt-1 text-sm text-charcoal">{openTask.leadName || "Sem negociação vinculada"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-charcoal/45">Descrição</dt>
+                <dd className="mt-1 whitespace-pre-line text-sm leading-6 text-charcoal">{openTask.notes?.trim() || "Sem descrição."}</dd>
+              </div>
+            </dl>
+            <div>
+              <p className="mb-2 text-xs font-medium text-charcoal/45">Status</p>
+              <div className="grid grid-cols-3 gap-2">
+                {STATUSES.map((item) => {
+                  const active = statusOf(openTask).value === item.value;
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void setStatus(openTask, item.value)}
+                      className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                        active ? "bg-ink text-white" : "bg-beige text-charcoal/70 hover:bg-tan/10 hover:text-charcoal"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(editor)}
+        title={editor?.task ? "Editar compromisso" : "Novo compromisso"}
+        description={editor ? longDay(editor.draft.date || today) : undefined}
+        onClose={() => setEditor(null)}
+        footer={
+          <button type="button" className="btn-primary" disabled={busy} onClick={() => void handleSave()}>
+            {busy ? "Salvando..." : "Salvar"}
+          </button>
+        }
+      >
+        {editor ? (
+          <form
+            className="grid gap-4 pt-1 sm:grid-cols-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSave();
+            }}
+          >
+            <Field label="Título" full>
+              <input
+                className="input-search"
+                value={editor.draft.title}
+                autoFocus
+                placeholder="Reunião, gravação, call, visita..."
+                onChange={(event) => setEditor({ ...editor, draft: { ...editor.draft, title: event.target.value } })}
+              />
+            </Field>
+            <Field label="Data">
+              <input
+                className="input-search"
+                type="date"
+                value={editor.draft.date}
+                onChange={(event) => setEditor({ ...editor, draft: { ...editor.draft, date: event.target.value } })}
+              />
+            </Field>
+            <Field label="Horário">
+              <input
+                className="input-search"
+                type="time"
+                value={editor.draft.time}
+                onChange={(event) => setEditor({ ...editor, draft: { ...editor.draft, time: event.target.value } })}
+              />
+            </Field>
+            <Field label="Negociação" full group hint="Opcional. Vincule se o compromisso for de uma venda.">
+              <EntityPicker
+                items={(leads.data || []).map((lead) => ({ id: lead._id, label: lead.name, sublabel: lead.company || lead.contactName }))}
+                value={editor.draft.leadId}
+                onChange={(leadId) => setEditor({ ...editor, draft: { ...editor.draft, leadId } })}
+                placeholder="Sem negociação"
+                showAvatar={false}
+              />
+            </Field>
+            <Field label="Descrição" full>
+              <textarea
+                className="input-search min-h-[90px] resize-y"
+                value={editor.draft.notes}
+                placeholder="Pauta, local, observações..."
+                onChange={(event) => setEditor({ ...editor, draft: { ...editor.draft, notes: event.target.value } })}
+              />
+            </Field>
+            {formError ? <p className="text-sm text-burgundy sm:col-span-2">{formError}</p> : null}
+            <button type="submit" className="hidden" aria-hidden />
+          </form>
+        ) : null}
+      </Modal>
+    </>
+  );
+}

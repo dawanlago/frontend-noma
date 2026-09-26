@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { apiError } from "@/lib/errors";
-import { resources } from "@/lib/resources";
-import type { CaptureForm, FormField } from "@/types";
+import { isInviteCode, resources } from "@/lib/resources";
+import type { FormField, PublicFormData } from "@/types";
 
-type PublicForm = Pick<CaptureForm, "name" | "description" | "fields" | "successMessage">;
+type PublicForm = PublicFormData;
 type Answer = string | string[] | boolean;
 
 function Input({ field, value, onChange }: { field: FormField; value: Answer | undefined; onChange: (value: Answer) => void }) {
@@ -76,7 +76,11 @@ export default function PublicFormPage() {
     if (!publicId) return;
     resources.publicForms
       .get(publicId)
-      .then(setForm)
+      .then((data) => {
+        setForm(data);
+        // Formulário enviado pela negociação: já vem com o que sabemos do contato.
+        if (data.prefill) setAnswers((current) => ({ ...data.prefill, ...current }));
+      })
       .catch(() => setError("Este formulário não está disponível."));
   }, [publicId]);
 
@@ -104,13 +108,30 @@ export default function PublicFormPage() {
           <div className="card p-6 sm:p-8">
             {!form && !error ? <div className="skeleton h-64" /> : null}
             {error && !form ? <p className="text-center text-sm text-burgundy">{error}</p> : null}
+            {form && !done && form.status === "submitted" ? (
+              <div>
+                <p className="eyebrow">Preenchido</p>
+                <h1 className="mt-2 text-2xl font-semibold text-charcoal">{form.name}</h1>
+                <p className="mt-2 text-sm text-charcoal/55">
+                  {form.contactFirstName ? `${form.contactFirstName}, suas` : "Suas"} respostas já foram registradas.
+                </p>
+                <dl className="mt-6 space-y-3">
+                  {(form.answers || []).map((answer) => (
+                    <div key={answer.label} className="rounded-xl bg-beige/60 px-4 py-3">
+                      <dt className="text-xs font-medium text-charcoal/45">{answer.label}</dt>
+                      <dd className="mt-1 whitespace-pre-line text-sm text-charcoal">{answer.value || "—"}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ) : null}
             {form && done ? (
               <div className="py-8 text-center">
                 <p className="text-xl font-semibold text-charcoal">Enviado!</p>
                 <p className="mt-2 whitespace-pre-line text-sm text-charcoal/65">{done}</p>
               </div>
             ) : null}
-            {form && !done ? (
+            {form && !done && form.status !== "submitted" ? (
               <form
                 className="space-y-5"
                 onSubmit={(event) => {
@@ -119,6 +140,8 @@ export default function PublicFormPage() {
                 }}
               >
                 <div>
+                  {isInviteCode(publicId) ? <p className="eyebrow mb-1">Código {publicId}</p> : null}
+                  {form.contactFirstName ? <p className="mb-1 text-sm text-charcoal/55">Olá, {form.contactFirstName}!</p> : null}
                   <h1 className="text-2xl font-semibold tracking-tight text-charcoal">{form.name}</h1>
                   {form.description ? <p className="mt-2 whitespace-pre-line text-sm text-charcoal/60">{form.description}</p> : null}
                 </div>

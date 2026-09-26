@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import ContactForm from "@/components/base/ContactForm";
 import ProfileHeader, { InfoList } from "@/components/base/ProfileHeader";
 import ProfileHistory from "@/components/base/ProfileHistory";
+import SendNpsDialog from "@/components/nps/SendNpsDialog";
 import { useCustomFieldDisplay } from "@/components/options/CustomFieldsInputs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -21,6 +22,7 @@ export default function ContactProfilePage() {
   const [profile, setProfile] = useState<ContactProfile | null>(null);
   const [error, setError] = useState("");
   const [editOpen, setEditOpen] = useState(false);
+  const [npsOpen, setNpsOpen] = useState(false);
   const customDisplay = useCustomFieldDisplay("contact", profile?.contact.custom);
 
   function load() {
@@ -87,6 +89,11 @@ export default function ContactProfilePage() {
                 Nova venda
               </Link>
             ) : null}
+            {can("nps", "crm", "base") ? (
+              <button type="button" className="btn-secondary" onClick={() => setNpsOpen(true)}>
+                Enviar NPS
+              </button>
+            ) : null}
             <button type="button" className="btn-primary" onClick={() => setEditOpen(true)}>
               Editar perfil
             </button>
@@ -133,6 +140,7 @@ export default function ContactProfilePage() {
         <ProfileHistory history={profile} />
       </div>
 
+      <SendNpsDialog open={npsOpen} onClose={() => setNpsOpen(false)} contactId={contact._id} />
       <ContactForm
         open={editOpen}
         contact={contact}

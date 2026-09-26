@@ -10,16 +10,21 @@ import type {
   CustomField,
   FinanceEntry,
   FinanceMonthSummary,
+  FormInvite,
   FormResponse,
   Funnel,
   Label,
   Lead,
   LeadStatus,
-  LibraryCategory,
   Note,
   NoteGroup,
+  NPSInvite,
+  NPSRating,
+  NPSSummary,
+  NPSSurvey,
   OptionItem,
   Product,
+  PublicFormData,
   StoredFile,
   Task,
   ToolDocument,
@@ -111,6 +116,10 @@ function toolDocuments<T>(tool: ToolKey) {
   };
 }
 
+export function isInviteCode(id: string) {
+  return /^\d{6}$/.test(id);
+}
+
 export type FinanceEntryPayload = Partial<FinanceEntry> & { recurring?: boolean };
 export type LeadPayload = Partial<Omit<Lead, "nextActionDate">> & { nextActionDate?: string | null };
 
@@ -158,6 +167,8 @@ export const resources = {
     addComment: (id: string, text: string) => create<Lead>(`/leads/${id}/comments`, { text }),
     updateComment: (id: string, commentId: string, text: string) =>
       update<Lead>(`/leads/${id}/comments/${commentId}`, { text }),
+    formInvites: (id: string) => listData<FormInvite>(`/leads/${id}/form-invites`),
+    sendForm: (id: string, formId: string) => create<FormInvite>(`/leads/${id}/form-invites`, { formId }),
     removeComment: async (id: string, commentId: string) => {
       const { data } = await api.delete<ApiItemResponse<Lead>>(`/leads/${id}/comments/${commentId}`);
       return data.data;
@@ -165,19 +176,36 @@ export const resources = {
   },
   tasks: crud<Task>("/tasks"),
   notes: {
-    board: () => getOne<{ groups: NoteGroup[]; notes: Note[] }>("/notes/board"),
+    list: () => listData<Note>("/notes"),
     create: (payload: Partial<Note>) => create<Note>("/notes", payload),
     update: (id: string, payload: Partial<Note>) => update<Note>(`/notes/${id}`, payload),
     remove: (id: string) => remove(`/notes/${id}`),
-    move: async (noteId: string, groupId: string, orderedIds: string[]) => {
-      await api.put("/notes/move", { noteId, groupId, orderedIds });
+    /** Move para outro grupo (vazio = sem grupo). */
+    move: async (id: string, groupId: string) => {
+      const { data } = await api.put<ApiItemResponse<Note>>(`/notes/${id}/group`, { groupId });
+      return data.data;
     },
-    createGroup: (payload: Partial<NoteGroup>) => create<NoteGroup>("/note-groups", payload),
-    updateGroup: (id: string, payload: Partial<NoteGroup>) => update<NoteGroup>(`/note-groups/${id}`, payload),
-    removeGroup: (id: string) => remove(`/note-groups/${id}`),
-    reorderGroups: async (ids: string[]) => {
-      await api.put("/note-groups/reorder", { ids });
+    share: (id: string, userId: string) => create<Note>(`/notes/${id}/share`, { userId }),
+    unshare: async (id: string, userId: string) => {
+      await api.delete(`/notes/${id}/share/${userId}`);
     },
+    groups: crud<NoteGroup>("/note-groups"),
+  },
+  nps: {
+    surveys: crud<NPSSurvey>("/nps/surveys"),
+    ratings: async (params?: ListParams) => {
+      const { data } = await api.get<ApiListResponse<NPSRating>>("/nps/ratings", { params: clean(params) });
+      return { ratings: data.data, summary: data.meta as unknown as NPSSummary };
+    },
+    removeRating: (id: string) => remove(`/nps/ratings/${id}`),
+    invite: (payload: { surveyId: string; contactId: string; leadId?: string }) => create<NPSInvite>("/nps/invites", payload),
+  },
+  publicNps: {
+    get: (token: string) =>
+      getOne<{ status: "pending" | "answered"; contactFirstName: string; survey: Pick<NPSSurvey, "name" | "question" | "commentPrompt" | "thankYouMessage"> }>(
+        `/public/nps/${token}`,
+      ),
+    respond: (token: string, rating: number, comment: string) => create<{ ok: boolean }>(`/public/nps/${token}`, { rating, comment }),
   },
   forms: {
     ...crud<CaptureForm>("/forms"),
@@ -185,10 +213,13 @@ export const resources = {
     removeResponse: (id: string, responseId: string) => remove(`/forms/${id}/responses/${responseId}`),
   },
   publicForms: {
-    get: (publicId: string) =>
-      getOne<Pick<CaptureForm, "name" | "description" | "fields" | "successMessage">>(`/public/forms/${publicId}`),
-    submit: (publicId: string, answers: Record<string, unknown>, website = "") =>
-      create<{ message: string }>(`/public/forms/${publicId}/responses`, { answers, website }),
+    /** Código de 6 dígitos = formulário enviado pela negociação; senão, link público do formulário. */
+    get: (id: string) => getOne<PublicFormData>(isInviteCode(id) ? `/public/form-invites/${id}` : `/public/forms/${id}`),
+    submit: (id: string, answers: Record<string, unknown>, website = "") =>
+      create<{ message: string }>(isInviteCode(id) ? `/public/form-invites/${id}` : `/public/forms/${id}/responses`, {
+        answers,
+        website,
+      }),
   },
   finance: {
     entries: async (month: string, params?: ListParams) => {
@@ -226,9 +257,5 @@ export const resources = {
     getChunk: (id: string, n: number) => getOne<string>(`/files/${id}/chunks/${n}`),
     update: (id: string, payload: Partial<StoredFile>) => update<StoredFile>(`/files/${id}`, payload),
     remove: (id: string) => remove(`/files/${id}`),
-  },
-  library: {
-    list: () => listData<LibraryCategory>("/library"),
-    update: (id: string, payload: Partial<LibraryCategory>) => update<LibraryCategory>(`/library/${id}`, payload),
   },
 };

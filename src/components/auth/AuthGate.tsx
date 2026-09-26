@@ -15,7 +15,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const isPublic = isPublicRoute(router.pathname);
   const needsAdmin = isAdminRoute(router.pathname);
   const requiredModule = moduleForPath(router.pathname);
-  const blocked = isAuthenticated && ((needsAdmin && !isAdmin) || (requiredModule !== null && !can(requiredModule)));
+  const blocked =
+    !isPublic && isAuthenticated && ((needsAdmin && !isAdmin) || (requiredModule !== null && !can(requiredModule)));
 
   useEffect(() => {
     if (isLoading) return;

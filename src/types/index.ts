@@ -9,6 +9,8 @@ export type LeadTemperature = "cold" | "warm" | "hot";
 export type ModuleKey =
   | "crm"
   | "atividades"
+  | "agenda"
+  | "nps"
   | "anotacoes"
   | "formularios"
   | "prospeccao"
@@ -18,7 +20,6 @@ export type ModuleKey =
   | "contratos"
   | "briefing"
   | "financeiro"
-  | "biblioteca"
   | "base"
   | "produtos"
   | "configuracoes";
@@ -169,11 +170,16 @@ export interface Lead extends Owned {
   updatedAt: string;
 }
 
+export type TaskStatus = "todo" | "doing" | "done";
+
 export interface Task extends Owned {
   _id: string;
   title: string;
   /** YYYY-MM-DD ou vazio. */
   dueDate: string;
+  /** HH:MM ou vazio. */
+  time: string;
+  status: TaskStatus;
   done: boolean;
   doneAt?: string;
   leadId?: string;
@@ -186,17 +192,18 @@ export interface Task extends Owned {
 export interface NoteGroup {
   _id: string;
   name: string;
-  color: string;
   order: number;
 }
 
 export interface Note {
   _id: string;
-  groupId: string;
+  ownerId: string;
+  ownerName: string;
+  groupId?: string;
   title: string;
   content: string;
-  color: string;
   order: number;
+  shares: { userId: string; name: string }[];
   updatedAt: string;
 }
 
@@ -283,15 +290,6 @@ export interface ToolDocument<T = Record<string, unknown>> extends Owned {
   updatedAt: string;
 }
 
-export interface LibraryCategory {
-  _id: string;
-  key: string;
-  title: string;
-  description: string;
-  url: string;
-  order: number;
-}
-
 export interface BrandColor {
   name: string;
   hex: string;
@@ -368,6 +366,7 @@ export interface ProfileComment extends LeadComment {
 }
 
 export interface ProfileHistory {
+  nps: Pick<NPSRating, "_id" | "rating" | "comment" | "date" | "contactId">[];
   leads: Lead[];
   comments: ProfileComment[];
   entries: FinanceEntry[];
@@ -383,4 +382,68 @@ export interface ContactProfile extends ProfileHistory {
 export interface CompanyProfile extends ProfileHistory {
   company: Company;
   contacts: Contact[];
+}
+
+export interface NPSSurvey {
+  _id: string;
+  name: string;
+  question: string;
+  commentPrompt: string;
+  thankYouMessage: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface NPSRating {
+  _id: string;
+  surveyId: string;
+  contactId: string;
+  companyId?: string;
+  leadId?: string;
+  rating: number;
+  comment: string;
+  date: string;
+  contactName?: string;
+  surveyName?: string;
+  companyName?: string;
+}
+
+export interface NPSSummary {
+  score: number;
+  promoters: number;
+  passives: number;
+  detractors: number;
+}
+
+export interface NPSInvite {
+  _id: string;
+  token: string;
+  status: "pending" | "answered";
+  surveyName: string;
+  contactName: string;
+  phone: string;
+}
+
+/** Formulário enviado numa negociação (código de 6 dígitos). */
+export interface FormInvite {
+  _id: string;
+  code: string;
+  formId: string;
+  formName: string;
+  status: "pending" | "submitted";
+  sentAt: string;
+  submittedAt?: string;
+  answers: { label: string; value: string }[];
+}
+
+export interface PublicFormData {
+  name: string;
+  description: string;
+  fields: FormField[];
+  successMessage: string;
+  /** Só nos formulários enviados pela negociação. */
+  status?: "pending" | "submitted";
+  contactFirstName?: string;
+  prefill?: Record<string, string>;
+  answers?: { label: string; value: string }[];
 }

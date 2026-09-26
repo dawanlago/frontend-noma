@@ -67,16 +67,16 @@ export default function LoginPage() {
           <LogoMark size="md" withWordmark />
           <Hero
             compact
-            eyebrow="Studio de marketing"
+            eyebrow="Produtora audiovisual"
             title={
               <>
-                Campanhas, funil e caixa{" "}
+                Vendas, produção e caixa{" "}
                 <Box component="span" sx={{ color: "primary.main" }}>
                   no mesmo ritmo.
                 </Box>
               </>
             }
-            description={`O ${APP_NAME} entrega o painel comercial da operação: leads, dossiê, compromissos e ROI em uma interface feita para agência.`}
+            description={`O ${APP_NAME} reúne vendas, agenda, contratos, briefing e financeiro da produtora em um só lugar.`}
           />
           <Box
             sx={{

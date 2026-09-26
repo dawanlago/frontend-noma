@@ -1,118 +1,88 @@
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from "react";
 import Head from "next/head";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import { HiOutlineEllipsisHorizontal, HiOutlinePlus } from "react-icons/hi2";
-import Modal from "@/components/ui/Modal";
+import { HiOutlineDocumentText, HiOutlinePencilSquare, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi2";
 import PageHeader from "@/components/ui/PageHeader";
+import Select from "@/components/ui/Select";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { Note, NoteGroup } from "@/types";
 import { formatDateTime } from "@/utils/format";
 
-const NOTE_COLORS = ["", "#FEF3C7", "#DCFCE7", "#DBEAFE", "#FCE7F3", "#EDE9FE", "#FEE2E2"];
+/** Id do destino "Anotações sem grupo" ao arrastar. */
+const NO_GROUP = "__none__";
+const DRAG_TYPE = "application/x-noma-note";
 
-interface DropTarget {
-  groupId: string;
-  index: number;
-}
-
-function sortNotes(notes: Note[], groupId: string) {
-  return notes.filter((note) => note.groupId === groupId).sort((a, b) => a.order - b.order);
-}
-
-function GroupMenu({
-  group,
-  isFirst,
-  isLast,
-  onRename,
-  onMove,
-  onDelete,
+function NoteItem({
+  note,
+  active,
+  draggable,
+  onSelect,
+  onDragStart,
+  onDragEnd,
 }: {
-  group: NoteGroup;
-  isFirst: boolean;
-  isLast: boolean;
-  onRename: () => void;
-  onMove: (delta: number) => void;
-  onDelete: () => void;
+  note: Note;
+  active: boolean;
+  draggable: boolean;
+  onSelect: () => void;
+  onDragStart: (event: DragEvent<HTMLButtonElement>) => void;
+  onDragEnd: () => void;
 }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const close = () => setAnchor(null);
   return (
-    <>
-      <button
-        type="button"
-        className="flex h-7 w-7 items-center justify-center rounded-md text-charcoal/40 hover:bg-white hover:text-charcoal"
-        aria-label={`Ações do grupo ${group.name}`}
-        onClick={(event) => setAnchor(event.currentTarget)}
-      >
-        <HiOutlineEllipsisHorizontal className="h-5 w-5" />
-      </button>
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={close}>
-        <MenuItem
-          onClick={() => {
-            close();
-            onRename();
-          }}
-        >
-          Renomear
-        </MenuItem>
-        <MenuItem
-          disabled={isFirst}
-          onClick={() => {
-            close();
-            onMove(-1);
-          }}
-        >
-          Mover para a esquerda
-        </MenuItem>
-        <MenuItem
-          disabled={isLast}
-          onClick={() => {
-            close();
-            onMove(1);
-          }}
-        >
-          Mover para a direita
-        </MenuItem>
-        <MenuItem
-          sx={{ color: "error.main" }}
-          onClick={() => {
-            close();
-            onDelete();
-          }}
-        >
-          Excluir grupo
-        </MenuItem>
-      </Menu>
-    </>
+    <button
+      type="button"
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onSelect}
+      title={draggable ? "Arraste para outro grupo" : undefined}
+      className={`mb-1 block w-full truncate rounded-xl px-3 py-2 text-left transition ${
+        active ? "bg-ink text-white" : "hover:bg-beige"
+      } ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
+    >
+      {note.title || "Sem título"}
+    </button>
   );
 }
 
 export default function NotesPage() {
+  const { user } = useAuth();
+  const { data: users } = useAsyncData(() => resources.users.list());
   const [groups, setGroups] = useState<NoteGroup[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [target, setTarget] = useState<DropTarget | null>(null);
-  const [adding, setAdding] = useState<{ groupId: string; title: string } | null>(null);
+  const [selectedId, setSelectedId] = useState("");
+  const [draft, setDraft] = useState({ title: "", content: "" });
+  const [groupName, setGroupName] = useState("");
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
-  const [newGroup, setNewGroup] = useState("");
-  const [editing, setEditing] = useState<Note | null>(null);
+  const [shareUserId, setShareUserId] = useState("");
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [overGroup, setOverGroup] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    resources.notes
-      .board()
-      .then((board) => {
-        setGroups(board.groups);
-        setNotes(board.notes);
+    Promise.all([resources.notes.groups.list(), resources.notes.list()])
+      .then(([groupList, noteList]) => {
+        setGroups(groupList);
+        setNotes(noteList);
       })
       .catch((err) => setError(apiError(err, "Não foi possível carregar as anotações.")))
       .finally(() => setIsLoading(false));
   }, []);
 
-  const ordered = useMemo(() => [...groups].sort((a, b) => a.order - b.order), [groups]);
+  const mine = useMemo(() => notes.filter((note) => note.ownerId === user?._id), [notes, user?._id]);
+  const sharedWithMe = useMemo(() => notes.filter((note) => note.ownerId !== user?._id), [notes, user?._id]);
+  const selected = notes.find((note) => note._id === selectedId) || mine[0] || sharedWithMe[0] || null;
+  const isOwner = selected?.ownerId === user?._id;
+
+  useEffect(() => {
+    setDraft({ title: selected?.title || "", content: selected?.content || "" });
+    // Só troca o rascunho quando outra anotação é aberta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?._id]);
+
+  const replaceNote = (saved: Note) => setNotes((current) => current.map((note) => (note._id === saved._id ? saved : note)));
 
   async function run(action: () => Promise<void>) {
     setError("");
@@ -123,115 +93,118 @@ export default function NotesPage() {
     }
   }
 
-  /* --------------------------------- Arrastar -------------------------------- */
-
-  function onCardDragOver(event: DragEvent<HTMLElement>, groupId: string, index: number) {
+  function createGroup(event: FormEvent) {
     event.preventDefault();
-    event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const after = event.clientY > rect.top + rect.height / 2;
-    const next = { groupId, index: after ? index + 1 : index };
-    if (target?.groupId !== next.groupId || target.index !== next.index) setTarget(next);
-  }
-
-  function onColumnDragOver(event: DragEvent<HTMLElement>, groupId: string) {
-    event.preventDefault();
-    if (target?.groupId !== groupId) setTarget({ groupId, index: sortNotes(notes, groupId).length });
-  }
-
-  function handleDrop(event: DragEvent<HTMLElement>) {
-    event.preventDefault();
-    const note = notes.find((item) => item._id === (event.dataTransfer.getData("text/plain") || dragId));
-    const drop = target;
-    setDragId(null);
-    setTarget(null);
-    if (!note || !drop) return;
-    const destination = sortNotes(notes, drop.groupId).filter((item) => item._id !== note._id);
-    const sourceIndex = sortNotes(notes, drop.groupId).findIndex((item) => item._id === note._id);
-    // Ao mover dentro do mesmo grupo para baixo, o índice alvo já contava o próprio cartão.
-    const index = sourceIndex !== -1 && sourceIndex < drop.index ? drop.index - 1 : drop.index;
-    destination.splice(Math.max(0, Math.min(index, destination.length)), 0, { ...note, groupId: drop.groupId });
-    const orderedIds = destination.map((item) => item._id);
-    const previous = notes;
-    setNotes((current) =>
-      current.map((item) => {
-        const position = orderedIds.indexOf(item._id);
-        return position === -1 ? item : { ...item, groupId: drop.groupId, order: position };
-      }),
-    );
-    void resources.notes.move(note._id, drop.groupId, orderedIds).catch((err) => {
-      setNotes(previous);
-      setError(apiError(err, "Não foi possível mover a anotação."));
-    });
-  }
-
-  /* ---------------------------------- Ações --------------------------------- */
-
-  function addNote() {
-    if (!adding?.title.trim()) return;
-    const { groupId, title } = adding;
+    if (!groupName.trim()) return;
     void run(async () => {
-      const note = await resources.notes.create({ groupId, title: title.trim() });
-      setNotes((current) => [...current, note]);
-      setAdding({ groupId, title: "" });
-    });
-  }
-
-  function addGroup() {
-    if (!newGroup.trim()) return;
-    void run(async () => {
-      const group = await resources.notes.createGroup({ name: newGroup.trim() });
+      const group = await resources.notes.groups.create({ name: groupName.trim() });
       setGroups((current) => [...current, group]);
-      setNewGroup("");
+      setGroupName("");
     });
   }
 
   function renameGroup() {
-    if (!renaming?.name.trim()) return;
+    if (!renaming?.name.trim()) {
+      setRenaming(null);
+      return;
+    }
     const { id, name } = renaming;
     void run(async () => {
-      const saved = await resources.notes.updateGroup(id, { name: name.trim() });
+      const saved = await resources.notes.groups.update(id, { name: name.trim() });
       setGroups((current) => current.map((group) => (group._id === id ? saved : group)));
       setRenaming(null);
     });
   }
 
-  function moveGroup(index: number, delta: number) {
-    const list = [...ordered];
-    const target = index + delta;
-    if (target < 0 || target >= list.length) return;
-    [list[index], list[target]] = [list[target], list[index]];
-    const ids = list.map((group) => group._id);
-    setGroups(list.map((group, order) => ({ ...group, order })));
-    void run(() => resources.notes.reorderGroups(ids));
-  }
-
   function deleteGroup(group: NoteGroup) {
-    const count = notes.filter((note) => note.groupId === group._id).length;
-    if (!window.confirm(`Excluir o grupo "${group.name}"${count ? ` e as ${count} anotações dele` : ""}?`)) return;
+    if (!window.confirm(`Excluir o grupo "${group.name}"? As anotações dele vão para "Anotações sem grupo".`)) return;
     void run(async () => {
-      await resources.notes.removeGroup(group._id);
+      await resources.notes.groups.remove(group._id);
       setGroups((current) => current.filter((item) => item._id !== group._id));
-      setNotes((current) => current.filter((note) => note.groupId !== group._id));
+      setNotes((current) => current.map((note) => (note.groupId === group._id ? { ...note, groupId: undefined } : note)));
     });
   }
 
-  function saveNote(note: Note) {
+  function createNote(groupId?: string) {
     void run(async () => {
-      const saved = await resources.notes.update(note._id, { title: note.title, content: note.content, color: note.color });
-      setNotes((current) => current.map((item) => (item._id === saved._id ? saved : item)));
-      setEditing(null);
+      const note = await resources.notes.create({ title: "Nova anotação", content: "", groupId });
+      setNotes((current) => [note, ...current]);
+      setSelectedId(note._id);
     });
   }
 
-  function deleteNote(note: Note) {
-    if (!window.confirm("Excluir esta anotação?")) return;
+  function saveDraft(field: "title" | "content") {
+    if (!selected || !isOwner || draft[field] === selected[field]) return;
+    void run(async () => replaceNote(await resources.notes.update(selected._id, { [field]: draft[field] })));
+  }
+
+  function deleteSelected() {
+    if (!selected || !isOwner || !window.confirm("Excluir esta anotação? Essa ação não pode ser desfeita.")) return;
     void run(async () => {
-      await resources.notes.remove(note._id);
-      setNotes((current) => current.filter((item) => item._id !== note._id));
-      setEditing(null);
+      await resources.notes.remove(selected._id);
+      setNotes((current) => current.filter((note) => note._id !== selected._id));
+      setSelectedId("");
     });
   }
+
+  function moveNote(noteId: string, target: string) {
+    const note = notes.find((item) => item._id === noteId);
+    const groupId = target === NO_GROUP ? "" : target;
+    if (!note || (note.groupId || "") === groupId) return;
+    const previous = notes;
+    setNotes((current) => current.map((item) => (item._id === noteId ? { ...item, groupId: groupId || undefined } : item)));
+    void resources.notes
+      .move(noteId, groupId)
+      .then(replaceNote)
+      .catch((err) => {
+        setNotes(previous);
+        setError(apiError(err, "Não foi possível mover a anotação."));
+      });
+  }
+
+  /* Área que recebe a anotação arrastada (um grupo ou "sem grupo"). */
+  function dropZone(target: string) {
+    return {
+      onDragOver: (event: DragEvent<HTMLElement>) => {
+        if (!dragging) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        if (overGroup !== target) setOverGroup(target);
+      },
+      onDragLeave: (event: DragEvent<HTMLElement>) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOverGroup(null);
+      },
+      onDrop: (event: DragEvent<HTMLElement>) => {
+        event.preventDefault();
+        const id = event.dataTransfer.getData(DRAG_TYPE) || dragging;
+        setDragging(null);
+        setOverGroup(null);
+        if (id) moveNote(id, target);
+      },
+      className: `rounded-xl p-1.5 transition ${overGroup === target && dragging ? "bg-tan/10 ring-2 ring-tan/30" : ""}`,
+    };
+  }
+
+  const renderNote = (note: Note, draggable: boolean) => (
+    <NoteItem
+      key={note._id}
+      note={note}
+      active={selected?._id === note._id}
+      draggable={draggable}
+      onSelect={() => setSelectedId(note._id)}
+      onDragStart={(event) => {
+        event.dataTransfer.setData(DRAG_TYPE, note._id);
+        event.dataTransfer.effectAllowed = "move";
+        setDragging(note._id);
+      }}
+      onDragEnd={() => {
+        setDragging(null);
+        setOverGroup(null);
+      }}
+    />
+  );
+
+  const ungrouped = mine.filter((note) => !note.groupId || !groups.some((group) => group._id === note.groupId));
 
   return (
     <>
@@ -239,205 +212,202 @@ export default function NotesPage() {
         <title>Anotações | Noma</title>
       </Head>
       <PageHeader
-        eyebrow="Visão geral"
-        title="Anotações"
-        description="Organize ideias e lembretes em grupos, no estilo Trello. Arraste os cartões entre os grupos ou dentro deles."
+        eyebrow="Workspace"
+        title="Minhas anotações"
+        description="Cada usuário tem o próprio espaço. Arraste uma anotação para mudar de grupo e compartilhe só quando quiser."
       />
       {error ? <p className="mb-4 text-sm text-burgundy">{error}</p> : null}
 
-      {isLoading ? (
-        <div className="flex gap-3">
-          {[0, 1, 2].map((index) => (
-            <div key={index} className="skeleton h-64 w-[280px] shrink-0" />
-          ))}
-        </div>
-      ) : (
-        <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0">
-          <div className="flex min-w-max items-start gap-3">
-            {ordered.map((group, groupIndex) => {
-              const items = sortNotes(notes, group._id);
-              const isTarget = target?.groupId === group._id && dragId !== null;
-              return (
-                <section
-                  key={group._id}
-                  onDragOver={(event) => onColumnDragOver(event, group._id)}
-                  onDrop={handleDrop}
-                  className={`flex w-[280px] shrink-0 flex-col rounded-xl border p-3 transition ${
-                    isTarget ? "border-tan bg-tan/[0.05]" : "border-charcoal/[0.06] bg-beige"
-                  }`}
-                >
-                  <header className="mb-2 flex items-center justify-between gap-2 px-1">
-                    {renaming?.id === group._id ? (
-                      <input
-                        className="input-search !py-1.5"
-                        value={renaming.name}
-                        autoFocus
-                        onChange={(e) => setRenaming({ id: group._id, name: e.target.value })}
-                        onBlur={renameGroup}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") renameGroup();
-                          if (e.key === "Escape") setRenaming(null);
-                        }}
-                      />
-                    ) : (
-                      <h2
-                        className="cursor-text truncate text-sm font-semibold text-charcoal"
-                        onDoubleClick={() => setRenaming({ id: group._id, name: group.name })}
-                      >
-                        {group.name} <span className="ml-1 text-xs font-normal text-charcoal/40">{items.length}</span>
-                      </h2>
-                    )}
-                    <GroupMenu
-                      group={group}
-                      isFirst={groupIndex === 0}
-                      isLast={groupIndex === ordered.length - 1}
-                      onRename={() => setRenaming({ id: group._id, name: group.name })}
-                      onMove={(delta) => moveGroup(groupIndex, delta)}
-                      onDelete={() => deleteGroup(group)}
-                    />
-                  </header>
+      <div className="grid min-h-[calc(100vh-13rem)] gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="card flex flex-col p-4">
+          <form onSubmit={createGroup} className="mb-4 flex gap-2">
+            <input className="input-search" value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="Novo grupo" />
+            <button type="submit" className="btn-secondary px-3" aria-label="Criar grupo">
+              <HiOutlinePlus className="h-4 w-4" />
+            </button>
+          </form>
+          <button type="button" className="btn-primary mb-4 w-full" onClick={() => createNote()}>
+            Nova anotação
+          </button>
 
-                  <div className="flex min-h-[48px] flex-col gap-2">
-                    {items.map((note, index) => (
-                      <div key={note._id}>
-                        {isTarget && target?.index === index ? <div className="mb-2 h-1 rounded-full bg-tan" /> : null}
-                        <article
-                          draggable
-                          onDragStart={(event) => {
-                            event.dataTransfer.setData("text/plain", note._id);
-                            event.dataTransfer.effectAllowed = "move";
-                            setDragId(note._id);
+          {isLoading ? (
+            <div className="space-y-2">
+              <div className="skeleton h-8" />
+              <div className="skeleton h-8" />
+            </div>
+          ) : (
+            <div className="space-y-3 text-sm">
+              {groups.map((group) => {
+                const groupNotes = mine.filter((note) => note.groupId === group._id);
+                return (
+                  <div key={group._id} {...dropZone(group._id)}>
+                    <div className="group/header mb-1 flex items-center justify-between gap-1 px-1">
+                      {renaming?.id === group._id ? (
+                        <input
+                          className="input-search !py-1"
+                          value={renaming.name}
+                          autoFocus
+                          onChange={(event) => setRenaming({ id: group._id, name: event.target.value })}
+                          onBlur={renameGroup}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") renameGroup();
+                            if (event.key === "Escape") setRenaming(null);
                           }}
-                          onDragEnd={() => {
-                            setDragId(null);
-                            setTarget(null);
-                          }}
-                          onDragOver={(event) => onCardDragOver(event, group._id, index)}
-                          onClick={() => setEditing(note)}
-                          style={note.color ? { backgroundColor: note.color } : undefined}
-                          className={`cursor-pointer rounded-lg border border-charcoal/[0.08] bg-white p-3 shadow-sm transition hover:border-charcoal/20 ${
-                            dragId === note._id ? "opacity-40" : ""
-                          }`}
+                        />
+                      ) : (
+                        <p className="eyebrow truncate">
+                          {group.name} <span className="font-normal text-charcoal/35">{groupNotes.length}</span>
+                        </p>
+                      )}
+                      <div className="flex shrink-0 items-center">
+                        <button type="button" className="rounded p-1 text-charcoal/35 hover:text-tan" aria-label="Nova anotação no grupo" onClick={() => createNote(group._id)}>
+                          <HiOutlinePlus className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded p-1 text-charcoal/35 hover:text-tan"
+                          aria-label="Renomear grupo"
+                          onClick={() => setRenaming({ id: group._id, name: group.name })}
                         >
-                          <p className="text-sm font-semibold text-charcoal">{note.title || "Sem título"}</p>
-                          {note.content ? <p className="mt-1 line-clamp-4 whitespace-pre-line text-xs text-charcoal/60">{note.content}</p> : null}
-                        </article>
+                          <HiOutlinePencilSquare className="h-3.5 w-3.5" />
+                        </button>
+                        <button type="button" className="rounded p-1 text-charcoal/35 hover:text-burgundy" aria-label="Excluir grupo" onClick={() => deleteGroup(group)}>
+                          <HiOutlineTrash className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                    ))}
-                    {isTarget && target?.index === items.length ? <div className="h-1 rounded-full bg-tan" /> : null}
+                    </div>
+                    {groupNotes.map((note) => renderNote(note, true))}
+                    {groupNotes.length === 0 ? (
+                      <p className="rounded-lg border border-dashed border-charcoal/10 px-3 py-2 text-xs text-charcoal/35">
+                        {dragging ? "Solte aqui" : "Vazio"}
+                      </p>
+                    ) : null}
                   </div>
+                );
+              })}
 
-                  {adding?.groupId === group._id ? (
-                    <form
-                      className="mt-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        addNote();
-                      }}
-                    >
-                      <textarea
-                        className="input-search min-h-[64px] resize-none"
-                        value={adding.title}
-                        autoFocus
-                        placeholder="Título da anotação"
-                        onChange={(e) => setAdding({ groupId: group._id, title: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            addNote();
-                          }
-                          if (e.key === "Escape") setAdding(null);
-                        }}
-                      />
-                      <div className="mt-2 flex gap-2">
-                        <button type="submit" className="btn-primary !py-1.5">
-                          Adicionar
-                        </button>
-                        <button type="button" className="btn-secondary !py-1.5" onClick={() => setAdding(null)}>
-                          Cancelar
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <button
-                      type="button"
-                      className="mt-2 flex items-center gap-1.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-charcoal/55 hover:bg-white hover:text-charcoal"
-                      onClick={() => setAdding({ groupId: group._id, title: "" })}
-                    >
-                      <HiOutlinePlus className="h-4 w-4" /> Adicionar anotação
-                    </button>
-                  )}
-                </section>
-              );
-            })}
+              <div {...dropZone(NO_GROUP)}>
+                <p className="eyebrow mb-1 px-1">Anotações sem grupo</p>
+                {ungrouped.map((note) => renderNote(note, true))}
+                {ungrouped.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-charcoal/10 px-3 py-2 text-xs text-charcoal/35">
+                    {dragging ? "Solte aqui" : "Nenhuma"}
+                  </p>
+                ) : null}
+              </div>
 
-            <form
-              className="w-[280px] shrink-0 rounded-xl border border-dashed border-charcoal/15 p-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                addGroup();
-              }}
-            >
-              <input className="input-search" value={newGroup} placeholder="+ Novo grupo" onChange={(e) => setNewGroup(e.target.value)} />
-              {newGroup.trim() ? (
-                <button type="submit" className="btn-primary mt-2 w-full !py-1.5">
-                  Criar grupo
-                </button>
+              {sharedWithMe.length ? (
+                <div className="p-1.5">
+                  <p className="eyebrow mb-1 px-1">Compartilhadas comigo</p>
+                  {sharedWithMe.map((note) => renderNote(note, false))}
+                </div>
               ) : null}
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          )}
+        </aside>
 
-      <Modal
-        open={Boolean(editing)}
-        onClose={() => setEditing(null)}
-        title="Anotação"
-        description={editing ? `Atualizada em ${formatDateTime(editing.updatedAt)}` : ""}
-        footer={
-          editing ? (
-            <div className="flex w-full justify-between gap-2">
-              <button type="button" className="btn-secondary !text-burgundy" onClick={() => deleteNote(editing)}>
-                Excluir
-              </button>
-              <button type="button" className="btn-primary" onClick={() => saveNote(editing)}>
-                Salvar
-              </button>
-            </div>
-          ) : null
-        }
-      >
-        {editing ? (
-          <div className="space-y-3 pt-1">
-            <input
-              className="input-search font-semibold"
-              value={editing.title}
-              placeholder="Título"
-              onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-            />
-            <textarea
-              className="input-search min-h-[200px] resize-y"
-              value={editing.content}
-              placeholder="Escreva aqui..."
-              onChange={(e) => setEditing({ ...editing, content: e.target.value })}
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-charcoal/60">Cor</span>
-              {NOTE_COLORS.map((color) => (
-                <button
-                  key={color || "none"}
-                  type="button"
-                  aria-label={color ? `Cor ${color}` : "Sem cor"}
-                  onClick={() => setEditing({ ...editing, color })}
-                  className={`h-7 w-7 rounded-full border ${editing.color === color ? "ring-2 ring-tan ring-offset-1" : "border-charcoal/15"}`}
-                  style={{ backgroundColor: color || "#fff" }}
+        <section className="card flex min-h-[32rem] flex-col p-6 sm:p-8">
+          {selected ? (
+            <div className="flex flex-1 flex-col">
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <input
+                  className="w-full border-none bg-transparent text-3xl font-semibold text-charcoal outline-none"
+                  value={draft.title}
+                  onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+                  onBlur={() => saveDraft("title")}
+                  disabled={!isOwner}
                 />
-              ))}
+                {isOwner ? (
+                  <button type="button" className="btn-danger shrink-0" onClick={deleteSelected}>
+                    Excluir
+                  </button>
+                ) : null}
+              </div>
+              <p className="mb-4 text-xs text-charcoal/40">
+                {isOwner ? "" : `De ${selected.ownerName} · `}Atualizada em {formatDateTime(selected.updatedAt)}
+              </p>
+              <textarea
+                className="min-h-[420px] w-full flex-1 resize-y border-none bg-transparent text-sm leading-7 text-charcoal outline-none"
+                value={draft.content}
+                onChange={(event) => setDraft((current) => ({ ...current, content: event.target.value }))}
+                onBlur={() => saveDraft("content")}
+                placeholder="Escreva livremente..."
+                disabled={!isOwner}
+              />
+
+              {isOwner ? (
+                <div className="mt-6 grid gap-6 border-t border-charcoal/[0.06] pt-4 md:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-sm font-medium">Grupo</p>
+                    <Select
+                      value={selected.groupId && groups.some((group) => group._id === selected.groupId) ? selected.groupId : NO_GROUP}
+                      onChange={(target) => moveNote(selected._id, target)}
+                      options={[{ value: NO_GROUP, label: "Sem grupo" }, ...groups.map((group) => ({ value: group._id, label: group.name }))]}
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-sm font-medium">Compartilhar</p>
+                    <div className="flex gap-2">
+                      <div className="min-w-0 flex-1">
+                        <Select
+                          value={shareUserId}
+                          onChange={setShareUserId}
+                          placeholder="Escolher usuário"
+                          options={(users || [])
+                            .filter((item) => item._id !== user?._id && !selected.shares.some((share) => share.userId === item._id))
+                            .map((item) => ({ value: item._id, label: item.name }))}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={!shareUserId}
+                        onClick={() =>
+                          void run(async () => {
+                            replaceNote(await resources.notes.share(selected._id, shareUserId));
+                            setShareUserId("");
+                          })
+                        }
+                      >
+                        Compartilhar
+                      </button>
+                    </div>
+                    <div className="mt-3 space-y-1 text-sm text-charcoal/60">
+                      {selected.shares.map((share) => (
+                        <div key={share.userId} className="flex items-center justify-between">
+                          <span>{share.name}</span>
+                          <button
+                            type="button"
+                            className="text-burgundy"
+                            onClick={() =>
+                              void run(async () => {
+                                await resources.notes.unshare(selected._id, share.userId);
+                                replaceNote({ ...selected, shares: selected.shares.filter((item) => item.userId !== share.userId) });
+                              })
+                            }
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-xs text-charcoal/40">Você está visualizando uma anotação compartilhada.</p>
+              )}
             </div>
-            <p className="text-xs text-charcoal/45">Para trocar de grupo, arraste o cartão no quadro.</p>
-          </div>
-        ) : null}
-      </Modal>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-beige text-tan">
+                <HiOutlineDocumentText className="h-7 w-7" />
+              </div>
+              <p className="text-xl font-semibold text-charcoal">Sua mesa de ideias</p>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-charcoal/50">Crie um grupo ou uma anotação para começar a escrever.</p>
+            </div>
+          )}
+        </section>
+      </div>
     </>
   );
 }

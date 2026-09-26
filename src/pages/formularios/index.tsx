@@ -40,7 +40,7 @@ export default function FormsPage() {
       <PageHeader
         eyebrow="Comercial"
         title="Formulários"
-        description="Crie formulários com link para enviar a clientes. Cada resposta pode virar um contato e uma negociação no funil."
+        description="Crie formulários personalizados. Envie pela negociação (link com código de 6 dígitos, respostas ficam na negociação) ou compartilhe o link público, em que cada resposta vira contato e negociação."
         actions={
           <button type="button" className="btn-primary" disabled={busy} onClick={() => void handleCreate()}>
             {busy ? "Criando..." : "Novo formulário"}

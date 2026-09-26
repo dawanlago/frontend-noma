@@ -2,13 +2,14 @@ import Head from "next/head";
 import Link from "next/link";
 import {
   HiOutlineAdjustmentsHorizontal,
+  HiOutlineClipboardDocumentList,
+  HiOutlineFaceSmile,
   HiOutlineArrowRight,
   HiOutlineChatBubbleLeftRight,
   HiOutlineDocumentText,
   HiOutlineFunnel,
   HiOutlineListBullet,
   HiOutlinePaintBrush,
-  HiOutlineRectangleStack,
   HiOutlineTag,
   HiOutlineUserGroup,
 } from "react-icons/hi2";
@@ -59,11 +60,16 @@ const settingsLinks = [
     icon: HiOutlineTag,
   },
   {
-    href: "/configuracoes/biblioteca",
-    title: "Biblioteca audiovisual",
-    description: "Defina o link de cada categoria da biblioteca (músicas, LUTs, presets...).",
-    icon: HiOutlineRectangleStack,
-    adminOnly: true,
+    href: "/formularios",
+    title: "Formulários",
+    description: "Monte formulários personalizados para enviar pela negociação ou por link público.",
+    icon: HiOutlineClipboardDocumentList,
+  },
+  {
+    href: "/nps",
+    title: "Pesquisas NPS",
+    description: "Crie as pesquisas de satisfação enviadas aos clientes.",
+    icon: HiOutlineFaceSmile,
   },
   {
     href: "/usuarios",

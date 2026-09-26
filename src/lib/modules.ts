@@ -12,8 +12,10 @@ export interface ModuleInfo {
 export const MODULES: ModuleInfo[] = [
   { key: "crm", label: "CRM Comercial", description: "Funis e negociações.", paths: ["/crm"] },
   { key: "atividades", label: "Atividades", description: "Checklist de atividades.", paths: ["/atividades"] },
+  { key: "agenda", label: "Agenda", description: "Calendário de compromissos.", paths: ["/agenda"] },
   { key: "anotacoes", label: "Anotações", description: "Quadro pessoal de anotações.", paths: ["/anotacoes"] },
   { key: "formularios", label: "Formulários", description: "Formulários com link para clientes.", paths: ["/formularios"] },
+  { key: "nps", label: "NPS", description: "Pesquisas de satisfação e respostas.", paths: ["/nps"] },
   { key: "prospeccao", label: "Gerador de Prospecção", description: "Mensagens de primeira abordagem.", paths: ["/prospeccao"] },
   { key: "followup", label: "Gerador de Follow-up", description: "Mensagens para retomar contato.", paths: ["/follow-up"] },
   { key: "propostas", label: "Gerador de Propostas", description: "Propostas comerciais.", paths: ["/propostas"] },
@@ -21,7 +23,6 @@ export const MODULES: ModuleInfo[] = [
   { key: "contratos", label: "Contratos", description: "Gerador e contratos importados.", paths: ["/contratos"] },
   { key: "briefing", label: "Gerador de Briefing", description: "Briefings de produção.", paths: ["/briefing"] },
   { key: "financeiro", label: "Financeiro", description: "Entradas, despesas, metas e planilha.", paths: ["/financeiro"] },
-  { key: "biblioteca", label: "Biblioteca audiovisual", description: "Links de músicas, LUTs, presets...", paths: ["/biblioteca"] },
   {
     key: "base",
     label: "Base de dados",
