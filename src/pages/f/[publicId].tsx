@@ -1,76 +1,86 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { apiError } from "@/lib/errors";
-import { isInviteCode, resources } from "@/lib/resources";
+import { resources } from "@/lib/resources";
 import type { FormField, PublicFormData } from "@/types";
 
-type PublicForm = PublicFormData;
 type Answer = string | string[] | boolean;
+/** -1 = boas-vindas; 0..n-1 = perguntas; n = enviado. */
+type Step = number;
 
-function Input({ field, value, onChange }: { field: FormField; value: Answer | undefined; onChange: (value: Answer) => void }) {
-  const text = typeof value === "string" ? value : "";
-  switch (field.type) {
-    case "textarea":
-      return <textarea className="input-search min-h-[110px] resize-y" value={text} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />;
-    case "select":
-      return (
-        <select className="input-search" value={text} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Selecione</option>
-          {field.options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      );
-    case "multiselect": {
-      const list = Array.isArray(value) ? value : [];
-      return (
-        <div className="grid gap-2">
-          {field.options.map((option) => (
-            <label key={option} className="flex items-center gap-2 text-sm text-charcoal">
-              <input
-                type="checkbox"
-                checked={list.includes(option)}
-                onChange={(e) => onChange(e.target.checked ? [...list, option] : list.filter((item) => item !== option))}
-              />
-              {option}
-            </label>
-          ))}
-        </div>
-      );
-    }
-    case "checkbox":
-      return (
-        <label className="flex items-center gap-2 text-sm text-charcoal">
-          <input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} />
-          {field.placeholder || "Sim"}
-        </label>
-      );
-    default:
-      return (
-        <input
-          className="input-search"
-          type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
-          value={text}
-          placeholder={field.placeholder}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      );
-  }
+const NOMA_RED = "#731817";
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/** Cor de destaque: a cor padrão da marca, se for escura o bastante; senão o vermelho da Noma. */
+function accentColor(color?: string) {
+  const hex = (color || "").replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return NOMA_RED;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.75 ? NOMA_RED : `#${hex}`;
 }
 
-/** Página pública do formulário (sem login). */
+function isEmpty(field: FormField, value: Answer | undefined) {
+  if (field.type === "checkbox") return value !== true && value !== false;
+  if (Array.isArray(value)) return value.length === 0;
+  return typeof value !== "string" || !value.trim();
+}
+
+function validate(field: FormField, value: Answer | undefined): string {
+  if (isEmpty(field, value)) return field.required ? "Por favor, responda esta pergunta." : "";
+  if (field.type === "email" && typeof value === "string" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+    return "Hmm, esse e-mail não parece válido.";
+  }
+  if (field.type === "phone" && typeof value === "string" && value.replace(/\D/g, "").length < 10) {
+    return "Informe o telefone com DDD.";
+  }
+  if (field.type === "checkbox" && field.required && value !== true) return "É preciso marcar “Sim” para continuar.";
+  return "";
+}
+
+function maskPhone(value: string) {
+  const d = value.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 2) return d ? `(${d}` : "";
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+function Logo({ form }: { form: PublicFormData | null }) {
+  return form?.brand?.logo ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={form.brand.logo} alt={form.brand.companyName || "Noma"} className="max-h-10 max-w-[160px] object-contain" />
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/brand/noma-vermelho.png" alt={form?.brand?.companyName || "Noma"} className="h-7 w-auto" />
+  );
+}
+
+function EnterHint({ label = "Enter ↵" }: { label?: string }) {
+  return (
+    <span className="hidden text-xs text-charcoal/50 sm:inline">
+      pressione <strong className="font-semibold text-charcoal/70">{label}</strong>
+    </span>
+  );
+}
+
+/** Página pública do formulário (sem login), no estilo conversacional: uma pergunta por vez. */
 export default function PublicFormPage() {
   const router = useRouter();
   const publicId = typeof router.query.publicId === "string" ? router.query.publicId : "";
-  const [form, setForm] = useState<PublicForm | null>(null);
+  const [form, setForm] = useState<PublicFormData | null>(null);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [website, setWebsite] = useState("");
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [step, setStep] = useState<Step>(-1);
+  const [direction, setDirection] = useState<"up" | "down">("up");
+  const [fieldError, setFieldError] = useState("");
+  const [sendError, setSendError] = useState("");
   const [done, setDone] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const autoAdvance = useRef<number>(0);
 
   useEffect(() => {
     if (!publicId) return;
@@ -81,98 +91,373 @@ export default function PublicFormPage() {
         // Formulário enviado pela negociação: já vem com o que sabemos do contato.
         if (data.prefill) setAnswers((current) => ({ ...data.prefill, ...current }));
       })
-      .catch(() => setError("Este formulário não está disponível."));
+      .catch(() => setLoadError("Este formulário não está disponível."));
   }, [publicId]);
 
-  async function handleSubmit() {
+  const fields = useMemo(() => form?.fields || [], [form]);
+  const total = fields.length;
+  const field = step >= 0 && step < total ? fields[step] : null;
+  const accent = accentColor(form?.brand?.color);
+  const answered = fields.filter((item) => !isEmpty(item, answers[item.key])).length;
+  const progress = done ? 100 : total ? Math.round((answered / total) * 100) : 0;
+
+  // Foca o campo de texto a cada pergunta nova.
+  useEffect(() => {
+    const timer = window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 350);
+    return () => window.clearTimeout(timer);
+  }, [step]);
+
+  const go = useCallback(
+    (next: Step) => {
+      window.clearTimeout(autoAdvance.current);
+      setDirection(next > step ? "up" : "down");
+      setFieldError("");
+      setSendError("");
+      setStep(next);
+    },
+    [step],
+  );
+
+  const submit = useCallback(async () => {
     setIsSending(true);
-    setError("");
+    setSendError("");
     try {
       const result = await resources.publicForms.submit(publicId, answers, website);
-      setDone(result.message || "Recebemos suas respostas. Obrigado!");
+      setDirection("up");
+      setDone(result.message || form?.successMessage || "Recebemos suas respostas. Obrigado!");
+      setStep(total);
     } catch (err) {
-      setError(apiError(err, "Não foi possível enviar. Tente de novo."));
+      setSendError(apiError(err, "Não foi possível enviar. Tente de novo."));
     } finally {
       setIsSending(false);
     }
+  }, [answers, form?.successMessage, publicId, total, website]);
+
+  const next = useCallback(() => {
+    if (step === -1) return go(0);
+    if (!field) return;
+    const message = validate(field, answers[field.key]);
+    if (message) {
+      setFieldError(message);
+      return;
+    }
+    if (step === total - 1) return void submit();
+    go(step + 1);
+  }, [answers, field, go, step, submit, total]);
+
+  function setAnswer(value: Answer) {
+    if (!field) return;
+    setFieldError("");
+    setAnswers((current) => ({ ...current, [field.key]: value }));
   }
+
+  function choose(option: string) {
+    if (!field) return;
+    if (field.type === "multiselect") {
+      const list = Array.isArray(answers[field.key]) ? (answers[field.key] as string[]) : [];
+      setAnswer(list.includes(option) ? list.filter((item) => item !== option) : [...list, option]);
+      return;
+    }
+    const value: Answer = field.type === "checkbox" ? option === "Sim" : option;
+    setAnswer(value);
+    // Escolha única: confirma e avança sozinho, como no Typeform.
+    window.clearTimeout(autoAdvance.current);
+    const current = step;
+    autoAdvance.current = window.setTimeout(() => {
+      const message = validate(field, value);
+      if (message) return setFieldError(message);
+      if (current === total - 1) return;
+      setDirection("up");
+      setStep(current + 1);
+    }, 450);
+  }
+
+  // Atalhos: Enter avança; letras escolhem opções.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (!form || done || form.status === "submitted") return;
+      const target = event.target as HTMLElement;
+      const typing = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+      if (event.key === "Enter" && !event.shiftKey) {
+        // Botões comuns (Começar, OK) já respondem ao Enter sozinhos; nas opções, Enter confirma e avança.
+        const role = target.getAttribute("role");
+        if (target.tagName === "BUTTON" && role !== "radio" && role !== "checkbox") return;
+        event.preventDefault();
+        next();
+        return;
+      }
+      if (!typing && field && ["select", "multiselect", "checkbox"].includes(field.type) && event.key.length === 1) {
+        const options = field.type === "checkbox" ? ["Sim", "Não"] : field.options;
+        const index = LETTERS.indexOf(event.key.toUpperCase());
+        if (index >= 0 && index < options.length) choose(options[index]);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const style = { "--accent": accent } as CSSProperties;
 
   return (
     <>
       <Head>
         <title>{form ? `${form.name} | Noma` : "Formulário | Noma"}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      <main className="min-h-screen bg-beige px-4 py-10">
-        <div className="mx-auto max-w-xl">
-          <div className="mb-5 flex justify-center">
-            {form?.brand?.logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={form.brand.logo} alt={form.brand.companyName || "Noma"} className="max-h-14 max-w-[180px] object-contain" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src="/brand/noma-vermelho.png" alt={form?.brand?.companyName || "Noma"} className="h-9 w-auto" />
-            )}
-          </div>
-          <div className="card p-6 sm:p-8">
-            {!form && !error ? <div className="skeleton h-64" /> : null}
-            {error && !form ? <p className="text-center text-sm text-burgundy">{error}</p> : null}
-            {form && !done && form.status === "submitted" ? (
-              <div>
-                <p className="eyebrow">Preenchido</p>
-                <h1 className="mt-2 text-2xl font-semibold text-charcoal">{form.name}</h1>
-                <p className="mt-2 text-sm text-charcoal/55">
+      <style>{`
+        @keyframes tf-in-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+        @keyframes tf-in-down { from { opacity: 0; transform: translateY(-40px); } to { opacity: 1; transform: none; } }
+        .tf-up { animation: tf-in-up .5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .tf-down { animation: tf-in-down .5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @media (prefers-reduced-motion: reduce) { .tf-up, .tf-down { animation: none; } }
+      `}</style>
+
+      <main style={style} className="relative flex min-h-[100dvh] flex-col bg-[#fbf9f7] text-charcoal">
+        {/* Progresso */}
+        <div className="fixed inset-x-0 top-0 z-10 h-1 bg-charcoal/[0.06]">
+          <div className="h-full bg-[var(--accent)] transition-[width] duration-500 ease-out" style={{ width: `${progress}%` }} />
+        </div>
+        <header className="flex items-center justify-between px-5 pt-5 sm:px-10 sm:pt-7">
+          <Logo form={form} />
+          {field ? (
+            <span className="text-xs font-medium text-charcoal/45">
+              {step + 1} de {total}
+            </span>
+          ) : null}
+        </header>
+
+        <section className="flex flex-1 items-center justify-center px-5 py-10 sm:px-10">
+          <div className="w-full max-w-2xl">
+            {!form && !loadError ? <div className="mx-auto h-40 w-full max-w-md animate-pulse rounded-2xl bg-charcoal/[0.05]" /> : null}
+            {loadError ? <p className="text-center text-lg text-charcoal/60">{loadError}</p> : null}
+
+            {/* Já respondido (formulário enviado pela negociação) */}
+            {form && form.status === "submitted" && !done ? (
+              <div className="tf-up">
+                <p className="text-sm font-semibold text-[var(--accent)]">Formulário já preenchido</p>
+                <h1 className="mt-2 text-3xl font-semibold tracking-tight">{form.name}</h1>
+                <p className="mt-2 text-charcoal/60">
                   {form.contactFirstName ? `${form.contactFirstName}, suas` : "Suas"} respostas já foram registradas.
                 </p>
-                <dl className="mt-6 space-y-3">
+                <dl className="mt-8 space-y-3">
                   {(form.answers || []).map((answer) => (
-                    <div key={answer.label} className="rounded-xl bg-beige/60 px-4 py-3">
+                    <div key={answer.label} className="rounded-xl bg-white px-4 py-3 shadow-soft">
                       <dt className="text-xs font-medium text-charcoal/45">{answer.label}</dt>
-                      <dd className="mt-1 whitespace-pre-line text-sm text-charcoal">{answer.value || "—"}</dd>
+                      <dd className="mt-1 whitespace-pre-line text-charcoal">{answer.value || "—"}</dd>
                     </div>
                   ))}
                 </dl>
               </div>
             ) : null}
-            {form && done ? (
-              <div className="py-8 text-center">
-                <p className="text-xl font-semibold text-charcoal">Enviado!</p>
-                <p className="mt-2 whitespace-pre-line text-sm text-charcoal/65">{done}</p>
+
+            {/* Boas-vindas */}
+            {form && form.status !== "submitted" && step === -1 ? (
+              <div key="welcome" className={direction === "up" ? "tf-up" : "tf-down"}>
+                {form.contactFirstName ? <p className="mb-3 text-lg text-charcoal/60">Olá, {form.contactFirstName}!</p> : null}
+                <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">{form.name}</h1>
+                {form.description ? <p className="mt-4 max-w-xl whitespace-pre-line text-lg text-charcoal/60 sm:text-xl">{form.description}</p> : null}
+                <div className="mt-8 flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={next}
+                    className="rounded-xl bg-[var(--accent)] px-7 py-3.5 text-lg font-semibold text-white shadow-lg shadow-black/10 transition hover:brightness-110 active:scale-[0.98]"
+                  >
+                    Começar
+                  </button>
+                  <EnterHint />
+                </div>
+                {total ? (
+                  <p className="mt-6 text-sm text-charcoal/45">
+                    {total} {total === 1 ? "pergunta" : "perguntas"} · leva uns {Math.max(1, Math.round(total * 0.3))} min
+                  </p>
+                ) : null}
               </div>
             ) : null}
-            {form && !done && form.status !== "submitted" ? (
-              <form
-                className="space-y-5"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void handleSubmit();
-                }}
-              >
-                <div>
-                  {isInviteCode(publicId) ? <p className="eyebrow mb-1">Código {publicId}</p> : null}
-                  {form.contactFirstName ? <p className="mb-1 text-sm text-charcoal/55">Olá, {form.contactFirstName}!</p> : null}
-                  <h1 className="text-2xl font-semibold tracking-tight text-charcoal">{form.name}</h1>
-                  {form.description ? <p className="mt-2 whitespace-pre-line text-sm text-charcoal/60">{form.description}</p> : null}
+
+            {/* Pergunta */}
+            {form && field && !done ? (
+              <div key={field.key} className={direction === "up" ? "tf-up" : "tf-down"}>
+                <p className="flex items-start gap-3 text-2xl font-medium leading-snug tracking-tight sm:text-3xl">
+                  <span className="mt-1 flex shrink-0 items-center gap-1 text-base font-semibold text-[var(--accent)] sm:text-lg">
+                    {step + 1}
+                    <span aria-hidden>→</span>
+                  </span>
+                  <span>
+                    {field.label}
+                    {field.required ? <span className="text-[var(--accent)]"> *</span> : null}
+                  </span>
+                </p>
+                {field.type === "multiselect" ? <p className="ml-9 mt-2 text-sm text-charcoal/50">Escolha quantas quiser</p> : null}
+                {field.placeholder && !["text", "textarea", "email", "phone", "number", "checkbox"].includes(field.type) ? (
+                  <p className="ml-9 mt-2 text-sm text-charcoal/50">{field.placeholder}</p>
+                ) : null}
+
+                <div className="ml-0 mt-8 sm:ml-9">
+                  <QuestionInput
+                    field={field}
+                    value={answers[field.key]}
+                    inputRef={inputRef}
+                    onChange={setAnswer}
+                    onChoose={choose}
+                    onEnter={next}
+                  />
                 </div>
-                {form.fields.map((field) => (
-                  <div key={field.key}>
-                    <p className="mb-1.5 text-sm font-semibold text-charcoal">
-                      {field.label}
-                      {field.required ? <span className="text-burgundy"> *</span> : null}
-                    </p>
-                    <Input field={field} value={answers[field.key]} onChange={(value) => setAnswers((current) => ({ ...current, [field.key]: value }))} />
-                  </div>
-                ))}
-                {/* Campo invisível para barrar robôs. */}
-                <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
-                {error ? <p className="text-sm text-burgundy">{error}</p> : null}
-                <button type="submit" className="btn-primary w-full" disabled={isSending}>
-                  {isSending ? "Enviando..." : "Enviar"}
-                </button>
-              </form>
+
+                <div className="ml-0 mt-8 flex flex-wrap items-center gap-4 sm:ml-9">
+                  <button
+                    type="button"
+                    onClick={next}
+                    disabled={isSending}
+                    className="rounded-xl bg-[var(--accent)] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-black/10 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {step === total - 1 ? (isSending ? "Enviando…" : "Enviar") : "OK ✓"}
+                  </button>
+                  {step === total - 1 ? <EnterHint label="Enter ↵" /> : field.type === "textarea" ? <EnterHint label="Shift + Enter ↵ para quebrar linha" /> : <EnterHint />}
+                </div>
+                {fieldError || sendError ? (
+                  <p role="alert" className="ml-0 mt-4 inline-flex items-center gap-2 rounded-lg bg-[#fdecec] px-3 py-2 text-sm font-medium text-[#b42318] sm:ml-9">
+                    ⚠ {fieldError || sendError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Enviado */}
+            {form && done ? (
+              <div key="done" className="tf-up text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent)] text-3xl text-white">✓</div>
+                <h1 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">Enviado!</h1>
+                <p className="mx-auto mt-3 max-w-lg whitespace-pre-line text-lg text-charcoal/60">{done}</p>
+              </div>
             ) : null}
           </div>
-        </div>
+        </section>
+
+        {/* Navegação */}
+        {form && field && !done ? (
+          <nav className="fixed bottom-5 right-5 flex overflow-hidden rounded-lg shadow-lg shadow-black/10" aria-label="Navegar entre as perguntas">
+            <button
+              type="button"
+              aria-label="Pergunta anterior"
+              onClick={() => go(step - 1)}
+              className="flex h-10 w-10 items-center justify-center bg-[var(--accent)] text-white transition hover:brightness-110"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              aria-label="Próxima pergunta"
+              onClick={next}
+              className="flex h-10 w-10 items-center justify-center border-l border-white/20 bg-[var(--accent)] text-white transition hover:brightness-110"
+            >
+              ↓
+            </button>
+          </nav>
+        ) : null}
+
+        {/* Campo invisível para barrar robôs. */}
+        <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
       </main>
     </>
+  );
+}
+
+function QuestionInput({
+  field,
+  value,
+  inputRef,
+  onChange,
+  onChoose,
+  onEnter,
+}: {
+  field: FormField;
+  value: Answer | undefined;
+  inputRef: React.MutableRefObject<HTMLInputElement | HTMLTextAreaElement | null>;
+  onChange: (value: Answer) => void;
+  onChoose: (option: string) => void;
+  onEnter: () => void;
+}) {
+  const text = typeof value === "string" ? value : "";
+  const lineInput =
+    "w-full border-0 border-b-2 border-charcoal/15 bg-transparent pb-2 text-2xl text-charcoal outline-none transition placeholder:text-charcoal/25 focus:border-[var(--accent)] sm:text-3xl";
+
+  if (field.type === "select" || field.type === "multiselect" || field.type === "checkbox") {
+    const options = field.type === "checkbox" ? ["Sim", "Não"] : field.options;
+    const selected = (option: string) =>
+      field.type === "multiselect"
+        ? Array.isArray(value) && value.includes(option)
+        : field.type === "checkbox"
+          ? (option === "Sim" && value === true) || (option === "Não" && value === false)
+          : value === option;
+    return (
+      <div className="grid max-w-md gap-2.5" role={field.type === "multiselect" ? "group" : "radiogroup"}>
+        {options.map((option, index) => {
+          const active = selected(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              role={field.type === "multiselect" ? "checkbox" : "radio"}
+              aria-checked={active}
+              onClick={() => onChoose(option)}
+              className={`flex items-center gap-3 rounded-xl border-2 px-3 py-3 text-left text-lg transition active:scale-[0.99] ${
+                active ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)]" : "border-charcoal/10 bg-white hover:border-charcoal/25"
+              }`}
+            >
+              <span
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs font-bold ${
+                  active ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-charcoal/20 text-charcoal/60"
+                }`}
+              >
+                {LETTERS[index]}
+              </span>
+              <span className="min-w-0 flex-1">{option}</span>
+              {active ? <span className="text-[var(--accent)]">✓</span> : null}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (field.type === "textarea") {
+    return (
+      <textarea
+        ref={(el) => {
+          inputRef.current = el;
+        }}
+        rows={3}
+        className={`${lineInput} resize-none`}
+        value={text}
+        placeholder={field.placeholder || "Escreva sua resposta aqui…"}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            event.stopPropagation();
+            onEnter();
+          }
+        }}
+      />
+    );
+  }
+
+  const type =
+    field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : field.type === "date" ? "date" : "text";
+  const placeholder =
+    field.placeholder ||
+    (field.type === "email" ? "nome@exemplo.com" : field.type === "phone" ? "(00) 00000-0000" : field.type === "number" ? "0" : "Escreva sua resposta aqui…");
+  return (
+    <input
+      ref={(el) => {
+        inputRef.current = el;
+      }}
+      className={lineInput}
+      type={type}
+      inputMode={field.type === "phone" ? "tel" : field.type === "number" ? "decimal" : undefined}
+      value={text}
+      placeholder={placeholder}
+      onChange={(event) => onChange(field.type === "phone" ? maskPhone(event.target.value) : event.target.value)}
+    />
   );
 }
