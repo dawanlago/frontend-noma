@@ -10,7 +10,7 @@ export interface ModuleInfo {
 
 /** Áreas que o admin libera por usuário (Usuários → Acessos). */
 export const MODULES: ModuleInfo[] = [
-  { key: "crm", label: "CRM Comercial", description: "Funis e negociações.", paths: ["/crm"] },
+  { key: "crm", label: "CRM Comercial", description: "Funis e negociações.", paths: ["/crm", "/extensao-whatsapp"] },
   { key: "atividades", label: "Atividades", description: "Checklist de atividades.", paths: ["/atividades"] },
   { key: "agenda", label: "Agenda", description: "Calendário de compromissos.", paths: ["/agenda"] },
   { key: "anotacoes", label: "Anotações", description: "Quadro pessoal de anotações.", paths: ["/anotacoes"] },

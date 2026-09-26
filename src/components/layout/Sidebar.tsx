@@ -17,6 +17,7 @@ import HomeOutlined from "@mui/icons-material/HomeOutlined";
 import Inventory2Outlined from "@mui/icons-material/Inventory2Outlined";
 import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
 import SentimentSatisfiedAltOutlined from "@mui/icons-material/SentimentSatisfiedAltOutlined";
+import WhatsApp from "@mui/icons-material/WhatsApp";
 import PeopleOutlined from "@mui/icons-material/PeopleOutlined";
 import ReplayOutlined from "@mui/icons-material/ReplayOutlined";
 import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
@@ -63,6 +64,7 @@ const groups: NavGroup[] = [
       { href: "/crm", label: "CRM", icon: ViewKanbanOutlined, module: "crm" },
       { href: "/formularios", label: "Formulários", icon: DynamicFormOutlined, module: "formularios" },
       { href: "/nps", label: "NPS", icon: SentimentSatisfiedAltOutlined, module: "nps" },
+      { href: "/extensao-whatsapp", label: "Extensão WhatsApp", icon: WhatsApp, module: "crm" },
     ],
   },
   {
