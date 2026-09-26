@@ -336,7 +336,10 @@ export interface StoredFile extends Owned {
   name: string;
   mimeType: string;
   size: number;
-  chunkCount: number;
+  /** Link do arquivo no Cloudinary. */
+  url: string;
+  publicId: string;
+  resourceType: "image" | "raw";
   contactId?: string;
   companyId?: string;
   leadId?: string;

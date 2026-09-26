@@ -108,7 +108,7 @@ export default function ContactForm({ open, contact, initial, onClose, onSaved }
           }}
         >
           <div className="sm:col-span-2">
-            <ImageInput value={form.photo} onChange={(photo) => set("photo", photo)} name={form.name} label="Foto" />
+            <ImageInput value={form.photo} onChange={(photo) => set("photo", photo)} name={form.name} label="Foto" folder="contatos" />
           </div>
           <Field label="Nome *">
             <input className="input-search" value={form.name} autoFocus onChange={(e) => set("name", e.target.value)} />

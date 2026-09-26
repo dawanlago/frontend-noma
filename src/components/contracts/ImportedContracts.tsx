@@ -6,7 +6,7 @@ import Modal from "@/components/ui/Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { apiError } from "@/lib/errors";
-import { downloadStoredFile, formatBytes, MAX_FILE_BYTES, uploadFile } from "@/lib/files";
+import { formatBytes, MAX_FILE_BYTES, openStoredFile, uploadFile } from "@/lib/files";
 import { resources } from "@/lib/resources";
 import { formatDate } from "@/utils/format";
 
@@ -23,7 +23,6 @@ export default function ImportedContracts({ ownerId }: { ownerId: string }) {
   const [clientRef, setClientRef] = useState("");
   const [progress, setProgress] = useState<number | null>(null);
   const [status, setStatus] = useState("");
-  const [busyId, setBusyId] = useState("");
 
   const clientItems = useMemo(() => {
     const [contacts = [], companies = []] = people.data || [];
@@ -38,7 +37,7 @@ export default function ImportedContracts({ ownerId }: { ownerId: string }) {
   function pick(selected?: File) {
     if (!selected) return;
     if (selected.size > MAX_FILE_BYTES) {
-      setStatus("O arquivo precisa ter até 25 MB.");
+      setStatus("O arquivo precisa ter até 10 MB.");
       return;
     }
     setStatus("");
@@ -72,19 +71,6 @@ export default function ImportedContracts({ ownerId }: { ownerId: string }) {
     }
   }
 
-  async function handleDownload(id: string) {
-    const item = data?.find((stored) => stored._id === id);
-    if (!item) return;
-    setBusyId(id);
-    try {
-      await downloadStoredFile(item);
-    } catch (err) {
-      setStatus(apiError(err, "Não foi possível baixar o arquivo."));
-    } finally {
-      setBusyId("");
-    }
-  }
-
   async function handleDelete(id: string, name: string) {
     if (!window.confirm(`Excluir o contrato "${name}"?`)) return;
     await resources.files.remove(id);
@@ -96,7 +82,7 @@ export default function ImportedContracts({ ownerId }: { ownerId: string }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-charcoal">Contratos importados</h2>
-          <p className="text-sm text-charcoal/55">Guarde contratos avulsos já assinados ou feitos fora do gerador (PDF, Word, imagem · até 25 MB).</p>
+          <p className="text-sm text-charcoal/55">Guarde contratos avulsos já assinados ou feitos fora do gerador (PDF, Word, imagem · até 10 MB).</p>
         </div>
         <button type="button" className="btn-primary" onClick={() => inputRef.current?.click()}>
           Importar contrato
@@ -121,13 +107,8 @@ export default function ImportedContracts({ ownerId }: { ownerId: string }) {
                 </p>
               </div>
               <div className="flex gap-1">
-                <button
-                  type="button"
-                  className="btn-secondary !py-1.5"
-                  disabled={busyId === item._id}
-                  onClick={() => void handleDownload(item._id)}
-                >
-                  <HiOutlineArrowDownTray className="h-4 w-4" /> {busyId === item._id ? "Baixando..." : "Baixar"}
+                <button type="button" className="btn-secondary !py-1.5" onClick={() => openStoredFile(item)}>
+                  <HiOutlineArrowDownTray className="h-4 w-4" /> Abrir
                 </button>
                 <button type="button" className="btn-ghost h-9 w-9 hover:text-burgundy" aria-label="Excluir" onClick={() => void handleDelete(item._id, item.title || item.name)}>
                   <HiOutlineTrash className="h-4 w-4" />

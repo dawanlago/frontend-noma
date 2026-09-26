@@ -10,7 +10,7 @@ import {
   MAX_STRUCTURE_IMAGES,
   STRUCTURE_MAX_WIDTH,
 } from "@/lib/proposals/model";
-import { resizeImage } from "@/utils/image";
+import { uploadImage } from "@/lib/upload";
 import {
   AddButton,
   Callout,
@@ -61,7 +61,7 @@ export function CompanyStep({ data, setData }: StepProps) {
     setError("");
     setBusy(true);
     try {
-      set({ logo: await resizeImage(file, LOGO_MAX_WIDTH, IMAGE_QUALITY) });
+      set({ logo: await uploadImage(file, "propostas", LOGO_MAX_WIDTH, IMAGE_QUALITY) });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar a imagem.");
     } finally {
@@ -193,7 +193,7 @@ export function StructureStep({ data, setData }: StepProps) {
     setBusy(true);
     try {
       const urls: string[] = [];
-      for (const file of accepted) urls.push(await resizeImage(file, STRUCTURE_MAX_WIDTH, IMAGE_QUALITY));
+      for (const file of accepted) urls.push(await uploadImage(file, "propostas", STRUCTURE_MAX_WIDTH, IMAGE_QUALITY));
       setData((current) => ({
         ...current,
         structure: { ...current.structure, images: [...current.structure.images, ...urls].slice(0, MAX_STRUCTURE_IMAGES) },

@@ -103,7 +103,7 @@ export default function GeneralSettingsPage() {
           <p className="mb-5 mt-1 text-sm text-charcoal/55">
             Cores e logo usados no PDF do briefing. A cor marcada com estrela é a padrão dos documentos novos.
           </p>
-          <LogoUpload value={brand.logo} onChange={(logo) => setBrand({ logo })} />
+          <LogoUpload value={brand.logo} folder="marca" onChange={(logo) => setBrand({ logo })} />
           <div className="space-y-2">
             {brand.colors.map((color, index) => {
               const isDefault = color.hex.toUpperCase() === brand.defaultColor.toUpperCase();

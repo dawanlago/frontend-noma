@@ -249,12 +249,7 @@ export const resources = {
   contractTemplates: crud<ContractTemplate>("/contract-templates"),
   files: {
     list: (params?: ListParams) => listData<StoredFile>("/files", params),
-    start: (payload: Partial<StoredFile>) => create<StoredFile>("/files", payload),
-    putChunk: async (id: string, n: number, data: string) => {
-      await api.put(`/files/${id}/chunks/${n}`, { data });
-    },
-    complete: (id: string) => create<StoredFile>(`/files/${id}/complete`, {}),
-    getChunk: (id: string, n: number) => getOne<string>(`/files/${id}/chunks/${n}`),
+    register: (payload: Partial<StoredFile>) => create<StoredFile>("/files", payload),
     update: (id: string, payload: Partial<StoredFile>) => update<StoredFile>(`/files/${id}`, payload),
     remove: (id: string) => remove(`/files/${id}`),
   },

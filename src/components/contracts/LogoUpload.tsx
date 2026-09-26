@@ -1,13 +1,15 @@
 import { useRef, useState } from "react";
-import { resizeImage } from "@/utils/image";
+import { uploadImage, type UploadFolder } from "@/lib/upload";
 
 interface LogoUploadProps {
   value: string;
-  onChange: (dataUrl: string) => void;
+  onChange: (url: string) => void;
+  /** Pasta no Cloudinary. */
+  folder?: UploadFolder;
 }
 
-/** Envio opcional do logo que aparece no topo do PDF (PNG transparente é preservado). */
-export default function LogoUpload({ value, onChange }: LogoUploadProps) {
+/** Envio opcional do logo que aparece no topo do PDF (PNG transparente é preservado; fica no Cloudinary). */
+export default function LogoUpload({ value, onChange, folder = "contratos" }: LogoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +23,7 @@ export default function LogoUpload({ value, onChange }: LogoUploadProps) {
     setError("");
     setIsLoading(true);
     try {
-      onChange(await resizeImage(file, 600, 0.9));
+      onChange(await uploadImage(file, folder, 800, 0.9));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar a imagem.");
     } finally {

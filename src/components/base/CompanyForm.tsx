@@ -98,7 +98,7 @@ export default function CompanyForm({ open, company, initial, onClose, onSaved }
         }}
       >
         <div className="sm:col-span-2">
-          <ImageInput value={form.logo} onChange={(logo) => set("logo", logo)} name={form.name} label="Logomarca" rounded={false} />
+          <ImageInput value={form.logo} onChange={(logo) => set("logo", logo)} name={form.name} label="Logomarca" folder="empresas" rounded={false} />
         </div>
         <Field label="Nome *">
           <input className="input-search" value={form.name} autoFocus onChange={(e) => set("name", e.target.value)} />
