@@ -4,7 +4,7 @@ import { HiOutlineArrowDownTray, HiOutlineCheck, HiOutlineClipboard } from "reac
 import ListHeader from "@/components/ui/ListHeader";
 
 /** Versão do pacote em /public/downloads/noma-whatsapp.zip (manifest.json da extensão). */
-const EXTENSION_VERSION = "0.1.4";
+const EXTENSION_VERSION = "0.1.5";
 
 function CopyText({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -111,8 +111,9 @@ export default function WhatsAppExtensionPage() {
           <Section title="2. Usar no dia a dia" description="Abra uma conversa: o painel encontra o contato pelo número do WhatsApp.">
             <ul className="space-y-3 text-sm leading-relaxed text-charcoal/70">
               <li>
-                <strong className="text-charcoal">Contato novo:</strong> se o número não estiver no Noma, cadastre ali mesmo ou vincule a um contato
-                que já existe (o número fica salvo nele para as próximas vezes).
+                <strong className="text-charcoal">Adicionar contato:</strong> se o número não estiver no Noma, o painel abre o cadastro já com o nome
+                e o número da conversa. Escolha o tipo (lead, cliente, fornecedor ou parceiro) e, se quiser, já inclua em um funil. Se o contato já
+                existir, use <strong>Vincular</strong> (o número fica salvo nele para as próximas vezes).
               </li>
               <li>
                 <strong className="text-charcoal">Incluir em um funil:</strong> escolha o funil, a etapa e, se quiser, o valor.
