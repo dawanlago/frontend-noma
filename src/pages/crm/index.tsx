@@ -245,25 +245,7 @@ export default function CrmPage() {
         />
       );
     }
-    if (tab === "reports") {
-      return (
-        <>
-          <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <MetricCard label="Potencial em aberto" value={formatCurrencyBRL(metrics.openValue)} />
-            <MetricCard label="Vendas feitas" value={formatCurrencyBRL(metrics.wonValue)} hint={`${metrics.wonCount} vendas`} tone="sage" />
-            <MetricCard label="Ticket médio" value={formatCurrencyBRL(metrics.averageTicket)} />
-            <MetricCard
-              label="Taxa de conversão"
-              value={formatPercent(metrics.conversionRate)}
-              hint={`${metrics.wonCount} de ${metrics.total}`}
-              tone="gold"
-            />
-            <MetricCard label="Negociações no funil" value={String(metrics.total)} />
-          </section>
-          <ReportsView leads={filtered} funnel={funnel} />
-        </>
-      );
-    }
+    if (tab === "reports") return <ReportsView leads={filtered} funnel={funnel} />;
     if (!filtered.length) {
       return (
         <EmptyState
@@ -327,6 +309,19 @@ export default function CrmPage() {
           </>
         }
       />
+
+      <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <MetricCard label="Potencial em aberto" value={formatCurrencyBRL(metrics.openValue)} />
+        <MetricCard label="Vendas feitas" value={formatCurrencyBRL(metrics.wonValue)} hint={`${metrics.wonCount} vendas`} tone="sage" />
+        <MetricCard label="Ticket médio" value={formatCurrencyBRL(metrics.averageTicket)} />
+        <MetricCard
+          label="Taxa de conversão"
+          value={formatPercent(metrics.conversionRate)}
+          hint={`${metrics.wonCount} de ${metrics.total}`}
+          tone="gold"
+        />
+        <MetricCard label="Negociações no funil" value={String(metrics.total)} />
+      </section>
 
       <FilterBar
         search={{ value: filters.search, onChange: (search) => setFilters({ ...filters, search }), placeholder: "Buscar negociação, contato ou empresa" }}
