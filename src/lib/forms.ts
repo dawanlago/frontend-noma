@@ -1,4 +1,4 @@
-import type { FormField, FormFieldTarget, FormFieldType } from "@/types";
+import type { CaptureForm, FormField, FormFieldTarget, FormFieldType } from "@/types";
 
 export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: "text", label: "Texto curto" },
@@ -20,6 +20,38 @@ export const FORM_FIELD_TARGETS: { value: FormFieldTarget; label: string }[] = [
   { value: "company", label: "Empresa" },
   { value: "instagram", label: "Instagram" },
 ];
+
+/** Rascunho de formulário novo: só é gravado ao clicar em "Salvar". */
+export function draftForm(): CaptureForm {
+  const field = (label: string, type: FormField["type"], target: FormField["target"], required = false): FormField => ({
+    key: "",
+    label,
+    type,
+    required,
+    options: [],
+    placeholder: "",
+    target,
+  });
+  return {
+    _id: "",
+    ownerId: "",
+    name: "Novo formulário",
+    description: "",
+    publicId: "",
+    isActive: true,
+    fields: [
+      field("Nome", "text", "name", true),
+      field("E-mail", "email", "email", true),
+      field("WhatsApp", "phone", "phone"),
+      field("Empresa", "text", "company"),
+      field("Como podemos ajudar?", "textarea", ""),
+    ],
+    successMessage: "Recebemos suas respostas. Obrigado!",
+    createLead: true,
+    createdAt: "",
+    updatedAt: "",
+  };
+}
 
 export function newField(): FormField {
   return { key: "", label: "", type: "text", required: false, options: [], placeholder: "", target: "" };

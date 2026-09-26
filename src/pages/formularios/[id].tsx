@@ -8,7 +8,7 @@ import Field from "@/components/tools/Field";
 import Select from "@/components/ui/Select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
-import { answerText, FORM_FIELD_TARGETS, FORM_FIELD_TYPES, newField, publicFormUrl } from "@/lib/forms";
+import { answerText, draftForm, FORM_FIELD_TARGETS, FORM_FIELD_TYPES, newField, publicFormUrl } from "@/lib/forms";
 import { resources } from "@/lib/resources";
 import type { CaptureForm, FormField, FormResponse } from "@/types";
 import { downloadFile, slugify } from "@/utils/document";
@@ -165,6 +165,8 @@ function Responses({ form }: { form: CaptureForm }) {
 export default function FormEditorPage() {
   const router = useRouter();
   const id = typeof router.query.id === "string" ? router.query.id : "";
+  /** /formularios/novo: rascunho que ainda não existe no servidor. */
+  const isNew = id === "novo";
   const { funnels } = useWorkspace();
   const [form, setForm] = useState<CaptureForm | null>(null);
   const [tab, setTab] = useState<Tab>("builder");
@@ -178,11 +180,16 @@ export default function FormEditorPage() {
 
   useEffect(() => {
     if (!id) return;
+    if (isNew) {
+      setForm(draftForm());
+      setDirty(true);
+      return;
+    }
     resources.forms
       .get(id)
       .then(setForm)
       .catch((err) => setStatus(apiError(err, "Formulário não encontrado.")));
-  }, [id]);
+  }, [id, isNew]);
 
   const funnel = useMemo(() => funnels.find((item) => item._id === form?.funnelId) || funnels[0], [funnels, form?.funnelId]);
 
@@ -205,10 +212,27 @@ export default function FormEditorPage() {
     setIsSaving(true);
     setStatus("");
     try {
-      const saved = await resources.forms.update(form._id, {
+      const payload = {
         ...form,
         fields: form.fields.map((field) => ({ ...field, options: field.options.map((option) => option.trim()).filter(Boolean) })),
-      });
+      };
+      if (isNew) {
+        const created = await resources.forms.create({
+          name: payload.name,
+          description: payload.description,
+          isActive: payload.isActive,
+          fields: payload.fields,
+          successMessage: payload.successMessage,
+          createLead: payload.createLead,
+          funnelId: payload.funnelId,
+          stageId: payload.stageId,
+        });
+        setDirty(false);
+        // Agora existe: troca a URL para a do formulário salvo.
+        void router.replace(`/formularios/${created._id}`);
+        return;
+      }
+      const saved = await resources.forms.update(form._id, payload);
       setForm(saved);
       setDirty(false);
       setStatus("Formulário salvo.");
@@ -220,12 +244,16 @@ export default function FormEditorPage() {
   }
 
   async function handleDelete() {
+    if (isNew) {
+      void router.push("/formularios");
+      return;
+    }
     if (!form || !window.confirm(`Excluir o formulário "${form.name}" e todas as respostas?`)) return;
     await resources.forms.remove(form._id);
     void router.push("/formularios");
   }
 
-  const url = publicFormUrl(form.publicId);
+  const url = isNew ? "" : publicFormUrl(form.publicId);
 
   return (
     <>
@@ -238,16 +266,29 @@ export default function FormEditorPage() {
       <div className="mb-5 mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-charcoal">{form.name}</h1>
         <div className="flex flex-wrap gap-2">
-          <CopyButton text={url} label="Copiar link" className="btn-secondary" />
-          <a href={url} target="_blank" rel="noreferrer" className="btn-secondary">
-            Abrir formulário
-          </a>
+          {isNew ? (
+            <Link href="/formularios" className="btn-secondary">
+              Cancelar
+            </Link>
+          ) : (
+            <>
+              <CopyButton text={url} label="Copiar link" className="btn-secondary" />
+              <a href={url} target="_blank" rel="noreferrer" className="btn-secondary">
+                Abrir formulário
+              </a>
+            </>
+          )}
           <button type="button" className="btn-primary" disabled={isSaving || !dirty} onClick={() => void handleSave()}>
-            {isSaving ? "Salvando..." : dirty ? "Salvar alterações" : "Salvo"}
+            {isSaving ? "Salvando..." : isNew ? "Salvar formulário" : dirty ? "Salvar alterações" : "Salvo"}
           </button>
         </div>
       </div>
       {status ? <p className="mb-4 text-sm font-medium text-charcoal/70">{status}</p> : null}
+      {isNew ? (
+        <p className="mb-4 rounded-lg border border-gold/30 bg-gold/[0.07] px-4 py-3 text-sm text-charcoal/75">
+          Rascunho: o formulário só é criado quando você clicar em “Salvar formulário”.
+        </p>
+      ) : null}
 
       <div className="mb-5 inline-flex gap-1 rounded-xl bg-beige p-1">
         {(
@@ -255,7 +296,9 @@ export default function FormEditorPage() {
             { value: "builder", label: "Perguntas e configurações" },
             { value: "responses", label: "Respostas" },
           ] as { value: Tab; label: string }[]
-        ).map((item) => (
+        )
+          .filter((item) => !isNew || item.value === "builder")
+          .map((item) => (
           <button
             key={item.value}
             type="button"
@@ -344,11 +387,15 @@ export default function FormEditorPage() {
             </section>
             <section className="card p-5">
               <p className="mb-1 text-xs font-semibold text-charcoal/60">Link público</p>
-              <p className="break-all rounded-lg bg-beige px-3 py-2 text-xs text-charcoal/70">{url}</p>
+              <p className="break-all rounded-lg bg-beige px-3 py-2 text-xs text-charcoal/70">
+                {url || "O link é gerado quando o formulário for salvo."}
+              </p>
             </section>
-            <button type="button" className="w-full text-center text-sm font-semibold text-burgundy hover:underline" onClick={() => void handleDelete()}>
-              Excluir formulário
-            </button>
+            {!isNew ? (
+              <button type="button" className="w-full text-center text-sm font-semibold text-burgundy hover:underline" onClick={() => void handleDelete()}>
+                Excluir formulário
+              </button>
+            ) : null}
           </aside>
         </div>
       )}

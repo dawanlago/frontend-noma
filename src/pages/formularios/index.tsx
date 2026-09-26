@@ -1,36 +1,19 @@
 import { useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import CopyButton from "@/components/tools/CopyButton";
 import OwnerFilter from "@/components/tools/OwnerFilter";
 import PageHeader from "@/components/ui/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
-import { apiError } from "@/lib/errors";
 import { publicFormUrl } from "@/lib/forms";
 import { resources } from "@/lib/resources";
 import { formatDate } from "@/utils/format";
 
 export default function FormsPage() {
-  const router = useRouter();
   const { isAdmin } = useAuth();
   const [ownerId, setOwnerId] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const { data, isLoading } = useAsyncData(() => resources.forms.list({ ownerId }), [ownerId]);
-
-  async function handleCreate() {
-    setBusy(true);
-    setError("");
-    try {
-      const form = await resources.forms.create({ name: "Novo formulário" });
-      void router.push(`/formularios/${form._id}`);
-    } catch (err) {
-      setError(apiError(err, "Não foi possível criar o formulário."));
-      setBusy(false);
-    }
-  }
 
   return (
     <>
@@ -42,15 +25,14 @@ export default function FormsPage() {
         title="Formulários"
         description="Crie formulários personalizados. Envie pela negociação (link com código de 6 dígitos, respostas ficam na negociação) ou compartilhe o link público, em que cada resposta vira contato e negociação."
         actions={
-          <button type="button" className="btn-primary" disabled={busy} onClick={() => void handleCreate()}>
-            {busy ? "Criando..." : "Novo formulário"}
-          </button>
+          <Link href="/formularios/novo" className="btn-primary">
+            Novo formulário
+          </Link>
         }
       />
       <div className="mb-4 flex justify-end">
         <OwnerFilter value={ownerId} onChange={setOwnerId} />
       </div>
-      {error ? <p className="mb-4 text-sm text-burgundy">{error}</p> : null}
       {isLoading ? (
         <div className="skeleton h-40" />
       ) : !data?.length ? (
