@@ -82,14 +82,15 @@ const groups: NavGroup[] = [
       { href: "/contatos", label: "Base geral", icon: PeopleOutlined, module: "base" },
       { href: "/empresas", label: "Empresas", icon: BusinessOutlined, module: "base" },
       { href: "/fornecedores", label: "Fornecedores e parceiros", icon: HandshakeOutlined, module: "base" },
+    ],
+  },
+  {
+    label: "Gestão",
+    items: [
+      { href: "/financeiro", label: "Financeiro", icon: AccountBalanceWalletOutlined, module: "financeiro" },
       { href: "/produtos", label: "Produtos", icon: Inventory2Outlined, module: "produtos" },
     ],
   },
-];
-
-/** Itens soltos logo abaixo dos grupos. */
-const bottomItems: NavItem[] = [
-  { href: "/financeiro", label: "Financeiro", icon: AccountBalanceWalletOutlined, module: "financeiro" },
 ];
 
 /** Atalhos do rodapé (ícones ao lado do usuário). */
@@ -191,7 +192,7 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
 
   const term = normalize(search.trim());
   const searchResults = term
-    ? [...topItems, ...groups.flatMap((group) => group.items), ...bottomItems, ...footerItems]
+    ? [...topItems, ...groups.flatMap((group) => group.items), ...footerItems]
         .filter(allowed)
         .filter((item) => normalize(item.label).includes(term))
     : [];
@@ -305,13 +306,6 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
                 </div>
               );
             })}
-            {bottomItems.some(allowed) ? (
-              <ul className="mt-4 space-y-0.5 border-t border-charcoal/[0.06] pt-4">
-                {bottomItems.filter(allowed).map((item) => (
-                  <NavLink key={item.href} item={item} active={isActivePath(router.pathname, item.href)} onNavigate={onNavigate} />
-                ))}
-              </ul>
-            ) : null}
           </>
         )}
       </nav>
