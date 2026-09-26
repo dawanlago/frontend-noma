@@ -126,11 +126,11 @@ function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean;
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
         className={`group relative flex h-9 items-center gap-3 rounded-lg px-3 text-[13.5px] transition-colors duration-150 ${
-          active ? "bg-white/[0.09] font-semibold text-white" : "font-medium text-white/60 hover:bg-white/[0.05] hover:text-white"
+          active ? "bg-tan/[0.08] font-semibold text-charcoal" : "font-medium text-charcoal/65 hover:bg-beige hover:text-charcoal"
         }`}
       >
         {active ? <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-tan" aria-hidden /> : null}
-        <Icon sx={{ fontSize: 18 }} className={active ? "text-tan" : "text-white/45 transition-colors group-hover:text-white/80"} />
+        <Icon sx={{ fontSize: 18 }} className={active ? "text-tan" : "text-charcoal/40 transition-colors group-hover:text-charcoal/70"} />
         <span className="truncate">{item.label}</span>
       </Link>
     </li>
@@ -203,7 +203,7 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <div className="flex h-full flex-col bg-[hsl(222,32%,9%)] text-white">
+    <div className="flex h-full flex-col border-r border-charcoal/[0.08] bg-white text-charcoal">
       <div className="flex items-center justify-between px-4 pb-4 pt-5">
         <Link href="/" onClick={onNavigate} className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-tan to-[hsl(222,90%,40%)] text-[15px] font-extrabold tracking-tight shadow-[0_6px_18px_-6px_hsl(210,98%,48%)]">
@@ -211,13 +211,13 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
           </span>
           <span className="min-w-0 leading-tight">
             <span className="block text-[15px] font-bold tracking-tight">Noma</span>
-            <span className="block truncate text-[11px] text-white/45">{companyName}</span>
+            <span className="block truncate text-[11px] text-charcoal/45">{companyName}</span>
           </span>
         </Link>
         <button
           type="button"
           onClick={onNavigate}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 lg:hidden"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-charcoal/50 hover:bg-beige lg:hidden"
           aria-label="Fechar navegação"
         >
           <HiXMark className="h-5 w-5" />
@@ -227,10 +227,10 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
       <div className="px-3 pb-3">
         <label className="relative block">
           <span className="sr-only">Buscar no menu</span>
-          <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+          <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal/35" />
           <input
             ref={searchRef}
-            className="h-9 w-full rounded-lg border border-white/[0.08] bg-white/[0.05] pl-9 pr-12 text-[13px] text-white placeholder:text-white/35 transition focus:border-tan/60 focus:bg-white/[0.08] focus:outline-none"
+            className="h-9 w-full rounded-lg border border-charcoal/10 bg-beige/70 pl-9 pr-12 text-[13px] text-charcoal placeholder:text-charcoal/40 transition focus:border-tan focus:bg-white focus:outline-none focus:ring-[3px] focus:ring-tan/15"
             placeholder="Ir para..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -242,7 +242,7 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
               }
             }}
           />
-          <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 font-sans text-[10px] text-white/40 lg:block">
+          <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-charcoal/10 bg-white px-1.5 py-0.5 font-sans text-[10px] text-charcoal/40 lg:block">
             ⌘K
           </kbd>
         </label>
@@ -264,7 +264,7 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
                 />
               ))
             ) : (
-              <li className="px-3 py-2 text-[13px] text-white/40">Nada encontrado.</li>
+              <li className="px-3 py-2 text-[13px] text-charcoal/45">Nada encontrado.</li>
             )}
           </ul>
         ) : (
@@ -286,13 +286,13 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
                   >
                     <span
                       className={`text-[10.5px] font-semibold uppercase tracking-[0.14em] transition-colors ${
-                        group.label === activeGroup ? "text-white/70" : "text-white/35 group-hover:text-white/60"
+                        group.label === activeGroup ? "text-charcoal/75" : "text-charcoal/40 group-hover:text-charcoal/70"
                       }`}
                     >
                       {group.label}
                     </span>
                     <HiChevronDown
-                      className={`h-3.5 w-3.5 text-white/30 transition-transform duration-200 group-hover:text-white/60 ${expanded ? "" : "-rotate-90"}`}
+                      className={`h-3.5 w-3.5 text-charcoal/30 transition-transform duration-200 group-hover:text-charcoal/60 ${expanded ? "" : "-rotate-90"}`}
                     />
                   </button>
                   <Collapse in={expanded} timeout={180} unmountOnExit>
@@ -306,7 +306,7 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
               );
             })}
             {bottomItems.some(allowed) ? (
-              <ul className="mt-4 space-y-0.5 border-t border-white/[0.06] pt-4">
+              <ul className="mt-4 space-y-0.5 border-t border-charcoal/[0.06] pt-4">
                 {bottomItems.filter(allowed).map((item) => (
                   <NavLink key={item.href} item={item} active={isActivePath(router.pathname, item.href)} onNavigate={onNavigate} />
                 ))}
@@ -316,14 +316,14 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </nav>
 
-      <div className="border-t border-white/[0.06] p-3">
-        <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.04] p-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold text-white">
+      <div className="border-t border-charcoal/[0.06] p-3">
+        <div className="flex items-center gap-2.5 rounded-xl bg-beige/70 p-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tan/10 text-[11px] font-semibold text-tan">
             {getInitials(user?.name)}
           </span>
           <span className="min-w-0 flex-1 leading-tight">
             <span className="block truncate text-[13px] font-semibold">{user?.name || "Noma"}</span>
-            <span className="block truncate text-[11px] text-white/45">{user?.role ? USER_ROLE_LABELS[user.role] : "Equipe"}</span>
+            <span className="block truncate text-[11px] text-charcoal/50">{user?.role ? USER_ROLE_LABELS[user.role] : "Equipe"}</span>
           </span>
           {footerItems.filter(allowed).map((item) => {
             const Icon = item.icon;
@@ -335,7 +335,7 @@ function MenuBody({ onNavigate }: { onNavigate?: () => void }) {
                   onClick={onNavigate}
                   aria-label={item.label}
                   className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
-                    active ? "bg-white/10 text-tan" : "text-white/50 hover:bg-white/10 hover:text-white"
+                    active ? "bg-white text-tan shadow-soft" : "text-charcoal/45 hover:bg-white hover:text-charcoal"
                   }`}
                 >
                   <Icon sx={{ fontSize: 18 }} />
@@ -359,7 +359,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: "block", lg: "none" },
-          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box", border: 0, bgcolor: "hsl(222,32%,9%)" },
+          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box", border: 0, bgcolor: "#fff" },
         }}
       >
         <MenuBody onNavigate={onClose} />
@@ -370,7 +370,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           display: { xs: "none", lg: "block" },
           width: DRAWER_WIDTH,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box", border: 0, bgcolor: "hsl(222,32%,9%)" },
+          [`& .MuiDrawer-paper`]: { width: DRAWER_WIDTH, boxSizing: "border-box", border: 0, bgcolor: "#fff" },
         }}
         open
       >
