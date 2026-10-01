@@ -7,8 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, AUTH_TOKEN_KEY } from "@/lib/api";
-import type { ModuleKey, User } from "@/types";
+import { api, AUTH_TOKEN_KEY, ORG_KEY } from "@/lib/api";
+import type { ModuleKey, User, OrgSummary } from "@/types";
 
 interface AuthContextValue {
   user: User | null;
@@ -17,6 +17,11 @@ interface AuthContextValue {
   isAdmin: boolean;
   /** O usuário tem acesso a pelo menos um dos módulos? */
   can: (...modules: ModuleKey[]) => boolean;
+  /** Vê os registros de todos no módulo (nível "todos")? */
+  seesAll: (module: ModuleKey) => boolean;
+  /** Empresa ativa. */
+  org: OrgSummary | null;
+  switchOrg: (orgId: string) => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -43,6 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const { data } = await api.get<{ user: User }>("/auth/me");
+      // O servidor confirma a empresa ativa (a salva pode ter sido desativada ou o acesso removido).
+      if (data.user.orgId) localStorage.setItem(ORG_KEY, data.user.orgId);
       setUser(data.user);
     } catch {
       localStorage.removeItem(AUTH_TOKEN_KEY);
@@ -63,8 +70,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+    if (data.user.orgId) localStorage.setItem(ORG_KEY, data.user.orgId);
     setUser(data.user);
   }, []);
+
+  /** Troca a empresa ativa e recarrega o sistema já dentro dela. */
+  const switchOrg = useCallback((orgId: string) => {
+    localStorage.setItem(ORG_KEY, orgId);
+    window.location.assign("/");
+  }, []);
+
+  /** O usuário vê os registros de todos neste módulo (e não só os que criou)? */
+  const seesAll = useCallback(
+    (module: ModuleKey) => user?.role === "admin" || user?.access?.[module] === "all",
+    [user],
+  );
 
   const can = useCallback(
     (...modules: ModuleKey[]) =>
@@ -79,10 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(user),
       isAdmin: user?.role === "admin",
       can,
+      seesAll,
+      org: user?.orgs?.find((item) => item._id === user.orgId) || null,
+      switchOrg,
       login,
       logout,
     }),
-    [user, isLoading, can, login, logout],
+    [user, isLoading, can, seesAll, switchOrg, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

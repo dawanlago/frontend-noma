@@ -41,7 +41,9 @@ const TABS: { value: CrmTab; label: string }[] = [
 
 export default function CrmPage() {
   const router = useRouter();
-  const { user, isAdmin, can } = useAuth();
+  const { user, can, seesAll } = useAuth();
+  // Quem tem o CRM no nível "todos" vê de quem é cada negociação e filtra por usuário.
+  const isAdmin = seesAll("crm");
   const { funnels, isReady, labelOf } = useWorkspace();
   const [tab, setTab] = useState<CrmTab>("pipeline");
   const [funnelId, setFunnelId] = useState("");
@@ -93,7 +95,7 @@ export default function CrmPage() {
     const open = (data || []).filter((lead) => lead.status === "open");
     return { count: open.length, value: open.reduce((total, lead) => total + (Number(lead.value) || 0), 0) };
   }, [data]);
-  const ownerName = useOwnerName(ownerId);
+  const ownerName = useOwnerName(ownerId, "crm");
   const chips: FilterChip[] = [
     filters.search ? { key: "search", label: `Busca: ${filters.search}`, onRemove: () => setFilters((f) => ({ ...f, search: "" })) } : null,
     filters.service
@@ -383,7 +385,7 @@ export default function CrmPage() {
           placeholder="Todos os meses"
           options={[{ value: "", label: "Todos os meses" }, ...MONTH_NAMES.map((name, index) => ({ value: String(index + 1), label: name.charAt(0).toUpperCase() + name.slice(1) }))]}
         />
-        {isAdmin ? <OwnerFilter value={ownerId} onChange={setOwnerId} /> : null}
+        {isAdmin ? <OwnerFilter module="crm" value={ownerId} onChange={setOwnerId} /> : null}
       </FilterBar>
 
       {notice ? (

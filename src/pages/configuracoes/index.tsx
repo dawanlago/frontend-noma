@@ -5,6 +5,7 @@ import {
   HiOutlineClipboardDocumentList,
   HiOutlineFaceSmile,
   HiOutlineArrowRight,
+  HiOutlineBuildingOffice2,
   HiOutlineChatBubbleLeftRight,
   HiOutlineDocumentText,
   HiOutlineFunnel,
@@ -78,11 +79,18 @@ const settingsLinks = [
     icon: HiOutlineUserGroup,
     adminOnly: true,
   },
+  {
+    href: "/configuracoes/empresas",
+    title: "Empresas do grupo",
+    description: "Cada empresa tem seus próprios contatos, funis, propostas e financeiro. Crie e edite as empresas aqui.",
+    icon: HiOutlineBuildingOffice2,
+    superOnly: true,
+  },
 ];
 
 export default function SettingsPage() {
-  const { isAdmin } = useAuth();
-  const links = settingsLinks.filter((item) => !item.adminOnly || isAdmin);
+  const { isAdmin, user } = useAuth();
+  const links = settingsLinks.filter((item) => (!item.adminOnly || isAdmin) && (!item.superOnly || user?.isSuperAdmin));
 
   return (
     <>

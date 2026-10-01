@@ -11,7 +11,7 @@ import { resources } from "@/lib/resources";
 import { formatDate } from "@/utils/format";
 
 export default function FormsPage() {
-  const { isAdmin } = useAuth();
+  const isAdmin = useAuth().seesAll("formularios");
   const [ownerId, setOwnerId] = useState("");
   const { data, isLoading } = useAsyncData(() => resources.forms.list({ ownerId }), [ownerId]);
 

@@ -51,7 +51,8 @@ function apiError(err: unknown, fallback: string) {
 export default function FinancePage() {
   const router = useRouter();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { seesAll } = useAuth();
+  const isAdmin = seesAll("financeiro");
   const defaults = useCategoryDefaults();
   const { optionsOf } = useWorkspace();
   const [view, setView] = useState<View>("month");
@@ -319,7 +320,7 @@ export default function FinancePage() {
               </button>
             ))}
           </div>
-          <OwnerFilter value={ownerId} onChange={setOwnerId} />
+          <OwnerFilter module="financeiro" value={ownerId} onChange={setOwnerId} />
         </div>
       </div>
 

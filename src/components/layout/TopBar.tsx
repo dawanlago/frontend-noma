@@ -31,8 +31,8 @@ import type { ModuleKey } from "@/types";
 import LogoMark from "@/components/ui/LogoMark";
 import ChangePasswordDialog from "@/components/auth/ChangePasswordDialog";
 import AppearancePicker from "./AppearancePicker";
+import OrgSwitcher from "./OrgSwitcher";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCompanyName } from "@/contexts/WorkspaceContext";
 import { USER_ROLE_LABELS } from "@/lib/constants";
 import { getInitials } from "@/utils/format";
 interface CreateItem {
@@ -69,7 +69,6 @@ function todayLabel() {
 export default function TopBar({ onMenuClick }: TopBarProps) {
   const router = useRouter();
   const { user, logout, can } = useAuth();
-  const companyName = useCompanyName();
   const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
   const [createAnchor, setCreateAnchor] = useState<null | HTMLElement>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -98,9 +97,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           <Typography variant="caption" color="text.secondary" sx={{ textTransform: "capitalize", display: "block" }}>
             {todayLabel()}
           </Typography>
-          <Typography sx={{ fontWeight: 600, fontSize: 14 }}>
-            {companyName}
-          </Typography>
+          <OrgSwitcher />
         </Box>
 
         <Box sx={{ flexGrow: 1 }} />

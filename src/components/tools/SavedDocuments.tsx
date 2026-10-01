@@ -29,7 +29,6 @@ export default function SavedDocuments({
   onDelete,
 }: SavedDocumentsProps) {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
 
   return (
     <section className="card p-5 sm:p-6">
@@ -52,7 +51,7 @@ export default function SavedDocuments({
                 </div>
                 <p className="text-xs text-charcoal/50">
                   {subtitle ? `${subtitle(doc)} • ` : ""}atualizado {formatDateTime(doc.updatedAt)}
-                  {isAdmin && doc.ownerName ? ` • ${doc.ownerName}` : ""}
+                  {doc.ownerName && doc.ownerId !== user?._id ? ` • ${doc.ownerName}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

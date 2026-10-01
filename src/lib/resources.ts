@@ -3,6 +3,7 @@ import type {
   AppSettings,
   BucketMovement,
   DistributionBucket,
+  OrgSummary,
   Birthday,
   CaptureForm,
   Company,
@@ -157,6 +158,8 @@ export interface GoogleStatus {
   email: string;
 }
 
+export type UserPayload = Partial<User> & { password?: string };
+
 export type LeadPayload = Partial<Omit<Lead, "nextActionDate" | "offeredValue" | "closedValue">> & {
   nextActionDate?: string | null;
   offeredValue?: number | null;
@@ -180,11 +183,16 @@ export const resources = {
       await api.put("/options/reorder", { list, ids });
     },
   },
+  orgs: {
+    list: () => listData<OrgSummary>("/orgs"),
+    create: (payload: { name: string; logo?: string; color?: string; copyFrom?: string }) => create<OrgSummary>("/orgs", payload),
+    update: (id: string, payload: Partial<Pick<OrgSummary, "name" | "logo" | "color" | "isActive">>) => update<OrgSummary>(`/orgs/${id}`, payload),
+  },
   customFields: crud<CustomField>("/custom-fields"),
   users: {
     ...crud<User>("/users"),
-    create: (payload: Partial<User> & { password?: string }) => create<User>("/users", payload),
-    update: (id: string, payload: Partial<User> & { password?: string }) => update<User>(`/users/${id}`, payload),
+    create: (payload: UserPayload) => create<User>("/users", payload),
+    update: (id: string, payload: UserPayload) => update<User>(`/users/${id}`, payload),
   },
   contacts: {
     ...crud<Contact>("/contacts"),

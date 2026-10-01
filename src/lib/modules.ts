@@ -33,6 +33,12 @@ export const MODULES: ModuleInfo[] = [
   { key: "configuracoes", label: "Configurações", description: "Listas, campos, funis, modelos e identidade.", paths: ["/configuracoes"] },
 ];
 
+/**
+ * Módulos em que cada registro tem dono: neles dá para limitar o usuário ao que ele criou
+ * ("Só os meus") ou liberar tudo da empresa ("Todos"). Nos demais o acesso é sim ou não.
+ */
+export const SCOPED_MODULES: ModuleKey[] = ["crm", "formularios", "propostas", "orcamento", "contratos", "briefing", "financeiro"];
+
 export const ALL_MODULE_KEYS = MODULES.map((item) => item.key);
 
 function matches(pathname: string, path: string) {

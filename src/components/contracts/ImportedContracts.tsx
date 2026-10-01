@@ -15,7 +15,7 @@ const ACCEPT = ".pdf,.doc,.docx,.odt,.txt,.png,.jpg,.jpeg";
 
 /** Contratos avulsos importados (PDF, Word...), com vínculo opcional ao cliente da base. */
 export default function ImportedContracts({ ownerId }: { ownerId: string }) {
-  const { isAdmin } = useAuth();
+  const { user } = useAuth();
   const { data, isLoading, error, reload } = useAsyncData(() => resources.files.list({ category: "contract", ownerId }), [ownerId]);
   const people = useAsyncData(() => Promise.all([resources.contacts.list(), resources.companies.list()]));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -102,7 +102,7 @@ export default function ImportedContracts({ ownerId }: { ownerId: string }) {
               <div className="min-w-0">
                 <p className="truncate font-medium text-charcoal">{item.title || item.name}</p>
                 <p className="text-xs text-charcoal/50">
-                  {[clientName(item.companyId, item.contactId), item.name, formatBytes(item.size), `enviado ${formatDate(item.createdAt)}`, isAdmin ? item.ownerName : ""]
+                  {[clientName(item.companyId, item.contactId), item.name, formatBytes(item.size), `enviado ${formatDate(item.createdAt)}`, item.ownerId !== user?._id ? item.ownerName : ""]
                     .filter(Boolean)
                     .join(" • ")}
                 </p>

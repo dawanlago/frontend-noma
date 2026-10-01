@@ -1,6 +1,8 @@
 import axios from "axios";
 
 export const AUTH_TOKEN_KEY = "noma_token";
+/** Empresa ativa (enviada em toda chamada no header X-Org-Id). */
+export const ORG_KEY = "noma:org";
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3333/api",
@@ -17,6 +19,9 @@ api.interceptors.request.use((config) => {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const org = localStorage.getItem(ORG_KEY);
+    if (org) config.headers["X-Org-Id"] = org;
   }
 
   return config;

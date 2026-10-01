@@ -30,15 +30,36 @@ export interface Owned {
   ownerName?: string;
 }
 
+/** Até onde o usuário enxerga num módulo: nada, só o que criou, ou tudo da empresa. */
+export type AccessLevel = "none" | "own" | "all";
+
+/** Empresa do grupo (Noma, Brava...) que o usuário pode abrir. */
+export interface OrgSummary {
+  _id: string;
+  name: string;
+  logo: string;
+  color: string;
+  role?: UserRole;
+  isActive?: boolean;
+}
+
 export interface User {
   _id: string;
   name: string;
   email: string;
+  /** Papel na empresa ativa. */
   role: UserRole;
   avatarUrl?: string;
   isActive: boolean;
-  /** Em /auth/me: módulos liberados. Na lista de usuários: o que foi salvo. */
+  /** Módulos liberados na empresa ativa. */
   permissions: ModuleKey[];
+  /** Nível de acesso por módulo na empresa ativa. */
+  access?: Record<ModuleKey, AccessLevel>;
+  /** Em /auth/me: empresa ativa e as que o usuário pode abrir. */
+  orgId?: string;
+  orgs?: OrgSummary[];
+  /** Administrador geral: cria empresas e é admin em todas. */
+  isSuperAdmin?: boolean;
   createdAt: string;
   updatedAt: string;
 }
