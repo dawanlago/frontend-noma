@@ -6,7 +6,7 @@ import DialogHost from "@/components/ui/DialogHost";
 import { AppearanceProvider } from "@/contexts/AppearanceContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
-import { isPublicRoute } from "@/lib/routes";
+import { isAuthRoute, isPublicRoute } from "@/lib/routes";
 import { inter } from "@/theme/font";
 import "@/styles/globals.css";
 
@@ -24,7 +24,7 @@ export default function App({ Component, pageProps, router }: AppProps) {
 
   return (
     // Formulário, NPS e proposta públicos são vistos pelo cliente: sempre no tema claro.
-    <AppearanceProvider forceLight={isPublic && router.pathname !== "/login"}>
+    <AppearanceProvider forceLight={isPublic && !isAuthRoute(router.pathname)}>
       <div className={`${inter.className} ${inter.variable} h-full`}>
         <AuthProvider>
           <WorkspaceProvider>

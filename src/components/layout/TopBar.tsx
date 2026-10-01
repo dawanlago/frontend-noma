@@ -12,6 +12,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import AddRounded from "@mui/icons-material/AddRounded";
+import LockOutlined from "@mui/icons-material/LockOutlined";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import MenuRounded from "@mui/icons-material/MenuRounded";
 import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
@@ -28,6 +29,7 @@ import {
 } from "react-icons/hi2";
 import type { ModuleKey } from "@/types";
 import LogoMark from "@/components/ui/LogoMark";
+import ChangePasswordDialog from "@/components/auth/ChangePasswordDialog";
 import AppearancePicker from "./AppearancePicker";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanyName } from "@/contexts/WorkspaceContext";
@@ -70,6 +72,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
   const companyName = useCompanyName();
   const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
   const [createAnchor, setCreateAnchor] = useState<null | HTMLElement>(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const createItems = CREATE_ITEMS.filter((item) => can(item.module));
 
   function handleLogout() {
@@ -171,6 +174,17 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
         <Divider />
         <AppearancePicker />
         <Divider />
+        <MenuItem
+          onClick={() => {
+            setUserAnchor(null);
+            setPasswordOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <LockOutlined fontSize="small" />
+          </ListItemIcon>
+          Alterar senha
+        </MenuItem>
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <LogoutRounded fontSize="small" color="error" />
@@ -179,6 +193,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
         </MenuItem>
       </Menu>
 
+      <ChangePasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </AppBar>
   );
 }

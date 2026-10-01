@@ -22,16 +22,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const PUBLIC_PATHS = /^\/(login|esqueci-senha|redefinir-senha)\/?$|^\/(f|p|nps\/responder)\//;
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (
-      typeof window !== "undefined" &&
-      error.response?.status === 401 &&
-      window.location.pathname !== "/login"
-    ) {
+    if (typeof window !== "undefined" && error.response?.status === 401) {
       localStorage.removeItem(AUTH_TOKEN_KEY);
-      window.location.href = "/login";
+      // Sessão expirada: volta ao login, menos nas telas de acesso e nos links públicos (cliente).
+      if (!PUBLIC_PATHS.test(window.location.pathname)) window.location.href = "/login";
     }
 
     return Promise.reject(error);

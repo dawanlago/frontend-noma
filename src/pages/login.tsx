@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -158,6 +159,11 @@ export default function LoginPage() {
                   <Button type="submit" variant="contained" size="large" fullWidth disabled={isSubmitting}>
                     {isSubmitting ? "Entrando..." : "Entrar no painel"}
                   </Button>
+                  <Typography sx={{ mt: 2, textAlign: "center" }}>
+                    <Link href="/esqueci-senha" className="text-sm font-semibold text-tan hover:underline">
+                      Esqueci a senha
+                    </Link>
+                  </Typography>
                 </Box>
               </CardContent>
             </Card>
