@@ -8,6 +8,7 @@ import ContactForm from "@/components/base/ContactForm";
 import ProfileHeader, { InfoList } from "@/components/base/ProfileHeader";
 import PixKey from "@/components/base/PixKey";
 import ProfileHistory from "@/components/base/ProfileHistory";
+import RelationsCard from "@/components/base/RelationsCard";
 import { useCustomFieldDisplay } from "@/components/options/CustomFieldsInputs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -47,7 +48,7 @@ export default function CompanyProfilePage() {
   }
 
   async function handleDelete() {
-    if (!(await confirmDialog({ title: `Excluir a empresa ${company.name}?`, message: "Os contatos continuam na base, sem empresa.", confirmLabel: "Excluir", danger: true }))) return;
+    if (!(await confirmDialog({ title: `Excluir a empresa ${company.name}?`, message: "Os contatos continuam na base, sem o vínculo com esta empresa.", confirmLabel: "Excluir", danger: true }))) return;
     await resources.companies.remove(company._id);
     void router.push("/empresas");
   }
@@ -147,6 +148,7 @@ export default function CompanyProfilePage() {
               <p className="text-sm text-charcoal/50">Nenhum contato vinculado.</p>
             )}
           </section>
+          <RelationsCard kind="company" id={company._id} />
         </aside>
         <div>
           <p className="mb-3 text-xs text-charcoal/50">O histórico inclui as negociações da empresa e dos contatos vinculados a ela.</p>

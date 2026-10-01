@@ -38,6 +38,8 @@ interface ListWorkspaceProps {
   onSearchChange?: (value: string) => void;
   isLoading?: boolean;
   error?: string;
+  /** Filtros ao lado da busca. */
+  filters?: ReactNode;
   children?: ReactNode;
 }
 
@@ -54,6 +56,7 @@ export default function ListWorkspace({
   onSearchChange,
   isLoading,
   error,
+  filters,
   children,
 }: ListWorkspaceProps) {
   const router = useRouter();
@@ -90,6 +93,7 @@ export default function ListWorkspace({
           </Stack>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", width: { xs: "100%", md: "auto" } }}>
+            {filters}
             <TextField
               size="small"
               value={searchValue}

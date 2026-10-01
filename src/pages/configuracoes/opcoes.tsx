@@ -1,6 +1,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import ProductCategoryCosts from "@/components/base/ProductCategoryCosts";
 import BudgetCatalogFields from "@/components/budget/BudgetCatalogFields";
 import OptionListEditor from "@/components/options/OptionListEditor";
 import SettingsHeader from "@/components/settings/SettingsHeader";
@@ -8,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { BUDGET_ITEM_LIST } from "@/lib/budget/catalog";
 import { MESSAGE_LISTS, OPTION_LISTS } from "@/lib/options";
+import { PRODUCT_CATEGORY_LIST } from "@/lib/products";
 
 const AREAS = [...new Set(OPTION_LISTS.map((item) => item.area))];
 
@@ -73,13 +75,18 @@ export default function OptionListsPage() {
           {selected.key === BUDGET_ITEM_LIST ? (
             <p className="mb-4 text-sm text-charcoal/60">Ao lado de cada item: unidade e valor padrão usados ao adicioná-lo na calculadora.</p>
           ) : null}
+          {selected.key === PRODUCT_CATEGORY_LIST ? (
+            <p className="mb-4 text-sm text-charcoal/60">Em cada categoria: o modelo de linhas de custo que entra no produto ao escolhê-la.</p>
+          ) : null}
           <OptionListEditor
             key={selected.key}
             list={selected.key}
             renderExtra={
               selected.key === BUDGET_ITEM_LIST
                 ? (item) => <BudgetCatalogFields item={item} editable={can("configuracoes")} />
-                : undefined
+                : selected.key === PRODUCT_CATEGORY_LIST
+                  ? (item) => <ProductCategoryCosts item={item} editable={can("configuracoes")} />
+                  : undefined
             }
           />
         </section>

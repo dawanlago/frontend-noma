@@ -1,4 +1,5 @@
-import { computeLeadMetrics, conversionByStage, formatPercent, groupBySource, leadDiscount, timeByStage } from "@/lib/crm/metrics";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { computeLeadMetrics, conversionByStage, formatPercent, groupByLostReason, groupBySource, leadDiscount, timeByStage } from "@/lib/crm/metrics";
 import type { Funnel, Lead } from "@/types";
 import { formatCurrencyBRL } from "@/utils/format";
 
@@ -11,6 +12,8 @@ function Bar({ rate, tone = "bg-tan" }: { rate: number; tone?: string }) {
 }
 
 export default function ReportsView({ leads, funnel }: { leads: Lead[]; funnel: Funnel }) {
+  const { labelOf } = useWorkspace();
+  const lostReasons = groupByLostReason(leads);
   const stages = conversionByStage(leads, funnel);
   const sources = groupBySource(leads);
   const times = timeByStage(leads, funnel);
@@ -115,6 +118,30 @@ export default function ReportsView({ leads, funnel }: { leads: Lead[]; funnel: 
             </ul>
           ) : (
             <p className="mt-5 text-sm text-charcoal/45">Nenhuma negociação no filtro atual.</p>
+          )}
+        </section>
+
+        <section className="card p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-charcoal">Motivos de perda</h2>
+          <p className="mt-1 text-sm text-charcoal/55">Por que as negociações perdidas não fecharam.</p>
+          {lostReasons.length ? (
+            <ul className="mt-5 grid gap-4">
+              {lostReasons.map((item) => (
+                <li key={item.reason || "sem-motivo"}>
+                  <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                    <span className={`font-medium ${item.reason ? "text-charcoal" : "text-charcoal/50"}`}>
+                      {item.reason ? labelOf("lostReason", item.reason) : "Sem motivo registrado"}
+                    </span>
+                    <span className="tabular-nums text-charcoal/55">
+                      {item.count} · <strong className="text-charcoal">{formatPercent(item.share)}</strong> · <span data-money>{formatCurrencyBRL(item.value)}</span>
+                    </span>
+                  </div>
+                  <Bar rate={item.share} tone="bg-burgundy" />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-5 text-sm text-charcoal/45">Nenhuma negociação perdida no filtro atual.</p>
           )}
         </section>
       </div>

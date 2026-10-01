@@ -31,15 +31,19 @@ const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
 ];
 
 export default function CustomFieldsPage() {
-  const { fieldsOf, reload } = useWorkspace();
+  const { fieldsOf, funnels, reload } = useWorkspace();
   const [entity, setEntity] = useState<CustomFieldEntity>("lead");
   const [label, setLabel] = useState("");
   const [type, setType] = useState<CustomFieldType>("text");
+  // Negociações: "" = campo de todos os funis.
+  const [funnelId, setFunnelId] = useState("");
   const [openOptions, setOpenOptions] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const fields = fieldsOf(entity);
   const info = ENTITIES.find((item) => item.value === entity)!;
+  const byFunnel = entity === "lead" && funnels.length > 0;
+  const funnelOptions = [{ value: "", label: "Todos os funis" }, ...funnels.map((item) => ({ value: item._id, label: `Só: ${item.name}` }))];
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -57,7 +61,7 @@ export default function CustomFieldsPage() {
   function handleAdd() {
     if (!label.trim()) return;
     void run(async () => {
-      const field = await resources.customFields.create({ entity, label: label.trim(), type });
+      const field = await resources.customFields.create({ entity, label: label.trim(), type, ...(byFunnel && funnelId ? { funnelId } : {}) });
       setLabel("");
       if (type === "select" || type === "multiselect") setOpenOptions(field._id);
     });
@@ -112,7 +116,7 @@ export default function CustomFieldsPage() {
       <section className="card p-5 sm:p-6">
         <p className="mb-4 text-sm text-charcoal/55">{info.description}</p>
         <form
-          className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_240px_auto]"
+          className={`grid gap-2 ${byFunnel ? "lg:grid-cols-[minmax(0,1fr)_220px_200px_auto]" : "sm:grid-cols-[minmax(0,1fr)_240px_auto]"}`}
           onSubmit={(event) => {
             event.preventDefault();
             handleAdd();
@@ -120,10 +124,14 @@ export default function CustomFieldsPage() {
         >
           <input className="input-search" placeholder="Nome do campo (ex.: Tamanho da equipe)" value={label} onChange={(e) => setLabel(e.target.value)} />
           <Select value={type} onChange={(value) => setType(value as CustomFieldType)} options={FIELD_TYPES} />
+          {byFunnel ? <Select value={funnelId} onChange={setFunnelId} options={funnelOptions} placeholder="Todos os funis" /> : null}
           <button type="submit" className="btn-primary" disabled={busy || !label.trim()}>
             Criar campo
           </button>
         </form>
+        {byFunnel ? (
+          <p className="mt-2 text-xs text-charcoal/50">Escolha um funil para o campo aparecer só nas negociações dele; em “Todos os funis” ele aparece em qualquer negociação.</p>
+        ) : null}
         {error ? <p className="mt-2 text-sm text-burgundy">{error}</p> : null}
 
         <ul className="mt-5 space-y-2">
@@ -140,6 +148,16 @@ export default function CustomFieldsPage() {
                       <code className="rounded bg-beige px-1">{`{${field.key}}`}</code>
                     </p>
                   </div>
+                  {byFunnel ? (
+                    <div className="w-48" title="Funil em que o campo aparece">
+                      <Select
+                        value={field.funnelId || ""}
+                        placeholder="Funil excluído"
+                        options={funnelOptions}
+                        onChange={(next) => next !== (field.funnelId || "") && void run(() => resources.customFields.update(field._id, { funnelId: next }))}
+                      />
+                    </div>
+                  ) : null}
                   {hasOptions ? (
                     <button type="button" className="btn-secondary !py-1.5" onClick={() => setOpenOptions(openOptions === field._id ? null : field._id)}>
                       {openOptions === field._id ? "Fechar opções" : "Opções"}

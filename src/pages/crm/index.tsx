@@ -7,6 +7,7 @@ import EmptyState from "@/components/crm/EmptyState";
 import FunnelPicker from "@/components/crm/FunnelPicker";
 import LeadModal from "@/components/crm/LeadModal";
 import LeadsTable from "@/components/crm/LeadsTable";
+import { useLostReason } from "@/components/crm/LostReasonDialog";
 import PipelineBoard from "@/components/crm/PipelineBoard";
 import ReportsView from "@/components/crm/ReportsView";
 import WonNotice from "@/components/crm/WonNotice";
@@ -54,6 +55,7 @@ export default function CrmPage() {
   const [wonLead, setWonLead] = useState<Lead | null>(null);
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const loss = useLostReason();
   const today = todayISO();
 
   const { data, isLoading, error, setData } = useAsyncData(() => resources.leads.list({ ownerId }), [ownerId]);
@@ -153,6 +155,13 @@ export default function CrmPage() {
   async function handleSave(form: LeadFormState) {
     const payload = formToPayload(form);
     if (modal.lead) {
+      // Edição que leva para uma etapa de perda: pede o motivo antes de salvar.
+      const target = funnels.find((item) => item._id === form.funnelId)?.stages.find((item) => item._id === form.stageId);
+      if (target?.kind === "lost" && modal.lead.status !== "lost") {
+        const answer = await loss.ask(modal.lead.name);
+        if (!answer) return;
+        Object.assign(payload, answer);
+      }
       replaceLead(await resources.leads.update(modal.lead._id, payload));
     } else {
       const saved = await resources.leads.create(payload);
@@ -178,13 +187,16 @@ export default function CrmPage() {
   }
 
   async function moveLead(lead: Lead, stageId: string) {
-    const previous = data;
     const stage = funnel?.stages.find((item) => item._id === stageId);
+    // Etapa de perda: o motivo é obrigatório (cancelar deixa a negociação onde estava).
+    const answer = stage?.kind === "lost" && lead.status !== "lost" ? await loss.ask(lead.name) : null;
+    if (stage?.kind === "lost" && lead.status !== "lost" && !answer) return;
+    const previous = data;
     setData((current) =>
-      (current || []).map((item) => (item._id === lead._id ? { ...item, stageId, status: stage?.kind || item.status } : item)),
+      (current || []).map((item) => (item._id === lead._id ? { ...item, stageId, status: stage?.kind || item.status, ...answer } : item)),
     );
     try {
-      replaceLead(await resources.leads.update(lead._id, { stageId }));
+      replaceLead(await resources.leads.update(lead._id, { stageId, ...answer }));
       if (stage?.kind === "won") celebrate(lead);
     } catch (err) {
       setData(previous);
@@ -406,6 +418,7 @@ export default function CrmPage() {
         onDelete={handleDelete}
       />
       <WonNotice lead={wonLead} onClose={() => setWonLead(null)} onLeadSaved={replaceLead} />
+      {loss.dialog}
     </>
   );
 }

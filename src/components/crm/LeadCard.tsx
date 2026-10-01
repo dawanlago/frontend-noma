@@ -25,6 +25,8 @@ interface LeadCardProps {
   /** Acabou de virar venda feita: toca o pulso de comemoração. */
   celebrating?: boolean;
   serviceLabel: string;
+  /** Motivo da perda (texto da lista), quando a negociação está perdida. */
+  lostReasonLabel?: string;
   onOpen: (lead: Lead) => void;
   onEdit: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
@@ -43,6 +45,7 @@ export default function LeadCard({
   isDragging,
   celebrating,
   serviceLabel,
+  lostReasonLabel,
   onOpen,
   onEdit,
   onDelete,
@@ -103,8 +106,18 @@ export default function LeadCard({
           </span>
         ) : null}
         {serviceLabel ? <span className="chip bg-tan/10 text-tan">{serviceLabel}</span> : null}
-        {showOwner && lead.ownerName ? <span className="chip bg-charcoal/[0.06] text-charcoal/60">{lead.ownerName}</span> : null}
+        {showOwner && lead.ownerName ? (
+          <span className="chip bg-charcoal/[0.06] text-charcoal/60" title={`Responsável: ${lead.ownerName}`}>
+            {lead.ownerName}
+          </span>
+        ) : null}
       </div>
+
+      {lead.status === "lost" && lostReasonLabel ? (
+        <p className="mt-2 truncate text-[11px] font-medium text-burgundy" title={lead.lostNote ? `${lostReasonLabel} — ${lead.lostNote}` : lostReasonLabel}>
+          Perdida: {lostReasonLabel}
+        </p>
+      ) : null}
 
       {inFunnel !== null && inStage !== null ? (
         <p

@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Dialog from "@mui/material/Dialog";
-import { HiOutlineInformationCircle, HiOutlineTrash, HiStar } from "react-icons/hi2";
-import EntityPicker from "@/components/base/EntityPicker";
-import ProductForm from "@/components/base/ProductForm";
+import { HiOutlineInformationCircle, HiStar } from "react-icons/hi2";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
-import { emptyLeadForm, formTotal, productPrice, type LeadFormState } from "@/lib/crm/model";
+import { emptyLeadForm, formTotal, type LeadFormState } from "@/lib/crm/model";
 import { resources } from "@/lib/resources";
 import type { Company, Contact, LeadProduct, Product } from "@/types";
-import { formatCurrencyBRL, maskCurrencyBRL, maskPhone, parseCurrencyBRL } from "@/utils/format";
+import { formatCurrencyBRL, maskPhone } from "@/utils/format";
+import DealProducts from "./DealProducts";
 
 interface NewLeadWizardProps {
   open: boolean;
@@ -140,7 +139,6 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
-  const [productOpen, setProductOpen] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   // Cadastros criados numa tentativa que falhou: reaproveita em vez de duplicar.
@@ -246,7 +244,8 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
       }
       let contactId = contact.id || created.current.contactId || "";
       if (!contactId && contact.name.trim()) {
-        contactId = (await resources.contacts.create({ name: contact.name.trim(), phone, kinds: ["lead"], companyId }))._id;
+        // Se já houver um contato com este telefone, a negociação usa o que existe (sem duplicar).
+        contactId = (await resources.contacts.createOrReuse({ name: contact.name.trim(), phone, kinds: ["lead"], companyId }))._id;
         created.current.contactId = contactId;
       }
       await onSave({ ...draft, name: name.trim(), contactId, companyId, products, customValue });
@@ -488,48 +487,14 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
                   <>
                     <div>
                       <Label>Qual o valor da negociação?</Label>
-                      <EntityPicker
-                        items={catalog.map((product) => ({
-                          id: product._id,
-                          label: product.name,
-                          sublabel: [formatCurrencyBRL(productPrice(product)), product.description].filter(Boolean).join(" · "),
-                        }))}
-                        value=""
-                        onChange={(productId) => {
-                          const product = catalog.find((item) => item._id === productId);
-                          if (product) setProducts((current) => [...current, { productId, name: product.name, price: productPrice(product) }]);
-                        }}
-                        placeholder="Adicionar produto"
-                        showAvatar={false}
-                        addLabel="+ Novo"
-                        onAdd={() => setProductOpen(true)}
+                      <DealProducts
+                        compact
+                        value={products}
+                        onChange={setProducts}
+                        catalog={catalog}
+                        onCatalogAdd={(product) => setCatalog((current) => [...current, product])}
                       />
                     </div>
-                    {products.length ? (
-                      <ul className="divide-y divide-charcoal/[0.06] rounded-lg border border-charcoal/[0.08]">
-                        {products.map((item, i) => (
-                          <li key={`${item.productId}-${i}`} className="flex items-center gap-2 px-3 py-2">
-                            <span className="min-w-0 flex-1 truncate text-sm text-charcoal">{item.name}</span>
-                            <div className="w-32">
-                              <MoneyInput
-                                value={item.price ? maskCurrencyBRL(item.price) : ""}
-                                onChange={(value) =>
-                                  setProducts((current) => current.map((p, j) => (j === i ? { ...p, price: parseCurrencyBRL(value) } : p)))
-                                }
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              className="btn-ghost h-8 w-8 hover:text-burgundy"
-                              aria-label="Remover produto"
-                              onClick={() => setProducts((current) => current.filter((_, j) => j !== i))}
-                            >
-                              <HiOutlineTrash className="h-4 w-4" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
                     <label className="block">
                       <Label>{products.length ? "Valor avulso (somado aos produtos)" : "Valor avulso"}</Label>
                       <MoneyInput value={customValue} onChange={setCustomValue} />
@@ -548,16 +513,6 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
         )}
       </Dialog>
 
-      <ProductForm
-        open={productOpen}
-        product={null}
-        onClose={() => setProductOpen(false)}
-        onSaved={(product) => {
-          setCatalog((current) => [...current, product]);
-          setProducts((current) => [...current, { productId: product._id, name: product.name, price: productPrice(product) }]);
-          setProductOpen(false);
-        }}
-      />
     </>
   );
 }

@@ -9,7 +9,11 @@ import type {
   Company,
   CompanyProfile,
   Contact,
+  ContactDuplicate,
   ContactProfile,
+  DuplicateGroup,
+  RelationItem,
+  RelationKind,
   ContractTemplate,
   CustomField,
   FinanceEntry,
@@ -160,6 +164,15 @@ export interface GoogleStatus {
 
 export type UserPayload = Partial<User> & { password?: string };
 
+export type ContactPayload = Partial<Contact> & { allowDuplicate?: boolean };
+
+/** Contato já existente informado pela API quando o cadastro esbarra em telefone/e-mail repetido (409). */
+export function duplicateOf(err: unknown): ContactDuplicate | null {
+  const response = (err as { response?: { status?: number; data?: { field?: "phone" | "email"; duplicate?: ContactDuplicate } } }).response;
+  const duplicate = response?.status === 409 ? response.data?.duplicate : null;
+  return duplicate ? { ...duplicate, field: response?.data?.field } : null;
+}
+
 export type LeadPayload = Partial<Omit<Lead, "nextActionDate" | "offeredValue" | "closedValue">> & {
   nextActionDate?: string | null;
   offeredValue?: number | null;
@@ -196,7 +209,29 @@ export const resources = {
   },
   contacts: {
     ...crud<Contact>("/contacts"),
+    /** `allowDuplicate` salva mesmo havendo outro contato com o mesmo telefone/e-mail (senão a API responde 409). */
+    create: (payload: ContactPayload) => create<Contact>("/contacts", payload),
+    update: (id: string, payload: ContactPayload) => update<Contact>(`/contacts/${id}`, payload),
+    /** Cria o contato ou, se já existir um com o mesmo telefone/e-mail, devolve o que já existe. */
+    createOrReuse: async (payload: ContactPayload) => {
+      try {
+        return await create<Contact>("/contacts", payload);
+      } catch (err) {
+        const existing = duplicateOf(err);
+        if (!existing) throw err;
+        return getOne<Contact>(`/contacts/${existing._id}`);
+      }
+    },
     profile: (id: string) => getOne<ContactProfile>(`/contacts/${id}/profile`),
+    duplicates: () => listData<DuplicateGroup>("/contacts/duplicates"),
+    /** Mescla `fromId` neste contato (o outro é excluído). */
+    merge: (id: string, fromId: string) => create<Contact>(`/contacts/${id}/merge`, { fromId }),
+  },
+  relations: {
+    list: (kind: RelationKind, id: string) => listData<RelationItem>("/relations", { kind, id }),
+    create: (payload: { from: { kind: RelationKind; id: string }; to: { kind: RelationKind; id: string }; type: string; note?: string }) =>
+      create<{ _id: string }>("/relations", payload),
+    remove: (id: string) => remove(`/relations/${id}`),
   },
   companies: {
     ...crud<Company>("/companies"),
@@ -216,7 +251,9 @@ export const resources = {
     create: (payload: LeadPayload) => create<Lead>("/leads", payload),
     update: (id: string, payload: LeadPayload) => update<Lead>(`/leads/${id}`, payload),
     remove: (id: string) => remove(`/leads/${id}`),
-    setStatus: (id: string, status: LeadStatus) => create<Lead>(`/leads/${id}/status`, { status }),
+    /** Perder a negociação exige o motivo (`loss`). */
+    setStatus: (id: string, status: LeadStatus, loss?: { lostReason: string; lostNote?: string }) =>
+      create<Lead>(`/leads/${id}/status`, { status, ...loss }),
     addComment: (id: string, text: string) => create<Lead>(`/leads/${id}/comments`, { text }),
     updateComment: (id: string, commentId: string, text: string) =>
       update<Lead>(`/leads/${id}/comments/${commentId}`, { text }),

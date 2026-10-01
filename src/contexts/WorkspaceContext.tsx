@@ -14,7 +14,8 @@ interface WorkspaceValue {
   optionsOf: (list: string) => OptionItem[];
   /** Texto de exibição de um valor gravado (cai no próprio valor se a opção foi apagada). */
   labelOf: (list: string, value: string) => string;
-  fieldsOf: (entity: CustomFieldEntity) => CustomField[];
+  /** Campos de uma área. Com `funnelId`, só os que valem para esse funil (os sem funil valem para todos). */
+  fieldsOf: (entity: CustomFieldEntity, funnelId?: string) => CustomField[];
   reload: (...parts: Part[]) => Promise<void>;
   upsertOption: (item: OptionItem) => void;
   dropOption: (id: string) => void;
@@ -62,7 +63,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
 
   const fieldsOf = useCallback(
-    (entity: CustomFieldEntity) => customFields.filter((field) => field.entity === entity).sort((a, b) => a.order - b.order),
+    (entity: CustomFieldEntity, funnelId?: string) =>
+      customFields
+        .filter((field) => field.entity === entity && (!funnelId || !field.funnelId || field.funnelId === funnelId))
+        .sort((a, b) => a.order - b.order),
     [customFields],
   );
 

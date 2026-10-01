@@ -6,14 +6,16 @@ import OptionSelect from "./OptionSelect";
 
 interface CustomFieldsInputsProps {
   entity: CustomFieldEntity;
+  /** Negociações: mostra só os campos que valem para este funil. */
+  funnelId?: string;
   value: CustomValues;
   onChange: (value: CustomValues) => void;
 }
 
 /** Campos personalizados (Configurações → Campos personalizados) de uma área. Use dentro de `grid sm:grid-cols-2`. */
-export default function CustomFieldsInputs({ entity, value, onChange }: CustomFieldsInputsProps) {
+export default function CustomFieldsInputs({ entity, funnelId, value, onChange }: CustomFieldsInputsProps) {
   const { fieldsOf } = useWorkspace();
-  const fields = fieldsOf(entity);
+  const fields = fieldsOf(entity, funnelId);
   if (!fields.length) return null;
 
   const set = (key: string, next: string | string[]) => onChange({ ...value, [key]: next });
@@ -48,9 +50,9 @@ export default function CustomFieldsInputs({ entity, value, onChange }: CustomFi
 }
 
 /** Valores dos campos personalizados prontos para exibir (perfil, painel da negociação). */
-export function useCustomFieldDisplay(entity: CustomFieldEntity, value: CustomValues | undefined) {
+export function useCustomFieldDisplay(entity: CustomFieldEntity, value: CustomValues | undefined, funnelId?: string) {
   const { fieldsOf, labelOf } = useWorkspace();
-  return fieldsOf(entity)
+  return fieldsOf(entity, funnelId)
     .map((field) => {
       const current = value?.[field.key];
       const list = `field:${field._id}`;

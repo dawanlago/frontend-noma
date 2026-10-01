@@ -28,7 +28,7 @@ export default function LeadsTable({ leads, funnels, today, showOwner, onOpen }:
               <th className="px-4 py-3 text-left">Termômetro</th>
               <th className="px-4 py-3 text-right">Valor</th>
               <th className="px-4 py-3 text-left">Próxima ação</th>
-              {showOwner ? <th className="px-4 py-3 text-left">Dono</th> : null}
+              {showOwner ? <th className="px-4 py-3 text-left">Responsável</th> : null}
             </tr>
           </thead>
           <tbody>

@@ -100,7 +100,16 @@ export interface Contact {
   niche: string;
   jobRole: string;
   instagram: string;
+  /** Nome de exibição é `name`; estes são o nome completo e o apelido. */
+  fullName?: string;
+  nickname?: string;
+  /** Cidade/UF. */
+  location?: string;
+  /** Origem do lead (lista `leadSource`). */
+  leadSource?: string;
+  /** Empresa principal (a primeira de `companyIds`). */
   companyId?: string;
+  companyIds?: string[];
   affinity: number;
   kinds: string[];
   supplierCategory: string;
@@ -111,10 +120,41 @@ export interface Contact {
   updatedAt: string;
 }
 
+/** Contato já cadastrado com o mesmo telefone/e-mail (resposta 409 ao salvar). */
+export type ContactDuplicate = Pick<Contact, "_id" | "name" | "phone" | "email"> & { field?: "phone" | "email" };
+
+export interface DuplicateGroup {
+  key: string;
+  fields: ("phone" | "email")[];
+  contacts: (Pick<Contact, "_id" | "name" | "fullName" | "phone" | "email" | "companyId" | "kinds" | "createdAt"> & { leadsCount: number })[];
+}
+
+export type RelationKind = "contact" | "company" | "lead";
+
+/** Relação de um registro com outro, vista a partir do registro aberto. */
+export interface RelationItem {
+  _id: string;
+  type: string;
+  note: string;
+  /** "out": este registro é [tipo] do outro; "in": o outro é [tipo] deste. */
+  direction: "out" | "in";
+  other: { kind: RelationKind; id: string; name: string; image: string };
+  createdAt: string;
+}
+
+/** Linha de custo do produto (a soma das linhas é o custo operacional). */
+export interface ProductCost {
+  label: string;
+  value: number;
+}
+
 export interface Product {
   _id: string;
   name: string;
   description: string;
+  /** Categoria (lista "productCategory"). */
+  category?: string;
+  costs?: ProductCost[];
   operationalCost: number;
   profit: number;
   createdAt: string;
@@ -153,6 +193,8 @@ export interface Funnel {
 export interface LeadProduct {
   productId?: string;
   name: string;
+  /** Descrição só desta negociação. */
+  description?: string;
   price: number;
 }
 
@@ -173,6 +215,12 @@ export interface LeadHistory {
 
 export interface Lead extends Owned {
   _id: string;
+  /** Quem criou a negociação (`ownerId` é o responsável). */
+  createdBy?: string;
+  createdByName?: string;
+  /** Motivo da perda (lista "lostReason") e observação. */
+  lostReason?: string;
+  lostNote?: string;
   name: string;
   contactId?: string;
   companyId?: string;
@@ -436,6 +484,8 @@ export interface CustomField {
   label: string;
   type: CustomFieldType;
   order: number;
+  /** Só em negociações: vazio = todos os funis. */
+  funnelId?: string;
 }
 
 export interface StoredFile extends Owned {
@@ -491,6 +541,8 @@ export interface ProfileHistory {
 export interface ContactProfile extends ProfileHistory {
   contact: Contact;
   company: Pick<Company, "_id" | "name" | "logo"> | null;
+  /** Todas as empresas vinculadas (a primeira é a principal). */
+  companies?: Pick<Company, "_id" | "name" | "logo">[];
 }
 
 export interface CompanyProfile extends ProfileHistory {

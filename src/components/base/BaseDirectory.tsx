@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -43,6 +43,8 @@ interface BaseDirectoryProps {
   newKinds?: string[];
   showCategory?: boolean;
   hideTypeTabs?: boolean;
+  /** Botões extras no topo (ex.: "Possíveis duplicados"). */
+  extraActions?: ReactNode;
 }
 
 function normalize(value: string) {
@@ -61,6 +63,7 @@ export default function BaseDirectory({
   newKinds = [],
   showCategory,
   hideTypeTabs,
+  extraActions,
 }: BaseDirectoryProps) {
   const router = useRouter();
   const { optionsOf, labelOf } = useWorkspace();
@@ -98,7 +101,10 @@ export default function BaseDirectory({
       supplierCategory: contact.supplierCategory,
       reach: contact.phone || contact.email,
       affinity: contact.affinity || 0,
-      extra: contact.companyId ? companyNames.get(contact.companyId) || "" : "",
+      extra: (contact.companyIds?.length ? contact.companyIds : contact.companyId ? [contact.companyId] : [])
+        .map((companyId) => companyNames.get(companyId) || "")
+        .filter(Boolean)
+        .join(", "),
     }));
     const orgs: Row[] = (companies.data || []).map((company: Company) => ({
       id: company._id,
@@ -153,6 +159,7 @@ export default function BaseDirectory({
         description={description}
         actions={
           <>
+            {extraActions}
             {initialType !== "company" ? (
               <button type="button" className="btn-primary" onClick={() => setForm("contact")}>
                 Criar contato

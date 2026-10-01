@@ -9,7 +9,10 @@ export interface OptionListInfo {
 export const OPTION_LISTS: OptionListInfo[] = [
   { key: "leadService", area: "CRM", title: "Serviços de interesse", description: "Serviço escolhido na negociação e nos filtros do CRM." },
   { key: "leadSource", area: "CRM", title: "Origens do lead", description: "Como o cliente chegou (Instagram, indicação...)." },
+  { key: "lostReason", area: "CRM", title: "Motivos de perda", description: "Motivo pedido ao marcar uma negociação como perdida. Aparece no Painel do CRM." },
+  { key: "productCategory", area: "Produtos", title: "Categorias de produto", description: "Vídeo, fotografia, evento... Cada categoria tem seu modelo de linhas de custo, usado ao cadastrar um produto." },
   { key: "relationship", area: "Base de dados", title: "Tipos de relação", description: "Cliente, lead, fornecedor, parceiro... Usado para filtrar a base." },
+  { key: "relationType", area: "Base de dados", title: "Relações entre registros", description: "Sócio(a), cônjuge, indicou... Usado no cartão \"Relações\" de contatos, empresas e negociações." },
   { key: "niche", area: "Base de dados", title: "Nichos", description: "Segmento de atuação de contatos e empresas." },
   { key: "jobRole", area: "Base de dados", title: "Cargos", description: "Cargo do contato na empresa." },
   { key: "supplierCategory", area: "Base de dados", title: "Categorias de fornecedor/parceiro", description: "Editor, filmmaker, locação de equipamento..." },

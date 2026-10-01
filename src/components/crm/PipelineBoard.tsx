@@ -98,6 +98,7 @@ export default function PipelineBoard({
                     today={today}
                     showOwner={showOwner}
                     serviceLabel={lead.service ? labelOf("leadService", lead.service) : ""}
+                    lostReasonLabel={lead.lostReason ? labelOf("lostReason", lead.lostReason) : ""}
                     isDragging={draggingId === lead._id}
                     celebrating={celebrateId === lead._id}
                     onOpen={onOpen}

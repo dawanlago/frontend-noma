@@ -11,8 +11,12 @@ import {
   HiOutlineXCircle,
 } from "react-icons/hi2";
 import EntityAvatar from "@/components/base/Avatar";
+import RelationsCard from "@/components/base/RelationsCard";
+import LeadContactLink from "@/components/crm/LeadContactLink";
 import LeadForms from "@/components/crm/LeadForms";
 import LeadModal from "@/components/crm/LeadModal";
+import LeadOwnerField from "@/components/crm/LeadOwnerField";
+import { useLostReason } from "@/components/crm/LostReasonDialog";
 import SendNpsDialog from "@/components/nps/SendNpsDialog";
 import StageChip from "@/components/crm/StageChip";
 import { TemperatureBadge } from "@/components/crm/Temperature";
@@ -158,8 +162,9 @@ function Comments({ lead, onChange }: { lead: Lead; onChange: (lead: Lead) => vo
 export default function LeadDashboardPage() {
   const router = useRouter();
   const id = typeof router.query.id === "string" ? router.query.id : "";
-  const { isAdmin, can } = useAuth();
+  const { can, seesAll } = useAuth();
   const { funnels, labelOf } = useWorkspace();
+  const loss = useLostReason();
   const [lead, setLead] = useState<Lead | null>(null);
   const [contact, setContact] = useState<Contact | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -170,7 +175,7 @@ export default function LeadDashboardPage() {
   const [launchMode, setLaunchMode] = useState<"won" | "launch">("won");
   const [payments, setPayments] = useState<FinanceEntry[]>([]);
   const [npsOpen, setNpsOpen] = useState(false);
-  const customDisplay = useCustomFieldDisplay("lead", lead?.custom);
+  const customDisplay = useCustomFieldDisplay("lead", lead?.custom, lead?.funnelId);
 
   useEffect(() => {
     if (!id) return;
@@ -234,15 +239,32 @@ export default function LeadDashboardPage() {
   }
 
   async function setStatus(status: LeadStatus) {
-    const saved = await run(() => resources.leads.setStatus(lead!._id, status));
+    // Perder exige o motivo; cancelar o modal não muda nada.
+    const answer = status === "lost" ? await loss.ask(lead!.name) : undefined;
+    if (status === "lost" && !answer) return;
+    const saved = await run(() => resources.leads.setStatus(lead!._id, status, answer || undefined));
     if (saved && status === "won") {
       setLaunchMode("won");
       setWonLead(saved);
     }
   }
 
+  /** Mover pela barra de etapas: etapa de perda pede o motivo antes. */
+  async function moveToStage(stageId: string, kind: LeadStatus) {
+    const answer = kind === "lost" && lead!.status !== "lost" ? await loss.ask(lead!.name) : null;
+    if (kind === "lost" && lead!.status !== "lost" && !answer) return;
+    void run(() => resources.leads.update(lead!._id, { stageId, ...answer }));
+  }
+
   async function handleSave(form: LeadFormState) {
-    const saved = await resources.leads.update(lead!._id, formToPayload(form));
+    const payload = formToPayload(form);
+    const target = funnels.find((item) => item._id === form.funnelId)?.stages.find((item) => item._id === form.stageId);
+    if (target?.kind === "lost" && lead!.status !== "lost") {
+      const answer = await loss.ask(lead!.name);
+      if (!answer) return;
+      Object.assign(payload, answer);
+    }
+    const saved = await resources.leads.update(lead!._id, payload);
     setLead(saved);
     setEditOpen(false);
   }
@@ -292,7 +314,16 @@ export default function LeadDashboardPage() {
               {stage ? <StageChip kind={stage.kind} label={stage.name} /> : null}
               <span className="chip bg-charcoal/[0.06] text-charcoal/65">{LEAD_STATUS_LABELS[lead.status]}</span>
               <TemperatureBadge value={lead.temperature} />
-              {isAdmin && lead.ownerName ? <span className="chip bg-charcoal/[0.06] text-charcoal/60">{lead.ownerName}</span> : null}
+              {lead.status === "lost" && lead.lostReason ? (
+                <span className="chip bg-burgundy/10 text-burgundy" title={lead.lostNote || undefined}>
+                  Motivo: {labelOf("lostReason", lead.lostReason)}
+                </span>
+              ) : null}
+              {seesAll("crm") && lead.ownerName ? (
+                <span className="chip bg-charcoal/[0.06] text-charcoal/60" title="Responsável">
+                  {lead.ownerName}
+                </span>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -351,7 +382,7 @@ export default function LeadDashboardPage() {
                   <button
                     type="button"
                     disabled={active}
-                    onClick={() => void run(() => resources.leads.update(lead._id, { stageId: item._id }))}
+                    onClick={() => void moveToStage(item._id, item.kind)}
                     className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
                       active
                         ? item.kind === "won"
@@ -432,8 +463,11 @@ export default function LeadDashboardPage() {
               <ul className="mt-3 space-y-1 text-sm">
                 {lead.products.map((item, index) => (
                   <li key={index} className="flex justify-between gap-3">
-                    <span className="truncate text-charcoal/70">{item.name}</span>
-                    <span className="tabular-nums text-charcoal">{formatCurrencyBRL(item.price)}</span>
+                    <span className="min-w-0 text-charcoal/70">
+                      <span className="block truncate">{item.name}</span>
+                      {item.description ? <span className="block whitespace-pre-line text-xs text-charcoal/50">{item.description}</span> : null}
+                    </span>
+                    <span data-money className="shrink-0 tabular-nums text-charcoal">{formatCurrencyBRL(item.price)}</span>
                   </li>
                 ))}
                 {lead.customValue ? (
@@ -446,9 +480,29 @@ export default function LeadDashboardPage() {
             ) : null}
             <dl className="mt-4 divide-y divide-charcoal/[0.06] border-t border-charcoal/[0.06]">
               <Info label="Serviço" value={lead.service ? labelOf("leadService", lead.service) : ""} />
-              <Info label="Origem" value={lead.source ? labelOf("leadSource", lead.source) : ""} />
+              <Info label="Origem da negociação" value={lead.source ? labelOf("leadSource", lead.source) : ""} />
               <Info label="Próxima ação" value={date ? formatDateOnly(date) : ""} />
+              <Info
+                label="Responsável"
+                value={<LeadOwnerField lead={lead} onChange={(ownerId) => void run(() => resources.leads.update(lead._id, { ownerId }))} />}
+              />
+              <Info label="Criada por" value={lead.createdByName || lead.ownerName} />
               <Info label="Criada em" value={formatDateTime(lead.createdAt)} />
+              {lead.status === "lost" ? (
+                <Info
+                  label="Motivo da perda"
+                  value={
+                    lead.lostReason ? (
+                      <>
+                        {labelOf("lostReason", lead.lostReason)}
+                        {lead.lostNote ? <span className="block text-xs font-normal text-charcoal/55">{lead.lostNote}</span> : null}
+                      </>
+                    ) : (
+                      "Não informado"
+                    )
+                  }
+                />
+              ) : null}
               <Info label="Tempo no funil" value={formatDays(daysSince(lead.funnelEnteredAt || lead.createdAt) ?? 0)} />
               <Info label="Na etapa atual" value={formatDays(daysSince(lead.stageEnteredAt || lead.funnelEnteredAt || lead.createdAt) ?? 0)} />
               {subStage ? (
@@ -487,8 +541,14 @@ export default function LeadDashboardPage() {
             </Section>
           ) : null}
 
-          {contact ? (
+          {!lead.contactId && can("crm") ? (
             <Section title="Contato">
+              <p className="mb-3 text-sm text-charcoal/50">Esta negociação ainda não tem um contato.</p>
+              <LeadContactLink lead={lead} onChange={setLead} variant="button" />
+            </Section>
+          ) : null}
+          {contact ? (
+            <Section title="Contato" actions={can("crm") ? <LeadContactLink lead={lead} onChange={setLead} /> : null}>
               <Link href={`/contatos/${contact._id}`} className="flex items-center gap-3">
                 <EntityAvatar name={contact.name} image={contact.photo} size={44} />
                 <div className="min-w-0">
@@ -515,6 +575,7 @@ export default function LeadDashboardPage() {
               </div>
             </Section>
           ) : null}
+          <RelationsCard kind="lead" id={lead._id} />
         </aside>
       </div>
 
@@ -532,6 +593,7 @@ export default function LeadDashboardPage() {
         onLaunched={(saved) => setPayments((current) => [...current, ...saved])}
         onLeadSaved={setLead}
       />
+      {loss.dialog}
       <SendNpsDialog open={npsOpen} onClose={() => setNpsOpen(false)} contactId={lead.contactId} leadId={lead._id} />
     </>
   );

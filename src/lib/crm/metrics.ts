@@ -193,3 +193,28 @@ export function isLeadOverdue(lead: Lead, today: string): boolean {
 export function formatPercent(rate: number): string {
   return `${Math.round(rate * 100)}%`;
 }
+
+export interface LostReasonGroup {
+  /** Valor gravado na negociação ("" = sem motivo registrado). */
+  reason: string;
+  count: number;
+  value: number;
+  /** Parte das negociações perdidas. */
+  share: number;
+}
+
+/** Negociações perdidas agrupadas pelo motivo (as mais frequentes primeiro). */
+export function groupByLostReason(leads: Lead[]): LostReasonGroup[] {
+  const lost = leads.filter((lead) => lead.status === "lost");
+  const map = new Map<string, LostReasonGroup>();
+  for (const lead of lost) {
+    const reason = (lead.lostReason || "").trim();
+    const group = map.get(reason) || { reason, count: 0, value: 0, share: 0 };
+    group.count += 1;
+    group.value += Number(lead.value) || 0;
+    map.set(reason, group);
+  }
+  return Array.from(map.values())
+    .map((group) => ({ ...group, share: lost.length ? group.count / lost.length : 0 }))
+    .sort((a, b) => b.count - a.count || b.value - a.value);
+}
