@@ -43,6 +43,12 @@ export interface OrgSummary {
   isActive?: boolean;
 }
 
+export interface UserMembership {
+  orgId: string;
+  role: UserRole;
+  access: Record<ModuleKey, AccessLevel>;
+}
+
 export interface User {
   _id: string;
   name: string;
@@ -60,6 +66,8 @@ export interface User {
   orgs?: OrgSummary[];
   /** Administrador geral: cria empresas e é admin em todas. */
   isSuperAdmin?: boolean;
+  /** Na tela de usuários: acesso da pessoa em cada empresa que o administrador gerencia. */
+  memberships?: UserMembership[];
   createdAt: string;
   updatedAt: string;
 }
