@@ -22,6 +22,9 @@ export default function GeneralSettingsPage() {
   if (!form) return <div className="skeleton h-96" />;
 
   const brand = form.brand;
+  const finance = form.finance || { lateFee: 0, monthlyInterest: 0, graceDays: 0 };
+  const setFinance = (key: keyof typeof finance, value: string) =>
+    setForm({ ...form, finance: { ...finance, [key]: Math.max(0, Number(value.replace(",", ".")) || 0) } });
   const setBrand = (changes: Partial<AppSettings["brand"]>) => setForm({ ...form, brand: { ...brand, ...changes } });
 
   function updateColor(index: number, changes: Partial<{ name: string; hex: string }>) {
@@ -151,6 +154,52 @@ export default function GeneralSettingsPage() {
           >
             + Adicionar cor
           </button>
+        </section>
+
+        <section className="card p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-charcoal">Juros e multa por atraso</h2>
+          <p className="mb-5 mt-1 text-sm text-charcoal/55">
+            Aplicados às entradas recebidas depois do vencimento e somados ao valor recebido. Deixe em 0 para não cobrar. O usual é multa de 2% e
+            juros de 1% ao mês.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Multa (%)" hint="Cobrada uma vez sobre o valor.">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                inputMode="decimal"
+                className="input-search"
+                value={finance.lateFee}
+                onChange={(e) => setFinance("lateFee", e.target.value)}
+              />
+            </Field>
+            <Field label="Juros ao mês (%)" hint="Proporcional aos dias de atraso.">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                inputMode="decimal"
+                className="input-search"
+                value={finance.monthlyInterest}
+                onChange={(e) => setFinance("monthlyInterest", e.target.value)}
+              />
+            </Field>
+            <Field label="Dias de carência" hint="Pago até esse prazo, não cobra nada.">
+              <input
+                type="number"
+                min={0}
+                max={365}
+                step="1"
+                inputMode="numeric"
+                className="input-search"
+                value={finance.graceDays}
+                onChange={(e) => setFinance("graceDays", e.target.value)}
+              />
+            </Field>
+          </div>
         </section>
       </div>
     </>

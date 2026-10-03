@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
+import { HiOutlineLink } from "react-icons/hi2";
 import Head from "next/head";
 import Link from "next/link";
+import DayBusy from "@/components/agenda/DayBusy";
 import GoogleCalendarConnect from "@/components/agenda/GoogleCalendarConnect";
+import SchedulingPanel from "@/components/agenda/SchedulingPanel";
 import EntityPicker from "@/components/base/EntityPicker";
 import Select from "@/components/ui/Select";
 import Field from "@/components/tools/Field";
@@ -77,6 +80,7 @@ export default function AgendaPage() {
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleConnected, setGoogleConnected] = useState(false);
+  const [schedulingOpen, setSchedulingOpen] = useState(false);
 
   const tasks = useMemo(() => (data || []).filter((task) => task.dueDate), [data]);
   const byDay = useMemo(() => {
@@ -207,6 +211,9 @@ export default function AgendaPage() {
         actions={
           <>
             <GoogleCalendarConnect onChange={(status) => setGoogleConnected(status.connected)} />
+            <button type="button" className="btn-secondary" onClick={() => setSchedulingOpen(true)}>
+              <HiOutlineLink className="h-4 w-4" /> Agendamento externo
+            </button>
             <button type="button" className="btn-primary" onClick={() => openCreate()}>
               Novo compromisso
             </button>
@@ -542,6 +549,11 @@ export default function AgendaPage() {
                 options={DURATIONS}
               />
             </Field>
+            {editor.draft.date ? (
+              <div className="sm:col-span-2">
+                <DayBusy date={editor.draft.date} time={editor.draft.time} duration={Number(editor.draft.duration) || 60} ignoreTitle={editor.task?.title} />
+              </div>
+            ) : null}
             <Field label="Negociação" full group hint="Opcional. Vincule se o compromisso for de uma venda.">
               <EntityPicker
                 items={(leads.data || []).map((lead) => ({ id: lead._id, label: lead.name, sublabel: lead.company || lead.contactName }))}
@@ -564,6 +576,7 @@ export default function AgendaPage() {
           </form>
         ) : null}
       </Modal>
+      <SchedulingPanel open={schedulingOpen} onClose={() => setSchedulingOpen(false)} />
     </>
   );
 }

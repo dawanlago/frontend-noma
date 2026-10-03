@@ -4,7 +4,7 @@ export function isAuthRoute(pathname: string): boolean {
 }
 
 export function isPublicRoute(pathname: string): boolean {
-  return isAuthRoute(pathname) || pathname === "/f/[publicId]" || pathname === "/nps/responder/[token]" || pathname === "/p/[token]";
+  return isAuthRoute(pathname) || pathname === "/f/[publicId]" || pathname === "/nps/responder/[token]" || pathname === "/p/[token]" || pathname === "/agendar/[slug]";
 }
 
 export function isAdminRoute(pathname: string): boolean {

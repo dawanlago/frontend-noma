@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import { HiOutlineDocumentText, HiOutlinePencilSquare, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi2";
 import PageHeader from "@/components/ui/PageHeader";
@@ -7,9 +8,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
-import type { Note, NoteGroup } from "@/types";
+import type { Note, NoteGroup, NotePermission } from "@/types";
 import { formatDateTime } from "@/utils/format";
 import { confirmDialog } from "@/components/ui/DialogHost";
+
+/* O editor (TipTap) só roda no navegador e fica fora do pacote inicial. */
+const NoteEditor = dynamic(() => import("@/components/notes/NoteEditor"), {
+  ssr: false,
+  loading: () => <div className="skeleton min-h-[420px] flex-1" />,
+});
+
+const PERMISSION_OPTIONS: { value: NotePermission; label: string }[] = [
+  { value: "view", label: "Visualizar" },
+  { value: "edit", label: "Editar" },
+];
+
+/** Espera depois da última tecla para salvar sozinho. */
+const AUTOSAVE_MS = 900;
+
+type NoteChanges = { title?: string; content?: string };
+type SaveState = "idle" | "pending" | "saving" | "saved";
 
 /** Id do destino "Anotações sem grupo" ao arrastar. */
 const NO_GROUP = "__none__";
@@ -58,6 +76,12 @@ export default function NotesPage() {
   const [groupName, setGroupName] = useState("");
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [shareUserId, setShareUserId] = useState("");
+  const [sharePermission, setSharePermission] = useState<NotePermission>("view");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  /** Anotação que outra pessoa salvou antes (versão do servidor para recarregar). */
+  const [conflict, setConflict] = useState<{ id: string; server: Note | null } | null>(null);
+  /** Troca o editor (recria com o conteúdo novo) ao recarregar a anotação. */
+  const [editorVersion, setEditorVersion] = useState(0);
   const [dragging, setDragging] = useState<string | null>(null);
   const [overGroup, setOverGroup] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -76,6 +100,8 @@ export default function NotesPage() {
   const sharedWithMe = useMemo(() => notes.filter((note) => note.ownerId !== user?._id), [notes, user?._id]);
   const selected = notes.find((note) => note._id === selectedId) || mine[0] || sharedWithMe[0] || null;
   const isOwner = selected?.ownerId === user?._id;
+  const myPermission: NotePermission = isOwner ? "edit" : selected?.shares.find((share) => share.userId === user?._id)?.permission || "view";
+  const canEdit = Boolean(selected) && myPermission === "edit" && conflict?.id !== selected?._id;
 
   useEffect(() => {
     setDraft({ title: selected?.title || "", content: selected?.content || "" });
@@ -83,7 +109,85 @@ export default function NotesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?._id]);
 
-  const replaceNote = (saved: Note) => setNotes((current) => current.map((note) => (note._id === saved._id ? saved : note)));
+  /* ---------- Salvamento automático (com trava contra edição simultânea) ---------- */
+
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+  const pendingRef = useRef<{ id: string; changes: NoteChanges } | null>(null);
+  const timerRef = useRef<number | undefined>(undefined);
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const replaceNote = useCallback((saved: Note) => {
+    notesRef.current = notesRef.current.map((note) => (note._id === saved._id ? { ...note, ...saved } : note));
+    setNotes(notesRef.current);
+  }, []);
+
+  /** Manda o que está pendente; os salvamentos saem em fila, cada um com a revisão mais recente. */
+  const flush = useCallback(() => {
+    window.clearTimeout(timerRef.current);
+    const job = pendingRef.current;
+    if (!job) return;
+    pendingRef.current = null;
+    queueRef.current = queueRef.current.then(async () => {
+      const note = notesRef.current.find((item) => item._id === job.id);
+      if (!note) return;
+      setSaveState("saving");
+      try {
+        replaceNote(await resources.notes.update(job.id, { ...job.changes, rev: note.rev ?? 0 }));
+        setSaveState(pendingRef.current ? "pending" : "saved");
+      } catch (err) {
+        const response = (err as { response?: { status?: number; data?: { data?: Note | null } } }).response;
+        setSaveState("idle");
+        if (response?.status === 409) {
+          setConflict({ id: job.id, server: response.data?.data || null });
+          if (pendingRef.current?.id === job.id) pendingRef.current = null;
+        } else {
+          setError(apiError(err, "Não foi possível salvar a anotação."));
+        }
+      }
+    });
+  }, [replaceNote]);
+
+  function queueSave(changes: NoteChanges) {
+    if (!selected || !canEdit) return;
+    if (pendingRef.current && pendingRef.current.id !== selected._id) flush();
+    pendingRef.current = { id: selected._id, changes: { ...(pendingRef.current?.changes || {}), ...changes } };
+    setSaveState("pending");
+    window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(flush, AUTOSAVE_MS);
+  }
+
+  // Salva o que faltar ao sair da página ou fechar a aba.
+  useEffect(() => {
+    const onLeave = () => flush();
+    window.addEventListener("beforeunload", onLeave);
+    return () => {
+      window.removeEventListener("beforeunload", onLeave);
+      flush();
+    };
+  }, [flush]);
+
+  function openNote(id: string) {
+    flush();
+    setSelectedId(id);
+  }
+
+  /** Descarta o rascunho e abre a versão salva por outra pessoa. */
+  async function reloadConflict() {
+    if (!conflict) return;
+    let server = conflict.server;
+    if (!server) {
+      const list = await resources.notes.list();
+      server = list.find((note) => note._id === conflict.id) || null;
+    }
+    if (server) {
+      replaceNote(server);
+      if (selected?._id === server._id) setDraft({ title: server.title, content: server.content });
+    }
+    setConflict(null);
+    setSaveState("idle");
+    setEditorVersion((current) => current + 1);
+  }
 
   async function run(action: () => Promise<void>) {
     setError("");
@@ -129,19 +233,21 @@ export default function NotesPage() {
   function createNote(groupId?: string) {
     void run(async () => {
       const note = await resources.notes.create({ title: "Nova anotação", content: "", groupId });
+      flush();
       setNotes((current) => [note, ...current]);
       setSelectedId(note._id);
     });
   }
 
-  function saveDraft(field: "title" | "content") {
-    if (!selected || !isOwner || draft[field] === selected[field]) return;
-    void run(async () => replaceNote(await resources.notes.update(selected._id, { [field]: draft[field] })));
+  function shareWith(userId: string, permission: NotePermission) {
+    if (!selected) return;
+    void run(async () => replaceNote(await resources.notes.share(selected._id, userId, permission)));
   }
 
   async function deleteSelected() {
     if (!selected || !isOwner || !(await confirmDialog({ title: "Excluir esta anotação?", message: "Essa ação não pode ser desfeita.", confirmLabel: "Excluir", danger: true }))) return;
     void run(async () => {
+      if (pendingRef.current?.id === selected._id) pendingRef.current = null;
       await resources.notes.remove(selected._id);
       setNotes((current) => current.filter((note) => note._id !== selected._id));
       setSelectedId("");
@@ -192,7 +298,7 @@ export default function NotesPage() {
       note={note}
       active={selected?._id === note._id}
       draggable={draggable}
-      onSelect={() => setSelectedId(note._id)}
+      onSelect={() => openNote(note._id)}
       onDragStart={(event) => {
         event.dataTransfer.setData(DRAG_TYPE, note._id);
         event.dataTransfer.effectAllowed = "move";
@@ -215,7 +321,7 @@ export default function NotesPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Minhas anotações"
-        description="Cada usuário tem o próprio espaço. Arraste uma anotação para mudar de grupo e compartilhe só quando quiser."
+        description="Cada usuário tem o próprio espaço. Use / para inserir títulos, listas e checklist; compartilhe para alguém visualizar ou editar."
       />
       {error ? <p className="mb-4 text-sm text-burgundy">{error}</p> : null}
 
@@ -314,9 +420,13 @@ export default function NotesPage() {
                 <input
                   className="w-full border-none bg-transparent text-3xl font-semibold text-charcoal outline-none"
                   value={draft.title}
-                  onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-                  onBlur={() => saveDraft("title")}
-                  disabled={!isOwner}
+                  onChange={(event) => {
+                    setDraft((current) => ({ ...current, title: event.target.value }));
+                    queueSave({ title: event.target.value });
+                  }}
+                  onBlur={flush}
+                  readOnly={!canEdit}
+                  aria-readonly={!canEdit}
                 />
                 {isOwner ? (
                   <button type="button" className="btn-danger shrink-0" onClick={deleteSelected}>
@@ -325,15 +435,32 @@ export default function NotesPage() {
                 ) : null}
               </div>
               <p className="mb-4 text-xs text-charcoal/40">
-                {isOwner ? "" : `De ${selected.ownerName} · `}Atualizada em {formatDateTime(selected.updatedAt)}
+                {isOwner
+                  ? ""
+                  : myPermission === "edit"
+                    ? `Compartilhada por ${selected.ownerName} · você pode editar · `
+                    : `Somente leitura — compartilhada por ${selected.ownerName} · `}
+                Atualizada em {formatDateTime(selected.updatedAt)}
+                {saveState === "pending" || saveState === "saving" ? " · Salvando..." : saveState === "saved" ? " · Salvo" : ""}
               </p>
-              <textarea
-                className="min-h-[420px] w-full flex-1 resize-y border-none bg-transparent text-sm leading-7 text-charcoal outline-none"
-                value={draft.content}
-                onChange={(event) => setDraft((current) => ({ ...current, content: event.target.value }))}
-                onBlur={() => saveDraft("content")}
-                placeholder="Escreva livremente..."
-                disabled={!isOwner}
+              {conflict?.id === selected._id ? (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-burgundy/20 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
+                  <span>Esta nota foi alterada por outra pessoa — recarregue. O que você digitou depois disso não foi salvo.</span>
+                  <button type="button" className="btn-secondary shrink-0" onClick={() => void reloadConflict()}>
+                    Recarregar
+                  </button>
+                </div>
+              ) : null}
+              <NoteEditor
+                key={`${selected._id}:${editorVersion}`}
+                // O editor nasce com o conteúdo salvo (o rascunho ainda é o da anotação anterior neste render).
+                content={selected.content}
+                editable={canEdit}
+                onChange={(content) => {
+                  setDraft((current) => ({ ...current, content }));
+                  queueSave({ content });
+                }}
+                onBlur={flush}
               />
 
               {isOwner ? (
@@ -348,8 +475,8 @@ export default function NotesPage() {
                   </div>
                   <div>
                     <p className="mb-2 text-sm font-medium">Compartilhar</p>
-                    <div className="flex gap-2">
-                      <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap gap-2">
+                      <div className="min-w-[10rem] flex-1">
                         <Select
                           value={shareUserId}
                           onChange={setShareUserId}
@@ -359,27 +486,35 @@ export default function NotesPage() {
                             .map((item) => ({ value: item._id, label: item.name }))}
                         />
                       </div>
+                      <div className="w-36">
+                        <Select value={sharePermission} onChange={(value) => setSharePermission(value as NotePermission)} options={PERMISSION_OPTIONS} />
+                      </div>
                       <button
                         type="button"
                         className="btn-secondary"
                         disabled={!shareUserId}
-                        onClick={() =>
-                          void run(async () => {
-                            replaceNote(await resources.notes.share(selected._id, shareUserId));
-                            setShareUserId("");
-                          })
-                        }
+                        onClick={() => {
+                          shareWith(shareUserId, sharePermission);
+                          setShareUserId("");
+                        }}
                       >
                         Compartilhar
                       </button>
                     </div>
-                    <div className="mt-3 space-y-1 text-sm text-charcoal/60">
+                    <div className="mt-3 space-y-2 text-sm text-charcoal/70">
                       {selected.shares.map((share) => (
-                        <div key={share.userId} className="flex items-center justify-between">
-                          <span>{share.name}</span>
+                        <div key={share.userId} className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate">{share.name || "Usuário removido"}</span>
+                          <div className="w-36 shrink-0">
+                            <Select
+                              value={share.permission}
+                              onChange={(value) => shareWith(share.userId, value as NotePermission)}
+                              options={PERMISSION_OPTIONS}
+                            />
+                          </div>
                           <button
                             type="button"
-                            className="text-burgundy"
+                            className="shrink-0 text-burgundy"
                             onClick={() =>
                               void run(async () => {
                                 await resources.notes.unshare(selected._id, share.userId);
@@ -395,7 +530,11 @@ export default function NotesPage() {
                   </div>
                 </div>
               ) : (
-                <p className="mt-4 text-xs text-charcoal/40">Você está visualizando uma anotação compartilhada.</p>
+                <p className="mt-4 text-xs text-charcoal/40">
+                  {myPermission === "edit"
+                    ? "Você pode editar o título e o texto. Excluir, mover e compartilhar ficam com quem criou."
+                    : "Você está visualizando uma anotação compartilhada."}
+                </p>
               )}
             </div>
           ) : (

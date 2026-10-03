@@ -42,6 +42,8 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
   const { funnels, setFunnels } = useWorkspace();
   const [name, setName] = useState("");
   const [stages, setStages] = useState<DraftStage[]>([]);
+  /** Etapa ao receber formulário de contato existente ("" = automático). */
+  const [qualifiedStageId, setQualifiedStageId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -52,6 +54,7 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
         ? funnel.stages.map((stage) => ({ ...stage, subStages: (stage.subStages || []).map((sub) => ({ ...sub })) }))
         : NEW_FUNNEL.map((stage) => ({ ...stage })),
     );
+    setQualifiedStageId(funnel?.qualifiedStageId || "");
     setError("");
   }, [funnel]);
 
@@ -80,6 +83,7 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
       const payload = {
         name: name.trim(),
         stages: clean.map((stage) => ({ ...stage, subStages: (stage.subStages || []).filter((sub) => sub.name.trim()) })) as Funnel["stages"],
+        qualifiedStageId: clean.some((stage) => stage._id === qualifiedStageId) ? qualifiedStageId : "",
       };
       const saved = funnel ? await resources.funnels.update(funnel._id, payload) : await resources.funnels.create(payload);
       setFunnels(funnel ? funnels.map((item) => (item._id === saved._id ? saved : item)) : [...funnels, saved]);
@@ -155,6 +159,21 @@ export default function FunnelEditor({ funnel, onSaved, onDeleted }: FunnelEdito
         medem quantos dias a negociação fica em cada uma. Ao remover uma etapa, as negociações dela vão para a primeira etapa “Em andamento”. O botão “Venda feita” move a
         negociação para a primeira etapa do tipo “Venda feita”.
       </p>
+
+      <div className="mt-5">
+        <span className="mb-1.5 block text-[13px] font-semibold text-charcoal">Etapa ao receber formulário de contato existente</span>
+        <Select
+          value={qualifiedStageId}
+          onChange={setQualifiedStageId}
+          options={[
+            { value: "", label: "Automático (etapa “Qualificado”, se houver)" },
+            ...stages.filter((stage) => stage._id && stage.name.trim()).map((stage) => ({ value: stage._id!, label: stage.name })),
+          ]}
+        />
+        <span className="mt-1 block text-xs text-charcoal/50">
+          Quando alguém que já tem negociação aberta neste funil responde um formulário, a negociação vai para esta etapa (sem criar outra).
+        </span>
+      </div>
 
       {error ? <p className="mt-3 text-sm text-burgundy">{error}</p> : null}
       <div className="mt-5 flex flex-wrap justify-between gap-2">

@@ -18,7 +18,9 @@ import { BRIEFING_TEMPLATES, BRIEFING_TYPES, type BriefingField } from "@/lib/br
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import { printDocument } from "@/utils/document";
+import BriefingScripts from "@/components/scripts/BriefingScripts";
 import BriefingPreview from "./BriefingPreview";
+import CustomFieldsEditor from "./CustomFieldsEditor";
 import { confirmDialog } from "@/components/ui/DialogHost";
 
 interface BriefingEditorProps {
@@ -303,6 +305,14 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
             </div>
           </ToolSection>
 
+          <ToolSection title="Campos extras" description="Perguntas a mais só deste briefing. Entram no preview, no texto copiado e no PDF.">
+            <CustomFieldsEditor
+              fields={data.customFields}
+              type={data.type}
+              onChange={(customFields) => setData((current) => ({ ...current, customFields }))}
+            />
+          </ToolSection>
+
           <ToolSection step={5} title="Produção" description="Informações da gravação para a equipe.">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Data da gravação">
@@ -386,6 +396,7 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
           <button type="button" className="w-full text-center text-sm font-semibold text-charcoal/50 hover:text-burgundy" onClick={handleClear}>
             Limpar
           </button>
+          <BriefingScripts briefingId={id} briefing={data} />
         </aside>
       </div>
     </>

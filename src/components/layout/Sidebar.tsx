@@ -9,6 +9,7 @@ import { useCompanyName } from "@/contexts/WorkspaceContext";
 import Drawer from "@mui/material/Drawer";
 import AccountBalanceWalletOutlined from "@mui/icons-material/AccountBalanceWalletOutlined";
 import AssignmentOutlined from "@mui/icons-material/AssignmentOutlined";
+import MovieCreationOutlined from "@mui/icons-material/MovieCreationOutlined";
 import BusinessOutlined from "@mui/icons-material/BusinessOutlined";
 import CalculateOutlined from "@mui/icons-material/CalculateOutlined";
 import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
@@ -95,6 +96,7 @@ const groups: NavGroup[] = [
       { href: "/orcamento", label: "Orçamento", icon: CalculateOutlined, module: "orcamento" },
       { href: "/contratos", label: "Contratos", icon: GavelOutlined, module: "contratos" },
       { href: "/briefing", label: "Briefing", icon: AssignmentOutlined, module: "briefing" },
+      { href: "/roteiros", label: "Roteiros", icon: MovieCreationOutlined, module: "briefing" },
     ],
   },
   {

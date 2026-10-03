@@ -21,7 +21,7 @@ export const MODULES: ModuleInfo[] = [
   { key: "propostas", label: "Gerador de Propostas", description: "Propostas comerciais.", paths: ["/propostas"] },
   { key: "orcamento", label: "Calculadora de Orçamento", description: "Precificação de projetos.", paths: ["/orcamento"] },
   { key: "contratos", label: "Contratos", description: "Gerador e contratos importados.", paths: ["/contratos"] },
-  { key: "briefing", label: "Gerador de Briefing", description: "Briefings de produção.", paths: ["/briefing"] },
+  { key: "briefing", label: "Gerador de Briefing", description: "Briefings de produção e roteiros.", paths: ["/briefing", "/roteiros"] },
   { key: "financeiro", label: "Financeiro", description: "Entradas, despesas, metas e planilha.", paths: ["/financeiro"] },
   {
     key: "base",

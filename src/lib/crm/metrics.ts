@@ -58,6 +58,16 @@ export function leadDiscount(lead: Pick<Lead, "offeredValue" | "closedValue">) {
   return { value, percent: value / offered };
 }
 
+/** "Evento 12/12 · faltam 40 dias" (ou "já passou"). */
+export function eventLabel(eventDate?: string, now = new Date()) {
+  if (!eventDate || !/^\d{4}-\d{2}-\d{2}/.test(eventDate)) return "";
+  const date = eventDate.slice(0, 10);
+  const today = new Date(now.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+  const days = Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
+  const when = days < 0 ? "já passou" : days === 0 ? "é hoje" : `faltam ${days} dia${days === 1 ? "" : "s"}`;
+  return `Evento ${date.slice(8, 10)}/${date.slice(5, 7)}/${date.slice(0, 4)} · ${when}`;
+}
+
 export interface StageTime {
   id: string;
   name: string;

@@ -28,6 +28,7 @@ export const OPTION_LISTS: OptionListInfo[] = [
   { key: "briefingChannel", area: "Briefing", title: "Canais de publicação", description: "Onde o conteúdo vai ser publicado." },
   { key: "briefingRevisions", area: "Briefing", title: "Número de revisões", description: "Opções do campo de revisões." },
   { key: "briefingStyle", area: "Briefing", title: "Estilos de produto", description: "Estilo desejado no briefing de produto." },
+  { key: "briefingField", area: "Briefing", title: "Campos extras", description: "Catálogo de perguntas a mais (tipo e em qual modelo de briefing aparecem) para adicionar rápido em cada briefing." },
   { key: "prospectSegment", area: "Prospecção", title: "Segmentos", description: "Segmento da empresa abordada." },
   { key: "prospectSource", area: "Prospecção", title: "Como encontrou", description: "Onde você encontrou a empresa." },
   { key: "prospectOpportunity", area: "Prospecção", title: "Oportunidades", description: "Oportunidades e as mensagens prontas de cada uma." },

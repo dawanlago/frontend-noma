@@ -1,4 +1,5 @@
 import type { FinanceEntry, TransactionType } from "@/types";
+import { entryTotal } from "./lateCharge";
 
 /** "all" soma tudo (inclui a receber/previsto); "realized" só o que foi recebido/pago. */
 export type SheetMode = "all" | "realized";
@@ -37,8 +38,8 @@ function rowsFor(entries: FinanceEntry[], type: TransactionType): SheetRow[] {
     if (month < 0 || month > 11) continue;
     const category = entry.category || "Sem categoria";
     const row = map.get(category) || { category, months: emptyMonths(), total: 0 };
-    row.months[month] = round(row.months[month] + (Number(entry.value) || 0));
-    row.total = round(row.total + (Number(entry.value) || 0));
+    row.months[month] = round(row.months[month] + entryTotal(entry));
+    row.total = round(row.total + entryTotal(entry));
     map.set(category, row);
   }
   return [...map.values()].sort((a, b) => b.total - a.total || a.category.localeCompare(b.category));

@@ -1,8 +1,14 @@
 import { api } from "./api";
 import type {
+  AppNotification,
   AppSettings,
   BucketMovement,
+  Booking,
+  BusyItem,
+  PublicSchedule,
+  SchedulingLink,
   DistributionBucket,
+  NotificationPrefs,
   OrgSummary,
   Birthday,
   CaptureForm,
@@ -26,12 +32,14 @@ import type {
   LeadStatus,
   Note,
   NoteGroup,
+  NotePermission,
   NPSInvite,
   NPSRating,
   NPSSummary,
   NPSSurvey,
   OptionItem,
   Product,
+  ProposalAcceptance,
   ProposalShare,
   PublicFormData,
   StoredFile,
@@ -280,7 +288,8 @@ export const resources = {
       const { data } = await api.put<ApiItemResponse<Note>>(`/notes/${id}/group`, { groupId });
       return data.data;
     },
-    share: (id: string, userId: string) => create<Note>(`/notes/${id}/share`, { userId }),
+    /** Adiciona ou troca a permissão de alguém. */
+    share: (id: string, userId: string, permission: NotePermission = "view") => create<Note>(`/notes/${id}/share`, { userId, permission }),
     unshare: async (id: string, userId: string) => {
       await api.delete(`/notes/${id}/share/${userId}`);
     },
@@ -294,6 +303,35 @@ export const resources = {
     },
     removeRating: (id: string) => remove(`/nps/ratings/${id}`),
     invite: (payload: { surveyId: string; contactId: string; leadId?: string }) => create<NPSInvite>("/nps/invites", payload),
+  },
+  notifications: {
+    list: () => getOne<{ items: AppNotification[]; unread: number }>("/notifications"),
+    read: async (ids?: string[]) => {
+      await api.post("/notifications/read", ids ? { ids } : {});
+    },
+    prefs: () => getOne<NotificationPrefs>("/notifications/prefs"),
+    updatePrefs: (payload: Partial<NotificationPrefs>) => update<NotificationPrefs>("/notifications/prefs", payload),
+  },
+  weeklyReport: {
+    /** Envia o relatório agora (para mim ou para os destinatários configurados). */
+    test: async (toMe: boolean) => {
+      await api.post("/settings/weekly-report/test", { toMe });
+    },
+  },
+  scheduling: {
+    links: () => listData<SchedulingLink>("/scheduling/links"),
+    createLink: (payload: Partial<SchedulingLink>) => create<SchedulingLink>("/scheduling/links", payload),
+    updateLink: (id: string, payload: Partial<SchedulingLink>) => update<SchedulingLink>(`/scheduling/links/${id}`, payload),
+    removeLink: (id: string) => remove(`/scheduling/links/${id}`),
+    bookings: () => listData<Booking>("/scheduling/bookings"),
+    cancelBooking: (id: string) => create<Booking>(`/scheduling/bookings/${id}/cancel`, {}),
+    /** O que já está ocupado na agenda de quem está logado (para escolher horário). */
+    busy: (date: string, days = 1) => getOne<{ google: string; items: BusyItem[] }>("/scheduling/busy", { date, days: String(days) }),
+  },
+  publicSchedule: {
+    get: (slug: string, from?: string, days = 14) => getOne<PublicSchedule>(`/public/schedule/${slug}`, { from, days: String(days) }),
+    book: (slug: string, payload: { start: string; name: string; email: string; phone: string; notes: string }) =>
+      create<{ start: string; end: string; title: string; location: string }>(`/public/schedule/${slug}/book`, payload),
   },
   publicNps: {
     get: (token: string) =>
@@ -310,11 +348,20 @@ export const resources = {
   publicForms: {
     /** Código de 6 dígitos = formulário enviado pela negociação; senão, link público do formulário. */
     get: (id: string) => getOne<PublicFormData>(isInviteCode(id) ? `/public/form-invites/${id}` : `/public/forms/${id}`),
-    submit: (id: string, answers: Record<string, unknown>, website = "") =>
+    submit: (id: string, answers: Record<string, unknown>, website = "", sessionId = "") =>
       create<{ message: string }>(isInviteCode(id) ? `/public/form-invites/${id}` : `/public/forms/${id}/responses`, {
         answers,
         website,
+        sessionId,
       }),
+    /** Salva o que já foi respondido (a cada pergunta); `step` = pergunta em que a pessoa está. */
+    saveProgress: (id: string, payload: { sessionId: string; answers: Record<string, unknown>; step: number; website?: string }) =>
+      create<{ status: string }>(isInviteCode(id) ? `/public/form-invites/${id}/progress` : `/public/forms/${id}/progress`, payload),
+    /** Progresso salvo desta sessão do navegador (null = nada salvo). */
+    progress: (id: string, sessionId: string) =>
+      getOne<{ answers: Record<string, string | string[] | boolean>; lastStep: number; status: "partial" | "complete" } | null>(
+        `/public/forms/${id}/progress/${sessionId}`,
+      ),
   },
   finance: {
     entries: async (month: string, params?: ListParams) => {
@@ -353,6 +400,7 @@ export const resources = {
     contracts: toolDocuments("contract"),
     budgets: toolDocuments("budget"),
     briefings: toolDocuments("briefing"),
+    scripts: toolDocuments("script"),
     /** Link público da proposta (/p/<token>) e as visualizações do cliente. */
     proposalShare: {
       get: (id: string) => getOne<ProposalShare>(`/tools/proposal/documents/${id}/share`),
@@ -365,7 +413,10 @@ export const resources = {
   },
   /** Proposta aberta pelo cliente no link público (sem login). */
   publicProposals: {
-    get: (token: string) => getOne<{ title: string; data: Record<string, unknown> }>(`/public/proposals/${token}`),
+    get: (token: string) =>
+      getOne<{ title: string; data: Record<string, unknown>; accepted: ProposalAcceptance | null }>(`/public/proposals/${token}`),
+    accept: (token: string, payload: { name: string; comment?: string }) =>
+      create<ProposalAcceptance>(`/public/proposals/${token}/accept`, payload),
   },
   contractTemplates: crud<ContractTemplate>("/contract-templates"),
   files: {

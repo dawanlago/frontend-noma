@@ -8,6 +8,7 @@ import {
   HiOutlineTrash,
 } from "react-icons/hi2";
 import { ENTRY_FILTERS, type EntryFilter } from "@/lib/finance/metrics";
+import { entryTotal, lateDaysLabel } from "@/lib/finance/lateCharge";
 import { ENTRY_STATUS_LABELS, entryStatusKind, isEntryOpen, type EntryStatusKind } from "@/lib/finance/model";
 import type { FinanceEntry } from "@/types";
 import { formatCurrencyBRL, formatDateOnly } from "@/utils/format";
@@ -101,6 +102,8 @@ export default function EntryList({
             const isIncome = entry.type === "income";
             const kind = entryStatusKind(entry, today);
             const open = isEntryOpen(entry);
+            // Recebida com atraso (juros/multa gravados) ou vencida em aberto (quanto daria hoje).
+            const late = entry.lateCharge?.total ? entry.lateCharge : kind === "overdue" ? entry.projectedLateCharge : undefined;
             const meta = [isIncome ? entry.client || entry.category : entry.category, formatDateOnly(entry.date), entry.payment, entry.bank]
               .filter(Boolean)
               .join(" • ");
@@ -125,6 +128,11 @@ export default function EntryList({
                     ) : null}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <span className={`chip ${statusTone[kind]}`}>{ENTRY_STATUS_LABELS[kind]}</span>
+                      {entry.paidAt && entry.paidAt !== entry.date ? (
+                        <span className="chip bg-charcoal/[0.06] text-charcoal/60">
+                          {isIncome ? "Recebido" : "Pago"} em {formatDateOnly(entry.paidAt)}
+                        </span>
+                      ) : null}
                       {entry.installment ? (
                         <span className="chip bg-charcoal/[0.06] text-charcoal/60">
                           Parcela {entry.installment.number}/{entry.installment.total}
@@ -151,14 +159,34 @@ export default function EntryList({
                 </div>
 
                 <div className="flex items-center justify-between gap-3 pl-12 sm:justify-end sm:pl-0">
-                  <span
-                    className={`whitespace-nowrap text-sm font-semibold tabular-nums ${
-                      isIncome ? "text-charcoal" : "text-burgundy"
-                    }`}
-                  >
-                    {isIncome ? "" : "- "}
-                    {formatCurrencyBRL(entry.value)}
-                  </span>
+                  <div className="text-right">
+                    <span
+                      data-money
+                      className={`whitespace-nowrap text-sm font-semibold tabular-nums ${
+                        isIncome ? "text-charcoal" : "text-burgundy"
+                      }`}
+                    >
+                      {isIncome ? "" : "- "}
+                      {formatCurrencyBRL(entryTotal(entry))}
+                    </span>
+                    {late ? (
+                      <p
+                        className={`max-w-[15rem] text-[11px] leading-4 tabular-nums ${kind === "overdue" ? "text-burgundy" : "text-charcoal/50"}`}
+                        title={`Valor ${formatCurrencyBRL(entry.value)} · multa ${formatCurrencyBRL(late.fee)} · juros ${formatCurrencyBRL(late.interest)}`}
+                      >
+                        {kind === "overdue" ? (
+                          <>
+                            Hoje: <span data-money>{formatCurrencyBRL(entry.value + late.total)}</span> ·{" "}
+                          </>
+                        ) : (
+                          <>
+                            <span data-money>{formatCurrencyBRL(entry.value)}</span>{" "}
+                          </>
+                        )}
+                        <span data-money>+ {formatCurrencyBRL(late.total)}</span> de juros/multa · {lateDaysLabel(late.days)}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-1">
                     {open ? (
                       <button

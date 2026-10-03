@@ -2,11 +2,13 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import ProductCategoryCosts from "@/components/base/ProductCategoryCosts";
+import BriefingCatalogFields from "@/components/briefing/BriefingCatalogFields";
 import BudgetCatalogFields from "@/components/budget/BudgetCatalogFields";
 import OptionListEditor from "@/components/options/OptionListEditor";
 import SettingsHeader from "@/components/settings/SettingsHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { BRIEFING_FIELD_LIST } from "@/lib/briefing/catalog";
 import { BUDGET_ITEM_LIST } from "@/lib/budget/catalog";
 import { MESSAGE_LISTS, OPTION_LISTS } from "@/lib/options";
 import { PRODUCT_CATEGORY_LIST } from "@/lib/products";
@@ -75,6 +77,9 @@ export default function OptionListsPage() {
           {selected.key === BUDGET_ITEM_LIST ? (
             <p className="mb-4 text-sm text-charcoal/60">Ao lado de cada item: unidade e valor padrão usados ao adicioná-lo na calculadora.</p>
           ) : null}
+          {selected.key === BRIEFING_FIELD_LIST ? (
+            <p className="mb-4 text-sm text-charcoal/60">Em cada campo: o tipo de resposta e em qual modelo de briefing ele é sugerido.</p>
+          ) : null}
           {selected.key === PRODUCT_CATEGORY_LIST ? (
             <p className="mb-4 text-sm text-charcoal/60">Em cada categoria: o modelo de linhas de custo que entra no produto ao escolhê-la.</p>
           ) : null}
@@ -86,7 +91,9 @@ export default function OptionListsPage() {
                 ? (item) => <BudgetCatalogFields item={item} editable={can("configuracoes")} />
                 : selected.key === PRODUCT_CATEGORY_LIST
                   ? (item) => <ProductCategoryCosts item={item} editable={can("configuracoes")} />
-                  : undefined
+                  : selected.key === BRIEFING_FIELD_LIST
+                    ? (item) => <BriefingCatalogFields item={item} editable={can("configuracoes")} />
+                    : undefined
             }
           />
         </section>

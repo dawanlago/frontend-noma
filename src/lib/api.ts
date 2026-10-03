@@ -27,7 +27,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-const PUBLIC_PATHS = /^\/(login|esqueci-senha|redefinir-senha)\/?$|^\/(f|p|nps\/responder)\//;
+const PUBLIC_PATHS = /^\/(login|esqueci-senha|redefinir-senha)\/?$|^\/(f|p|agendar|nps\/responder)\//;
 
 api.interceptors.response.use(
   (response) => response,

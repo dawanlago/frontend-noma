@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
 import ContentCopyRounded from "@mui/icons-material/ContentCopyRounded";
 import DevicesRounded from "@mui/icons-material/DevicesRounded";
 import OpenInNewRounded from "@mui/icons-material/OpenInNewRounded";
@@ -6,7 +7,7 @@ import RefreshRounded from "@mui/icons-material/RefreshRounded";
 import { confirmDialog } from "@/components/ui/DialogHost";
 import Modal from "@/components/ui/Modal";
 import { apiError } from "@/lib/errors";
-import { deviceLabel, formatDuration, proposalLinkUrl, timeAgo } from "@/lib/proposals/views";
+import { deviceLabel, eventDevice, eventLabel, formatDuration, proposalLinkUrl, timeAgo } from "@/lib/proposals/views";
 import { resources } from "@/lib/resources";
 import type { ProposalShare } from "@/types";
 import { copyText } from "@/utils/document";
@@ -81,7 +82,9 @@ export default function ProposalShareModal({ id, open, onClose, onChange, before
       regenerate &&
       !(await confirmDialog({
         title: "Gerar um novo link?",
-        message: "O link atual deixa de funcionar. O histórico de visualizações é mantido.",
+        message: share?.accepted
+          ? "O link atual deixa de funcionar e o cliente poderá aceitar de novo pelo novo link. O histórico é mantido."
+          : "O link atual deixa de funcionar. O histórico de visualizações é mantido.",
         confirmLabel: "Gerar novo link",
       }))
     )
@@ -114,6 +117,8 @@ export default function ProposalShareModal({ id, open, onClose, onChange, before
   const link = share?.link;
   const url = link ? proposalLinkUrl(link.token) : "";
   const stats = share?.stats;
+  const accepted = share?.accepted;
+  const events = share?.events || [];
 
   return (
     <Modal
@@ -126,6 +131,18 @@ export default function ProposalShareModal({ id, open, onClose, onChange, before
       <div className="space-y-6">
         {error ? (
           <p className="rounded-xl border border-burgundy/20 bg-burgundy/[0.06] px-4 py-3 text-sm text-burgundy">{error}</p>
+        ) : null}
+
+        {accepted ? (
+          <div className="flex items-start gap-3 rounded-xl border border-sage/25 bg-sage/[0.07] px-4 py-3">
+            <CheckCircleRounded sx={{ fontSize: 20 }} className="mt-0.5 text-sage" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-charcoal">
+                Aceita em {formatDateTime(accepted.at)} por {accepted.name}
+              </p>
+              {accepted.comment ? <p className="mt-0.5 whitespace-pre-line text-sm text-charcoal/65">“{accepted.comment}”</p> : null}
+            </div>
+          </div>
         ) : null}
 
         <section>
@@ -222,6 +239,32 @@ export default function ProposalShareModal({ id, open, onClose, onChange, before
             O tempo conta só enquanto a proposta está na tela do cliente. Aberturas feitas por quem está logado no Noma não
             entram na contagem.
           </p>
+        </section>
+
+        <section>
+          <h3 className="mb-3 text-base font-semibold text-charcoal">Histórico</h3>
+          {events.length ? (
+            <ol className="relative space-y-3 border-l border-charcoal/10 pl-4">
+              {events.map((event) => (
+                <li key={event._id} className="relative">
+                  <span
+                    className={`absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-surface ${
+                      event.type === "accepted" ? "bg-sage" : event.type === "viewed" ? "bg-tan" : "bg-charcoal/30"
+                    }`}
+                    aria-hidden
+                  />
+                  <p className="text-sm font-medium text-charcoal">{eventLabel(event)}</p>
+                  <p className="text-xs text-charcoal/50">
+                    {formatDateTime(event.at)}
+                    {eventDevice(event) ? ` · ${eventDevice(event)}` : ""}
+                  </p>
+                  {event.comment ? <p className="mt-0.5 whitespace-pre-line text-xs text-charcoal/65">“{event.comment}”</p> : null}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-sm text-charcoal/55">Nenhuma ação registrada ainda.</p>
+          )}
         </section>
       </div>
     </Modal>

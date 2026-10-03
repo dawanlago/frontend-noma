@@ -11,9 +11,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { FINANCE_STATUS_OPTIONS } from "@/lib/constants";
 import { apiError } from "@/lib/errors";
+import { computeLateCharge, hasLateRules, lateDaysLabel } from "@/lib/finance/lateCharge";
 import {
   emptyEntryForm,
   entryToForm,
+  isSettledStatus,
   switchEntryType,
   validateEntryForm,
   type CategoryDefaults,
@@ -21,7 +23,7 @@ import {
 } from "@/lib/finance/model";
 import { resources } from "@/lib/resources";
 import type { Company, Contact, FinanceEntry, FinanceStatus, Lead, TransactionType } from "@/types";
-import { formatCurrencyBRL, maskCurrencyBRL } from "@/utils/format";
+import { formatCurrencyBRL, maskCurrencyBRL, parseCurrencyBRL, todayISO } from "@/utils/format";
 
 interface EntryModalProps {
   open: boolean;
@@ -53,6 +55,7 @@ export function useCategoryDefaults(): CategoryDefaults {
 
 export default function EntryModal({ open, month, initialType, entry, preset, cashbox, onClose, onSave }: EntryModalProps) {
   const { can } = useAuth();
+  const lateRules = useWorkspace().settings?.finance;
   const baseDefaults = useCategoryDefaults();
   const defaults = { ...baseDefaults, cashbox: cashbox || baseDefaults.cashbox };
   const [form, setForm] = useState<EntryForm>(() => emptyEntryForm(month, initialType));
@@ -139,6 +142,32 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
   }
 
   const isIncome = form.type === "income";
+  const settled = isSettledStatus(form.status);
+
+  /*
+   * Juros/multa: sem mudar valor, vencimento, recebimento ou perdão, vale o que foi gravado
+   * (mudar as taxas depois não muda o que já foi recebido); senão, prévia com as taxas atuais.
+   */
+  const lateCharge = useMemo(() => {
+    if (!isIncome) return null;
+    const value = parseCurrencyBRL(form.value);
+    const paidAt = settled ? form.paidAt || todayISO() : todayISO();
+    const unchanged =
+      entry &&
+      entry.status === form.status &&
+      entry.value === value &&
+      entry.date === form.date &&
+      (entry.paidAt || "") === form.paidAt &&
+      Boolean(entry.lateChargeWaived) === form.lateChargeWaived;
+    if (unchanged && settled && !form.lateChargeWaived) return entry.lateCharge || null;
+    return computeLateCharge(value, form.date, paidAt, lateRules);
+  }, [isIncome, settled, form.value, form.date, form.paidAt, form.status, form.lateChargeWaived, entry, lateRules]);
+  const lateValue = parseCurrencyBRL(form.value);
+
+  function changeStatus(status: FinanceStatus) {
+    // Ao marcar como recebida/paga, a data do recebimento começa em hoje.
+    setForm((current) => ({ ...current, status, paidAt: isSettledStatus(status) ? current.paidAt || todayISO() : "" }));
+  }
 
   return (
     <>
@@ -218,16 +247,21 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
             <Field label="Valor *">
               <MoneyInput value={form.value} onChange={(value) => update("value", value)} required />
             </Field>
-            <Field label="Data *">
+            <Field label={isIncome ? "Vencimento *" : "Data *"}>
               <input type="date" className="input-search" value={form.date} onChange={(event) => update("date", event.target.value)} />
             </Field>
             <Field label="Status">
               <Select
                 value={form.status}
-                onChange={(value) => update("status", value as FinanceStatus)}
+                onChange={(value) => changeStatus(value as FinanceStatus)}
                 options={FINANCE_STATUS_OPTIONS[form.type].map((item) => ({ value: item.value, label: item.label }))}
               />
             </Field>
+            {settled ? (
+              <Field label={isIncome ? "Recebido em" : "Pago em"} hint={isIncome ? "Depois do vencimento, entram juros e multa por atraso." : undefined}>
+                <input type="date" className="input-search" value={form.paidAt} onChange={(event) => update("paidAt", event.target.value)} />
+              </Field>
+            ) : null}
             <Field label="Forma de pagamento">
               <OptionSelect list="paymentMethod" value={form.payment} onChange={(value) => update("payment", value)} />
             </Field>
@@ -246,6 +280,46 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
               />
             </Field>
           </div>
+
+          {isIncome && lateCharge ? (
+            <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 text-sm">
+              {settled && form.lateChargeWaived ? (
+                <p className="text-charcoal/70">
+                  {lateDaysLabel(lateCharge.days)} — juros/multa de <span data-money>{formatCurrencyBRL(lateCharge.total)}</span> perdoados.
+                </p>
+              ) : (
+                <>
+                  <p className="font-semibold text-charcoal">
+                    {settled ? "" : "Se receber hoje: "}
+                    <span data-money>+ {formatCurrencyBRL(lateCharge.total)}</span> de juros/multa · {lateDaysLabel(lateCharge.days)}
+                  </p>
+                  <p className="mt-1 text-[13px] text-charcoal/60">
+                    Valor <span data-money>{formatCurrencyBRL(lateValue)}</span> · multa <span data-money>{formatCurrencyBRL(lateCharge.fee)}</span> · juros{" "}
+                    <span data-money>{formatCurrencyBRL(lateCharge.interest)}</span> · total{" "}
+                    <strong data-money className="text-charcoal">
+                      {formatCurrencyBRL(lateValue + lateCharge.total)}
+                    </strong>
+                  </p>
+                </>
+              )}
+              {settled ? (
+                <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13px] text-charcoal/70">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-[hsl(210,98%,48%)]"
+                    checked={form.lateChargeWaived}
+                    onChange={(event) => update("lateChargeWaived", event.target.checked)}
+                  />
+                  Não cobrar juros/multa deste atraso
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+          {isIncome && !hasLateRules(lateRules) && settled && form.paidAt > form.date ? (
+            <p className="text-[13px] text-charcoal/50">
+              Recebida com atraso. Para cobrar juros e multa, configure as taxas em Configurações → Geral.
+            </p>
+          ) : null}
 
           {!isIncome ? (
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-charcoal/10 p-4 transition hover:border-charcoal/25">

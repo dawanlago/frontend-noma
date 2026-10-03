@@ -1,5 +1,6 @@
 import type { FinanceEntry, FinanceMonthSummary } from "@/types";
 import { isEntryOpen } from "./model";
+import { entryTotal } from "./lateCharge";
 
 export type EntryFilter = "all" | "income" | "expense" | "open";
 
@@ -33,7 +34,8 @@ export const RECURRING_INCOME_CATEGORY = "Contrato mensal";
 export function computeMonthTotals(entries: FinanceEntry[]): MonthTotals {
   const totals: MonthTotals = { received: 0, paid: 0, result: 0, pending: 0, pendingCount: 0, planned: 0, recurringReceived: 0 };
   for (const entry of entries) {
-    const value = Number(entry.value) || 0;
+    // Recebido/pago inclui juros e multa por atraso.
+    const value = entryTotal(entry);
     if (entry.type === "income") {
       if (entry.status === "received") {
         totals.received += value;
@@ -72,9 +74,9 @@ export function clientRanking(entries: FinanceEntry[]): ClientRevenue[] {
     const name = entry.client?.trim() || "Sem cliente informado";
     const key = name.toLowerCase();
     const row = map.get(key) || { client: name, value: 0, count: 0, share: 0 };
-    row.value += Number(entry.value) || 0;
+    row.value += entryTotal(entry);
     row.count += 1;
-    total += Number(entry.value) || 0;
+    total += entryTotal(entry);
     map.set(key, row);
   }
   return Array.from(map.values())

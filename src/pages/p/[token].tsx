@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { PAGE_BG } from "@/components/proposals/ProposalPreview";
+import Modal from "@/components/ui/Modal";
 import { AUTH_TOKEN_KEY } from "@/lib/api";
 import { apiError } from "@/lib/errors";
 import { normalize, type ProposalData } from "@/lib/proposals/model";
 import { renderProposalHtml } from "@/lib/proposals/render";
 import { trackProposalView } from "@/lib/proposals/tracking";
 import { resources } from "@/lib/resources";
+import type { ProposalAcceptance } from "@/types";
+import { formatDate } from "@/utils/format";
 
 /** Quem está logado no Noma (o próprio vendedor conferindo o link) não entra nas visualizações. */
 function isTeamMember() {
@@ -25,13 +29,23 @@ export default function PublicProposalPage() {
   const [data, setData] = useState<ProposalData | null>(null);
   const [loadError, setLoadError] = useState("");
   const [preview, setPreview] = useState(false);
+  const [teamMember, setTeamMember] = useState(false);
+  const [accepted, setAccepted] = useState<ProposalAcceptance | null>(null);
+  const [acceptOpen, setAcceptOpen] = useState(false);
+  const [acceptName, setAcceptName] = useState("");
+  const [acceptComment, setAcceptComment] = useState("");
+  const [accepting, setAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState("");
   const frameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!token) return;
     resources.publicProposals
       .get(token)
-      .then((doc) => setData(normalize(doc.data as Partial<ProposalData>)))
+      .then((doc) => {
+        setData(normalize(doc.data as Partial<ProposalData>));
+        setAccepted(doc.accepted || null);
+      })
       .catch((err) => setLoadError(apiError(err, "Este link de proposta não está mais disponível.")));
   }, [token]);
 
@@ -39,10 +53,29 @@ export default function PublicProposalPage() {
     if (!token || !data) return;
     if (isTeamMember()) {
       setPreview(true);
+      setTeamMember(true);
       return;
     }
     return trackProposalView(token);
   }, [token, data]);
+
+  async function accept(event: FormEvent) {
+    event.preventDefault();
+    if (!acceptName.trim()) {
+      setAcceptError("Informe seu nome.");
+      return;
+    }
+    setAccepting(true);
+    setAcceptError("");
+    try {
+      setAccepted(await resources.publicProposals.accept(token, { name: acceptName.trim(), comment: acceptComment.trim() }));
+      setAcceptOpen(false);
+    } catch (err) {
+      setAcceptError(apiError(err, "Não foi possível registrar o aceite. Tente de novo."));
+    } finally {
+      setAccepting(false);
+    }
+  }
 
   const html = useMemo(() => (data ? renderProposalHtml(data) : ""), [data]);
   const clientName = data ? data.client.company.trim() || data.client.name.trim() : "";
@@ -77,6 +110,65 @@ export default function PublicProposalPage() {
               </p>
             </div>
           ) : null}
+          {/* Acima da navegação dos slides (64px no rodapé do iframe). */}
+          <div className="fixed bottom-[76px] right-4 flex justify-end">
+            {accepted ? (
+              <p className="flex items-center gap-2 rounded-full border border-sage/30 bg-surface/95 px-4 py-2.5 text-sm font-semibold text-sage shadow-lg backdrop-blur">
+                <CheckCircleRounded sx={{ fontSize: 18 }} />
+                Proposta aceita em {formatDate(accepted.at)}
+              </p>
+            ) : (
+              <button
+                type="button"
+                className="btn-primary shadow-lg disabled:opacity-60"
+                disabled={teamMember}
+                title={teamMember ? "Só o cliente aceita a proposta (você está logado no Noma)." : undefined}
+                onClick={() => setAcceptOpen(true)}
+              >
+                <CheckCircleRounded sx={{ fontSize: 18 }} />
+                Aceitar proposta
+              </button>
+            )}
+          </div>
+          <Modal
+            open={acceptOpen}
+            onClose={() => setAcceptOpen(false)}
+            title="Aceitar proposta"
+            description={`Confirme o aceite${clientName ? ` da proposta para ${clientName}` : ""}. O aceite fica registrado para quem enviou.`}
+          >
+            <form className="space-y-4" onSubmit={(event) => void accept(event)}>
+              <label className="block">
+                <span className="mb-1.5 block text-[13px] font-semibold text-charcoal">Seu nome *</span>
+                <input
+                  className="input-search"
+                  value={acceptName}
+                  maxLength={120}
+                  autoFocus
+                  onChange={(event) => setAcceptName(event.target.value)}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[13px] font-semibold text-charcoal">Comentário (opcional)</span>
+                <textarea
+                  className="input-search resize-y"
+                  rows={3}
+                  maxLength={2000}
+                  value={acceptComment}
+                  placeholder="Alguma observação para quem enviou a proposta?"
+                  onChange={(event) => setAcceptComment(event.target.value)}
+                />
+              </label>
+              {acceptError ? <p className="text-sm text-burgundy">{acceptError}</p> : null}
+              <div className="flex justify-end gap-2">
+                <button type="button" className="btn-secondary" onClick={() => setAcceptOpen(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary" disabled={accepting}>
+                  {accepting ? "Enviando…" : "Confirmar aceite"}
+                </button>
+              </div>
+            </form>
+          </Modal>
         </div>
       ) : (
         <div className="flex min-h-screen items-center justify-center bg-beige px-4 py-12">

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -9,15 +10,17 @@ import Field from "@/components/tools/Field";
 import Select from "@/components/ui/Select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
-import { answerText, draftForm, FORM_FIELD_TARGETS, FORM_FIELD_TYPES, newField, publicFormUrl } from "@/lib/forms";
+import { answerText, draftForm, FORM_FIELD_TARGETS, FORM_FIELD_TYPES, formatDateKey, newField, publicFormUrl } from "@/lib/forms";
 import { resources } from "@/lib/resources";
-import type { CaptureForm, FormField, FormResponse } from "@/types";
+import type { CaptureForm, FormAvailability, FormField, FormResponse } from "@/types";
 import { normalizeHex } from "@/theme/appearance";
 import { downloadFile, slugify } from "@/utils/document";
 import { formatDateTime } from "@/utils/format";
 import { confirmDialog } from "@/components/ui/DialogHost";
 
 type Tab = "builder" | "responses";
+
+const EMPTY_AVAILABILITY: FormAvailability = { minNoticeDays: 0, blockedDates: [], message: "" };
 
 function FieldRow({
   field,
@@ -77,9 +80,87 @@ function FieldRow({
   );
 }
 
+/** "Completa" ou "Incompleto · parou na pergunta X" (+ data do evento). */
+function statusText(form: CaptureForm, response: FormResponse) {
+  const event = response.eventDate ? ` · evento ${formatDateKey(response.eventDate)}` : "";
+  if (response.status !== "partial") return `Completa${event}`;
+  return `Incompleto · parou na pergunta ${Math.min((response.lastStep || 0) + 1, form.fields.length)}${event}`;
+}
+
+/** Regra da pergunta "Data do evento": antecedência mínima, datas bloqueadas e o aviso. */
+function AvailabilitySettings({ value, onChange }: { value: FormAvailability; onChange: (value: FormAvailability) => void }) {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  function addRange() {
+    if (!from) return;
+    const end = to && to >= from ? to : from;
+    onChange({ ...value, blockedDates: [...value.blockedDates, { from, to: end }] });
+    setFrom("");
+    setTo("");
+  }
+  return (
+    <section className="card space-y-4 p-5">
+      <div>
+        <p className="text-sm font-semibold text-charcoal">Disponibilidade da data do evento</p>
+        <p className="mt-0.5 text-xs text-charcoal/55">
+          Vale para a pergunta do tipo “Data do evento”. Quem escolher uma data fora da regra vê o aviso, mas ainda pode enviar; a resposta e a negociação ficam marcadas como “data indisponível”.
+        </p>
+      </div>
+      <Field label="Antecedência mínima (dias)" hint="Ex.: 15 = não atendemos com menos de 15 dias. 0 = sem limite.">
+        <input
+          type="number"
+          min={0}
+          className="input-search"
+          value={value.minNoticeDays || ""}
+          placeholder="0"
+          onChange={(e) => onChange({ ...value, minNoticeDays: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+        />
+      </Field>
+      <Field label="Datas bloqueadas" group>
+        <div className="space-y-2">
+          {value.blockedDates.length ? (
+            <ul className="flex flex-wrap gap-1.5">
+              {value.blockedDates.map((range, index) => (
+                <li key={`${range.from}-${index}`} className="chip bg-charcoal/[0.06] text-charcoal/70">
+                  {range.from === range.to ? formatDateKey(range.from) : `${formatDateKey(range.from)} a ${formatDateKey(range.to)}`}
+                  <button
+                    type="button"
+                    className="hover:text-burgundy"
+                    aria-label="Remover data bloqueada"
+                    onClick={() => onChange({ ...value, blockedDates: value.blockedDates.filter((_, i) => i !== index) })}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
+            <input type="date" className="input-search !px-2" aria-label="De" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input type="date" className="input-search !px-2" aria-label="Até (opcional)" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+            <button type="button" className="btn-secondary !px-3 !py-2" disabled={!from} onClick={addRange}>
+              Bloquear
+            </button>
+          </div>
+          <p className="text-xs text-charcoal/50">Um dia só: preencha apenas o primeiro campo.</p>
+        </div>
+      </Field>
+      <Field label="Aviso de indisponibilidade" hint="Em branco = texto padrão.">
+        <textarea
+          className="input-search min-h-[64px] resize-y"
+          value={value.message}
+          placeholder="Infelizmente não temos disponibilidade para essa data..."
+          onChange={(e) => onChange({ ...value, message: e.target.value })}
+        />
+      </Field>
+    </section>
+  );
+}
+
 function Responses({ form }: { form: CaptureForm }) {
   const [responses, setResponses] = useState<FormResponse[] | null>(null);
   const [error, setError] = useState("");
+  const [openHistory, setOpenHistory] = useState("");
 
   useEffect(() => {
     resources.forms
@@ -91,9 +172,11 @@ function Responses({ form }: { form: CaptureForm }) {
   function exportCsv() {
     if (!responses) return;
     const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
-    const header = ["Data", ...form.fields.map((field) => field.label)].map(escape).join(";");
+    const header = ["Data", "Situação", ...form.fields.map((field) => field.label)].map(escape).join(";");
     const rows = responses.map((response) =>
-      [formatDateTime(response.createdAt), ...form.fields.map((field) => answerText(response.answers[field.key]))].map(escape).join(";"),
+      [formatDateTime(response.createdAt), statusText(form, response), ...form.fields.map((field) => answerText(response.answers[field.key]))]
+        .map(escape)
+        .join(";"),
     );
     downloadFile(`${slugify(form.name, "formulario")}-respostas.csv`, `﻿${[header, ...rows].join("\n")}`, "text/csv;charset=utf-8");
   }
@@ -106,11 +189,17 @@ function Responses({ form }: { form: CaptureForm }) {
 
   if (error) return <p className="text-sm text-burgundy">{error}</p>;
   if (!responses) return <div className="skeleton h-40" />;
+  const partialCount = responses.filter((response) => response.status === "partial").length;
+  const completeCount = responses.length - partialCount;
+  const labelOf = (key: string) => form.fields.find((field) => field.key === key)?.label || key;
 
   return (
     <section className="card overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-charcoal/[0.06] px-5 py-4">
-        <h2 className="text-base font-semibold text-charcoal">{responses.length} respostas</h2>
+        <h2 className="text-base font-semibold text-charcoal">
+          {completeCount} {completeCount === 1 ? "resposta" : "respostas"}
+          {partialCount ? <span className="ml-2 text-sm font-medium text-charcoal/50">· {partialCount} incompleta(s)</span> : null}
+        </h2>
         <button type="button" className="btn-secondary !py-1.5" disabled={!responses.length} onClick={exportCsv}>
           Exportar planilha (CSV)
         </button>
@@ -123,6 +212,7 @@ function Responses({ form }: { form: CaptureForm }) {
             <thead>
               <tr>
                 <th className="px-4 py-3 text-left">Data</th>
+                <th className="px-4 py-3 text-left">Situação</th>
                 {form.fields.map((field) => (
                   <th key={field.key} className="px-4 py-3 text-left">
                     {field.label}
@@ -134,8 +224,29 @@ function Responses({ form }: { form: CaptureForm }) {
             </thead>
             <tbody>
               {responses.map((response) => (
-                <tr key={response._id}>
-                  <td className="whitespace-nowrap px-4 py-3 text-charcoal/60">{formatDateTime(response.createdAt)}</td>
+                <Fragment key={response._id}>
+                <tr>
+                  <td className="whitespace-nowrap px-4 py-3 text-charcoal/60">{formatDateTime(response.updatedAt || response.createdAt)}</td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex flex-col items-start gap-1">
+                      <span
+                        className={`chip ${response.status === "partial" ? "bg-gold/15 text-charcoal/75" : "bg-tan/10 text-tan"}`}
+                        title={response.status === "partial" ? `Parou em: ${form.fields[response.lastStep || 0]?.label || ""}` : undefined}
+                      >
+                        {statusText(form, response)}
+                      </span>
+                      {response.unavailable ? <span className="chip bg-burgundy/10 text-burgundy">Data indisponível</span> : null}
+                      {response.events?.length ? (
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-tan hover:underline"
+                          onClick={() => setOpenHistory((current) => (current === response._id ? "" : response._id))}
+                        >
+                          {openHistory === response._id ? "Ocultar histórico" : `Histórico (${response.events.length})`}
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
                   {form.fields.map((field) => (
                     <td key={field.key} className="max-w-[260px] px-4 py-3 align-top">
                       <span className="line-clamp-3 whitespace-pre-line">{answerText(response.answers[field.key]) || "—"}</span>
@@ -156,6 +267,23 @@ function Responses({ form }: { form: CaptureForm }) {
                     </button>
                   </td>
                 </tr>
+                {openHistory === response._id ? (
+                  <tr>
+                    <td colSpan={form.fields.length + 4} className="bg-beige/60 px-4 py-3">
+                      <p className="mb-2 text-xs font-semibold text-charcoal/60">Histórico do preenchimento</p>
+                      <ol className="space-y-1 text-xs text-charcoal/75">
+                        {(response.events || []).map((event, index) => (
+                          <li key={index} className="flex gap-3">
+                            <span className="w-[120px] shrink-0 text-charcoal/50">{formatDateTime(event.at)}</span>
+                            <span className="font-semibold">{labelOf(event.fieldKey)}:</span>
+                            <span className="min-w-0 break-words">{event.value || "(apagou a resposta)"}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -172,6 +300,7 @@ export default function FormEditorPage() {
   const isNew = id === "novo";
   const { funnels } = useWorkspace();
   const [form, setForm] = useState<CaptureForm | null>(null);
+  const schedulingLinks = useAsyncData(() => resources.scheduling.links().catch(() => []));
   const [tab, setTab] = useState<Tab>("builder");
   const [status, setStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -232,11 +361,13 @@ export default function FormEditorPage() {
           isActive: payload.isActive,
           fields: payload.fields,
           successMessage: payload.successMessage,
+          schedulingLinkId: payload.schedulingLinkId,
           logo: payload.logo,
           accentColor: payload.accentColor,
           createLead: payload.createLead,
           funnelId: payload.funnelId,
           stageId: payload.stageId,
+          availability: payload.availability,
         });
         setDirty(false);
         // Agora existe: troca a URL para a do formulário salvo.
@@ -395,6 +526,23 @@ export default function FormEditorPage() {
               <Field label="Mensagem depois do envio">
                 <textarea className="input-search min-h-[64px] resize-y" value={form.successMessage} onChange={(e) => update({ successMessage: e.target.value })} />
               </Field>
+            </section>
+            {form.fields.some((field) => field.type === "eventDate") ? (
+              <AvailabilitySettings value={form.availability || EMPTY_AVAILABILITY} onChange={(availability) => update({ availability })} />
+            ) : null}
+            <section className="card space-y-3 p-5">
+              <p className="text-sm font-semibold text-charcoal">Agendar reunião no fim</p>
+              <Select
+                value={form.schedulingLinkId || ""}
+                onChange={(schedulingLinkId) => update({ schedulingLinkId })}
+                options={[
+                  { value: "", label: "Não oferecer agendamento" },
+                  ...(schedulingLinks.data || []).filter((link) => link.isActive).map((link) => ({ value: link._id, label: `${link.title} · ${link.durationMinutes} min` })),
+                ]}
+              />
+              <p className="text-xs text-charcoal/50">
+                Depois de enviar, a pessoa vê o botão “Agendar a reunião” com os horários livres da sua agenda (já com nome, e-mail e telefone). Crie os links em Agenda → Agendamento externo.
+              </p>
             </section>
             <section className="card space-y-4 p-5">
               <p className="text-sm font-semibold text-charcoal">Aparência do link</p>

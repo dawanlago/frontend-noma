@@ -27,7 +27,7 @@ import TaskChecklist from "@/components/tasks/TaskChecklist";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { LEAD_STATUS_LABELS } from "@/lib/constants";
-import { daysSince, formatDays, leadDiscount } from "@/lib/crm/metrics";
+import { daysSince, formatDays, leadDiscount, eventLabel } from "@/lib/crm/metrics";
 import { formToPayload, leadDateOnly, type LeadFormState } from "@/lib/crm/model";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
@@ -276,7 +276,7 @@ export default function LeadDashboardPage() {
 
   function openProposal() {
     void router.push(
-      `/propostas?cliente=${encodeURIComponent(lead!.contactName || lead!.name)}&empresa=${encodeURIComponent(lead!.company || "")}&valor=${(Number(lead!.value) || 0).toFixed(2)}`,
+      `/propostas?cliente=${encodeURIComponent(lead!.contactName || lead!.name)}&empresa=${encodeURIComponent(lead!.company || "")}&valor=${(Number(lead!.value) || 0).toFixed(2)}&negociacao=${lead!._id}`,
     );
   }
 
@@ -487,6 +487,17 @@ export default function LeadDashboardPage() {
                 value={<LeadOwnerField lead={lead} onChange={(ownerId) => void run(() => resources.leads.update(lead._id, { ownerId }))} />}
               />
               <Info label="Criada por" value={lead.createdByName || lead.ownerName} />
+              {lead.eventDate ? (
+                <Info
+                  label="Data do evento"
+                  value={
+                    <span className={lead.eventUnavailable ? "text-burgundy" : undefined}>
+                      {eventLabel(lead.eventDate).replace(/^Evento /, "")}
+                      {lead.eventUnavailable ? " · indisponível" : ""}
+                    </span>
+                  }
+                />
+              ) : null}
               <Info label="Criada em" value={formatDateTime(lead.createdAt)} />
               {lead.status === "lost" ? (
                 <Info

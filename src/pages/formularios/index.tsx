@@ -53,7 +53,8 @@ export default function FormsPage() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-charcoal/50">
-                {form.fields.length} campos · {form.responsesCount || 0} respostas · criado em {formatDate(form.createdAt)}
+                {form.fields.length} campos · {form.responsesCount || 0} respostas
+                {form.partialCount ? ` (+${form.partialCount} incompleta${form.partialCount === 1 ? "" : "s"})` : ""} · criado em {formatDate(form.createdAt)}
                 {isAdmin && form.ownerName ? ` · ${form.ownerName}` : ""}
               </p>
               <div className="mt-4 flex flex-wrap gap-2 border-t border-charcoal/[0.06] pt-4">

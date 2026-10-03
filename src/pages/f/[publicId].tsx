@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { apiError } from "@/lib/errors";
-import { resources } from "@/lib/resources";
-import type { FormField, PublicFormData } from "@/types";
+import { eventAvailability, formatDateKey, isValidEmail, isValidPhone, todayKey } from "@/lib/forms";
+import { isInviteCode, resources } from "@/lib/resources";
+import type { FormAvailability, FormField, PublicFormData } from "@/types";
 
 type Answer = string | string[] | boolean;
 /** -1 = boas-vindas; 0..n-1 = perguntas; n = enviado. */
@@ -29,14 +30,46 @@ function isEmpty(field: FormField, value: Answer | undefined) {
 
 function validate(field: FormField, value: Answer | undefined): string {
   if (isEmpty(field, value)) return field.required ? "Por favor, responda esta pergunta." : "";
-  if (field.type === "email" && typeof value === "string" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+  if (field.type === "email" && typeof value === "string" && !isValidEmail(value)) {
     return "Hmm, esse e-mail não parece válido.";
   }
-  if (field.type === "phone" && typeof value === "string" && value.replace(/\D/g, "").length < 10) {
-    return "Informe o telefone com DDD.";
+  if (field.type === "phone" && typeof value === "string" && !isValidPhone(value)) {
+    return "Informe um telefone válido com DDD, ex.: (11) 98888-7777.";
   }
   if (field.type === "checkbox" && field.required && value !== true) return "É preciso marcar “Sim” para continuar.";
   return "";
+}
+
+/** Sessão do preenchimento guardada no navegador: recarregar a página continua de onde parou. */
+function sessionKey(publicId: string) {
+  return `noma-form:${publicId}`;
+}
+
+function newSessionId() {
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function readSession(publicId: string, create: boolean) {
+  try {
+    const saved = window.localStorage.getItem(sessionKey(publicId)) || "";
+    if (saved || !create) return saved;
+    const id = newSessionId();
+    window.localStorage.setItem(sessionKey(publicId), id);
+    return id;
+  } catch {
+    // Navegador sem armazenamento (aba anônima, bloqueio): segue sem retomar depois.
+    return create ? newSessionId() : "";
+  }
+}
+
+function clearSession(publicId: string) {
+  try {
+    window.localStorage.removeItem(sessionKey(publicId));
+  } catch {
+    /* sem armazenamento */
+  }
 }
 
 function maskPhone(value: string) {
@@ -45,6 +78,21 @@ function maskPhone(value: string) {
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+/** Link do agendamento já com nome, e-mail e telefone respondidos no formulário. */
+function schedulingHref(slug: string, fields: FormField[], answers: Record<string, unknown>) {
+  const valueOf = (target: string) => {
+    const field = fields.find((item) => item.target === target);
+    const value = field ? answers[field.key] : "";
+    return typeof value === "string" ? value : "";
+  };
+  const params = new URLSearchParams();
+  if (valueOf("name")) params.set("nome", valueOf("name"));
+  if (valueOf("email")) params.set("email", valueOf("email"));
+  if (valueOf("phone")) params.set("telefone", valueOf("phone"));
+  const query = params.toString();
+  return `/agendar/${slug}${query ? `?${query}` : ""}`;
 }
 
 function Logo({ form }: { form: PublicFormData | null }) {
@@ -79,6 +127,9 @@ export default function PublicFormPage() {
   const [sendError, setSendError] = useState("");
   const [done, setDone] = useState("");
   const [isSending, setIsSending] = useState(false);
+  /** Pergunta onde a pessoa tinha parado (progresso salvo); 0 = começo. */
+  const [resumeStep, setResumeStep] = useState(0);
+  const sessionId = useRef("");
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const autoAdvance = useRef<number>(0);
 
@@ -86,13 +137,38 @@ export default function PublicFormPage() {
     if (!publicId) return;
     resources.publicForms
       .get(publicId)
-      .then((data) => {
-        setForm(data);
-        // Formulário enviado pela negociação: já vem com o que sabemos do contato.
+      .then(async (data) => {
+        // Formulário enviado pela negociação: já vem com o que sabemos do contato (e o que já foi respondido).
         if (data.prefill) setAnswers((current) => ({ ...data.prefill, ...current }));
+        if (isInviteCode(publicId)) {
+          setResumeStep(data.lastStep || 0);
+        } else {
+          sessionId.current = readSession(publicId, false);
+          const saved = sessionId.current ? await resources.publicForms.progress(publicId, sessionId.current).catch(() => null) : null;
+          if (saved?.status === "partial") {
+            setAnswers((current) => ({ ...saved.answers, ...current }));
+            setResumeStep(saved.lastStep || 0);
+          } else if (saved?.status === "complete") {
+            // Já enviado deste navegador: um novo preenchimento começa do zero.
+            clearSession(publicId);
+            sessionId.current = "";
+          }
+        }
+        setForm(data);
       })
       .catch(() => setLoadError("Este formulário não está disponível."));
   }, [publicId]);
+
+  /** Salva o que já foi respondido; `at` = pergunta em que a pessoa está agora. Falhas não atrapalham quem responde. */
+  const persist = useCallback(
+    (current: Record<string, Answer>, at: number) => {
+      if (!publicId || website) return;
+      const invite = isInviteCode(publicId);
+      if (!invite && !sessionId.current) sessionId.current = readSession(publicId, true);
+      void resources.publicForms.saveProgress(publicId, { sessionId: sessionId.current, answers: current, step: at }).catch(() => undefined);
+    },
+    [publicId, website],
+  );
 
   const fields = useMemo(() => form?.fields || [], [form]);
   const total = fields.length;
@@ -122,7 +198,8 @@ export default function PublicFormPage() {
     setIsSending(true);
     setSendError("");
     try {
-      const result = await resources.publicForms.submit(publicId, answers, website);
+      const result = await resources.publicForms.submit(publicId, answers, website, sessionId.current);
+      if (!isInviteCode(publicId)) clearSession(publicId);
       setDirection("up");
       setDone(result.message || form?.successMessage || "Recebemos suas respostas. Obrigado!");
       setStep(total);
@@ -142,8 +219,9 @@ export default function PublicFormPage() {
       return;
     }
     if (step === total - 1) return void submit();
+    persist(answers, step + 1);
     go(step + 1);
-  }, [answers, field, go, step, submit, total]);
+  }, [answers, field, go, persist, step, submit, total]);
 
   function setAnswer(value: Answer) {
     if (!field) return;
@@ -160,6 +238,7 @@ export default function PublicFormPage() {
     }
     const value: Answer = field.type === "checkbox" ? option === "Sim" : option;
     setAnswer(value);
+    const nextAnswers = { ...answers, [field.key]: value };
     // Escolha única: confirma e avança sozinho, como no Typeform.
     window.clearTimeout(autoAdvance.current);
     const current = step;
@@ -167,6 +246,7 @@ export default function PublicFormPage() {
       const message = validate(field, value);
       if (message) return setFieldError(message);
       if (current === total - 1) return;
+      persist(nextAnswers, current + 1);
       setDirection("up");
       setStep(current + 1);
     }, 450);
@@ -256,15 +336,32 @@ export default function PublicFormPage() {
                 {form.contactFirstName ? <p className="mb-3 text-lg text-charcoal/60">Olá, {form.contactFirstName}!</p> : null}
                 <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">{form.name}</h1>
                 {form.description ? <p className="mt-4 max-w-xl whitespace-pre-line text-lg text-charcoal/60 sm:text-xl">{form.description}</p> : null}
-                <div className="mt-8 flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={next}
-                    className="rounded-xl bg-[var(--accent)] px-7 py-3.5 text-lg font-semibold text-white shadow-lg shadow-black/10 transition hover:brightness-110 active:scale-[0.98]"
-                  >
-                    Começar
-                  </button>
-                  <EnterHint />
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                  {resumeStep > 0 && resumeStep < total ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => go(resumeStep)}
+                        className="rounded-xl bg-[var(--accent)] px-7 py-3.5 text-lg font-semibold text-white shadow-lg shadow-black/10 transition hover:brightness-110 active:scale-[0.98]"
+                      >
+                        Continuar de onde parei
+                      </button>
+                      <button type="button" onClick={next} className="text-base font-semibold text-charcoal/60 underline-offset-4 hover:underline">
+                        Revisar do começo
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={next}
+                        className="rounded-xl bg-[var(--accent)] px-7 py-3.5 text-lg font-semibold text-white shadow-lg shadow-black/10 transition hover:brightness-110 active:scale-[0.98]"
+                      >
+                        Começar
+                      </button>
+                      <EnterHint />
+                    </>
+                  )}
                 </div>
                 {total ? (
                   <p className="mt-6 text-sm text-charcoal/45">
@@ -301,6 +398,7 @@ export default function PublicFormPage() {
                     onChoose={choose}
                     onEnter={next}
                   />
+                  {field.type === "eventDate" ? <EventDateNotice value={answers[field.key]} availability={form.availability} /> : null}
                 </div>
 
                 <div className="ml-0 mt-8 flex flex-wrap items-center gap-4 sm:ml-9">
@@ -328,6 +426,14 @@ export default function PublicFormPage() {
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent)] text-3xl text-white">✓</div>
                 <h1 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">Enviado!</h1>
                 <p className="mx-auto mt-3 max-w-lg whitespace-pre-line text-lg text-charcoal/60">{done}</p>
+                {form.schedulingSlug ? (
+                  <a
+                    href={schedulingHref(form.schedulingSlug, form.fields, answers)}
+                    className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-7 py-3.5 text-lg font-semibold text-white shadow-lg shadow-black/10 transition hover:brightness-110"
+                  >
+                    Agendar a reunião →
+                  </a>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -359,6 +465,25 @@ export default function PublicFormPage() {
         <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
       </main>
     </>
+  );
+}
+
+/** "Faltam X dias" e, se a data cai na regra de indisponibilidade, o aviso (dá para enviar mesmo assim). */
+function EventDateNotice({ value, availability }: { value: Answer | undefined; availability?: FormAvailability }) {
+  const date = typeof value === "string" ? value : "";
+  const info = eventAvailability(date, availability);
+  if (!info) return null;
+  const when =
+    info.days < 0 ? `Essa data já passou (${formatDateKey(date)}).` : info.days === 0 ? "O evento é hoje!" : info.days === 1 ? "Falta 1 dia para o evento." : `Faltam ${info.days} dias para o evento.`;
+  return (
+    <div className="mt-5 space-y-3">
+      <p className="text-lg font-medium text-charcoal/70">{when}</p>
+      {info.unavailable ? (
+        <p role="status" className="max-w-xl whitespace-pre-line rounded-xl border border-[#f5c2a8] bg-[#fff4ed] px-4 py-3 text-base text-[#9a3412]">
+          ⚠ {availability?.message || "Infelizmente não temos disponibilidade para essa data."}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -443,7 +568,15 @@ function QuestionInput({
   }
 
   const type =
-    field.type === "email" ? "email" : field.type === "phone" ? "tel" : field.type === "number" ? "number" : field.type === "date" ? "date" : "text";
+    field.type === "email"
+      ? "email"
+      : field.type === "phone"
+        ? "tel"
+        : field.type === "number"
+          ? "number"
+          : field.type === "date" || field.type === "eventDate"
+            ? "date"
+            : "text";
   const placeholder =
     field.placeholder ||
     (field.type === "email" ? "nome@exemplo.com" : field.type === "phone" ? "(00) 00000-0000" : field.type === "number" ? "0" : "Escreva sua resposta aqui…");
@@ -457,6 +590,7 @@ function QuestionInput({
       inputMode={field.type === "phone" ? "tel" : field.type === "number" ? "decimal" : undefined}
       value={text}
       placeholder={placeholder}
+      min={field.type === "eventDate" ? todayKey() : undefined}
       onChange={(event) => onChange(field.type === "phone" ? maskPhone(event.target.value) : event.target.value)}
     />
   );

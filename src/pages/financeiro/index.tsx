@@ -181,10 +181,16 @@ export default function FinancePage() {
     const status = entry.type === "income" ? "received" : "paid";
     setBusyId(entry._id);
     try {
-      await resources.finance.updateEntry(entry._id, { status });
+      // O servidor grava a data do recebimento e os juros/multa por atraso.
+      const saved = await resources.finance.updateEntry(entry._id, { status });
       monthData.setData((current) =>
         current
-          ? { ...current, entries: current.entries.map((item) => (item._id === entry._id ? { ...item, status } : item)) }
+          ? {
+              ...current,
+              entries: current.entries.map((item) =>
+                item._id === entry._id ? { ...item, ...saved, projectedLateCharge: undefined } : item,
+              ),
+            }
           : current,
       );
     } catch (err) {

@@ -60,6 +60,8 @@ export interface ProposalData {
   };
   closing: { call: string; company: string; site: string; contact: string };
   identity: { template: ProposalTemplate; color: string; titleFont: string; bodyFont: string };
+  /** Negociação do CRM de onde a proposta saiu (vazio = avulsa). */
+  leadId: string;
 }
 
 export const MAX_STRUCTURE_IMAGES = 6;
@@ -233,6 +235,7 @@ export function defaultData(): ProposalData {
       contact: "",
     },
     identity: { template: "dark", color: "#F43700", titleFont: "Manrope", bodyFont: "Inter" },
+    leadId: "",
   };
 }
 
@@ -368,6 +371,7 @@ export function normalize(partial: Partial<ProposalData>): ProposalData {
       titleFont,
       bodyFont,
     },
+    leadId: /^[a-f0-9]{24}$/.test(str(p.leadId, "")) ? str(p.leadId, "") : "",
   };
 }
 

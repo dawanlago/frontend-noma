@@ -10,7 +10,7 @@ import {
   HiOutlineClock,
   HiOutlineEllipsisHorizontal,
 } from "react-icons/hi2";
-import { daysSince, formatDays, isLeadOverdue } from "@/lib/crm/metrics";
+import { daysSince, eventLabel, formatDays, isLeadOverdue } from "@/lib/crm/metrics";
 import { leadDateOnly, leadSubtitle } from "@/lib/crm/model";
 import type { FunnelStage, Lead } from "@/types";
 import { formatCurrencyBRL, formatDateOnly } from "@/utils/format";
@@ -112,6 +112,16 @@ export default function LeadCard({
           </span>
         ) : null}
       </div>
+
+      {lead.eventDate ? (
+        <p
+          className={`mt-2 truncate text-[11px] font-medium ${lead.eventUnavailable ? "text-burgundy" : "text-charcoal/60"}`}
+          title={lead.eventUnavailable ? "A data do evento caiu num período sem atendimento" : "Data do evento"}
+        >
+          {eventLabel(lead.eventDate)}
+          {lead.eventUnavailable ? " · data indisponível" : ""}
+        </p>
+      ) : null}
 
       {lead.status === "lost" && lostReasonLabel ? (
         <p className="mt-2 truncate text-[11px] font-medium text-burgundy" title={lead.lostNote ? `${lostReasonLabel} — ${lead.lostNote}` : lostReasonLabel}>

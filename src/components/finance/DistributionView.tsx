@@ -14,6 +14,7 @@ import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
 import type { BucketMovement, DistributionBucket, FinanceEntry } from "@/types";
 import { formatCurrencyBRL, formatDateOnly, maskCurrencyBRL, parseCurrencyBRL, todayISO } from "@/utils/format";
+import { entryTotal } from "@/lib/finance/lateCharge";
 
 const COLORS = ["#3B82F6", "#F59E0B", "#22C55E", "#A855F7", "#EF4444", "#14B8A6", "#EC4899", "#64748B"];
 
@@ -371,7 +372,7 @@ function DistributeModal({
   if (key !== lastKey) {
     setLastKey(key);
     if (open) {
-      const amount = entry?.value || 0;
+      const amount = entry ? entryTotal(entry) : 0;
       setTotal(amount ? maskCurrencyBRL(amount) : "");
       setDate(entry?.date || todayISO());
       setDescription(entry ? `${entry.description}${entry.client ? ` · ${entry.client}` : ""}` : "");

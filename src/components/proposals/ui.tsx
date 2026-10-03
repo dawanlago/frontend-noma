@@ -12,7 +12,7 @@ export interface StepProps {
   setData: SetProposal;
 }
 
-type ObjectKeys = { [K in keyof ProposalData]: ProposalData[K] extends unknown[] ? never : K }[keyof ProposalData];
+type ObjectKeys = { [K in keyof ProposalData]: ProposalData[K] extends unknown[] | string ? never : K }[keyof ProposalData];
 
 /** Atualiza parcialmente uma seção do documento (company, client, ...). */
 export function patchSection<K extends ObjectKeys>(setData: SetProposal, key: K, patch: Partial<ProposalData[K]>) {

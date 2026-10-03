@@ -5,6 +5,7 @@ import {
   HiOutlineClipboardDocumentList,
   HiOutlineFaceSmile,
   HiOutlineArrowRight,
+  HiOutlineChartBar,
   HiOutlineBuildingOffice2,
   HiOutlineChatBubbleLeftRight,
   HiOutlineDocumentText,
@@ -21,7 +22,7 @@ const settingsLinks = [
   {
     href: "/configuracoes/geral",
     title: "Geral e identidade visual",
-    description: "Nome da produtora, frase de entrada do início, cores e logo usados no briefing.",
+    description: "Nome da produtora, frase de entrada do início, cores e logo usados no briefing, juros e multa por atraso.",
     icon: HiOutlinePaintBrush,
   },
   {
@@ -78,6 +79,12 @@ const settingsLinks = [
     description: "Cadastre a equipe e escolha o que cada pessoa pode acessar no sistema.",
     icon: HiOutlineUserGroup,
     adminOnly: true,
+  },
+  {
+    href: "/configuracoes/relatorio",
+    title: "Relatório semanal",
+    description: "E-mail automático com negociações criadas, em andamento, vendas e valor vendido na semana.",
+    icon: HiOutlineChartBar,
   },
   {
     href: "/configuracoes/empresas",

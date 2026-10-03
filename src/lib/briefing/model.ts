@@ -1,5 +1,23 @@
 import { BRIEFING_TYPES, defaultSpecific, type BriefingType } from "./templates";
 
+export const CUSTOM_FIELD_TYPES = [
+  { value: "text", label: "Texto curto" },
+  { value: "textarea", label: "Texto longo" },
+  { value: "select", label: "Lista de opções" },
+  { value: "date", label: "Data" },
+] as const;
+export type BriefingCustomType = (typeof CUSTOM_FIELD_TYPES)[number]["value"];
+
+/** Campo extra criado só neste briefing (ou trazido do catálogo das configurações). */
+export interface BriefingCustomField {
+  id: string;
+  label: string;
+  type: BriefingCustomType;
+  /** Opções do tipo "select". */
+  options: string[];
+  value: string;
+}
+
 export interface BriefingData {
   type: BriefingType;
   client: {
@@ -38,6 +56,8 @@ export interface BriefingData {
     channel: string;
     portfolio: boolean;
   };
+  /** Campos extras, na ordem em que aparecem no briefing. */
+  customFields: BriefingCustomField[];
 }
 
 function defaultSpecificAll(): Record<BriefingType, Record<string, string>> {
@@ -57,6 +77,7 @@ export function defaultData(): BriefingData {
     production: { date: "", time: "", location: "", notes: "" },
     style: { color: "", showLogo: true },
     delivery: { format: "Vertical 9:16", deadline: "", revisions: "2", channel: "Instagram", portfolio: true },
+    customFields: [],
   };
 }
 
@@ -75,7 +96,29 @@ export function normalize(partial: Partial<BriefingData>): BriefingData {
     production: { ...base.production, ...(partial.production || {}) },
     style: { ...base.style, ...(partial.style || {}) },
     delivery: { ...base.delivery, ...(partial.delivery || {}) },
+    customFields: normalizeCustomFields(partial.customFields),
   };
+}
+
+export function isCustomType(value: unknown): value is BriefingCustomType {
+  return CUSTOM_FIELD_TYPES.some((type) => type.value === value);
+}
+
+function normalizeCustomFields(raw: unknown): BriefingCustomField[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => ({
+      id: typeof item.id === "string" && item.id ? item.id : newFieldId(),
+      label: typeof item.label === "string" ? item.label : "",
+      type: isCustomType(item.type) ? item.type : "text",
+      options: Array.isArray(item.options) ? item.options.filter((option): option is string => typeof option === "string") : [],
+      value: typeof item.value === "string" ? item.value : "",
+    }));
+}
+
+export function newFieldId() {
+  return Math.random().toString(36).slice(2, 10);
 }
 
 export function titleOf(data: BriefingData) {

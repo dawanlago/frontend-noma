@@ -22,6 +22,10 @@ export interface EntryForm {
   /** Banco/conta de entrada ou saída. */
   bank: string;
   notes: string;
+  /** Data em que foi recebida/paga (YYYY-MM-DD); vazio = hoje ao salvar. */
+  paidAt: string;
+  /** Recebida com atraso sem cobrar juros/multa. */
+  lateChargeWaived: boolean;
 }
 
 export function clientRefOf(entry: Pick<FinanceEntry, "contactId" | "companyId">) {
@@ -67,6 +71,8 @@ export function emptyEntryForm(month: string, type: TransactionType = "income", 
     cashbox: defaults.cashbox || "",
     bank: "",
     notes: "",
+    paidAt: "",
+    lateChargeWaived: false,
   };
 }
 
@@ -99,6 +105,8 @@ export function entryToForm(entry: FinanceEntry): EntryForm {
     cashbox: entry.cashbox || "",
     bank: entry.bank || "",
     notes: entry.notes || "",
+    paidAt: entry.paidAt || "",
+    lateChargeWaived: Boolean(entry.lateChargeWaived),
   };
 }
 
@@ -132,6 +140,8 @@ export function formToEntryPayload(form: EntryForm): FinanceEntryPayload {
     notes: form.notes.trim(),
   };
   if (form.type === "expense") base.recurring = form.recurring;
+  if (isSettledStatus(form.status) && form.paidAt) base.paidAt = form.paidAt;
+  if (form.type === "income") base.lateChargeWaived = form.lateChargeWaived;
   return base;
 }
 
@@ -180,6 +190,11 @@ export const ENTRY_STATUS_LABELS: Record<EntryStatusKind, string> = {
   paid: "Pago",
   planned: "Previsto",
 };
+
+/** Recebida (entrada) ou paga (despesa). */
+export function isSettledStatus(status: FinanceStatus): boolean {
+  return status === "received" || status === "paid";
+}
 
 export function isEntryOpen(entry: FinanceEntry): boolean {
   return (entry.type === "income" && entry.status === "pending") || (entry.type === "expense" && entry.status === "planned");

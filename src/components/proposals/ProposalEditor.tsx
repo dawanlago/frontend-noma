@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
 import DownloadRounded from "@mui/icons-material/DownloadRounded";
 import LinkRounded from "@mui/icons-material/LinkRounded";
@@ -17,7 +18,9 @@ import {
 import { buildPages, pageIndexForStep } from "@/lib/proposals/pages";
 import { proposalFileName, renderProposalHtml } from "@/lib/proposals/render";
 import { resources } from "@/lib/resources";
+import { missingEssentials } from "@/lib/proposals/start";
 import { timeAgo } from "@/lib/proposals/views";
+import { formatDate } from "@/utils/format";
 import type { ProposalShare, ToolDocument } from "@/types";
 import { downloadFile } from "@/utils/document";
 import InvestmentStep from "./InvestmentStep";
@@ -29,18 +32,19 @@ import { ClosingStep, IdentityStep, PreviewStep } from "./StepsFinal";
 import { Callout } from "./ui";
 import { alertDialog } from "@/components/ui/DialogHost";
 
+/** Só Cliente e Investimento são essenciais; as demais etapas já vêm com padrões e podem ser puladas. */
 const STEPS = [
-  { title: "Cliente", description: "Para quem é a proposta e até quando ela vale." },
-  { title: "Sua empresa", description: "Logo, apresentação e indicadores que geram confiança." },
+  { title: "Cliente", description: "Para quem é a proposta e até quando ela vale.", essential: true },
+  { title: "Sua empresa", description: "Logo, apresentação e indicadores que geram confiança. Vem da sua última proposta." },
   { title: "Estrutura", description: "Mostre onde e com o que você trabalha." },
   { title: "Clientes/experiência", description: "Um número de destaque sobre sua trajetória." },
   { title: "Objetivo", description: "O que o seu trabalho vai gerar para o cliente." },
   { title: "Portfólio", description: "Vídeos do Google Drive que o cliente assiste direto na proposta." },
-  { title: "Investimento", description: "Valor fechado ou pacotes para o cliente escolher." },
+  { title: "Investimento", description: "Valor fechado ou pacotes para o cliente escolher.", essential: true },
   { title: "Fechamento", description: "Chamada final e seus contatos." },
-  { title: "Identidade visual", description: "Layout, cor e fontes da proposta." },
-  { title: "Preview", description: "Revise as páginas e baixe o arquivo final." },
-];
+  { title: "Identidade visual", description: "Layout, cor e fontes da proposta. Vem da sua última proposta." },
+  { title: "Preview", description: "Revise as páginas e baixe o arquivo final.", final: true },
+] as { title: string; description: string; essential?: boolean; final?: boolean }[];
 
 /** `resources.tools.proposals` com o tipo do documento (a API genérica devolve `unknown`). */
 const proposalApi = {
@@ -114,6 +118,15 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
 
   function download() {
     if (!data) return;
+    const missing = missingEssentials(data);
+    if (missing.length) {
+      goToStep(missing[0].step);
+      void alertDialog({
+        title: "Falta o essencial",
+        message: `Para gerar a proposta, preencha: ${missing.map((item) => item.label).join(" e ")}. As outras etapas são opcionais.`,
+      });
+      return;
+    }
     downloadFile(proposalFileName(data), renderProposalHtml(data));
   }
 
@@ -177,6 +190,8 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
   }
 
   const current = STEPS[step - 1];
+  const missing = missingEssentials(data);
+  const missingSteps = new Set(missing.map((item) => item.step));
   const stepProps = { data, setData };
   const showOwner = user?.role === "admin" && ownerName && ownerName !== user.name;
   const shareBadge = share?.stats.lastViewedAt
@@ -184,6 +199,7 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
     : share?.link?.isActive
       ? "Link criado · ainda não visto"
       : "";
+  const acceptedBadge = share?.accepted ? `Aceita em ${formatDate(share.accepted.at)} por ${share.accepted.name}` : "";
 
   return (
     <>
@@ -223,9 +239,19 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
       />
 
       <div className="mb-4 space-y-3">
-        {showOwner || shareBadge ? (
+        {showOwner || shareBadge || acceptedBadge || data.leadId ? (
           <div className="flex flex-wrap gap-2">
             {showOwner ? <span className="chip bg-gold/10 text-gold">Documento de {ownerName}</span> : null}
+            {data.leadId ? (
+              <Link href={`/crm/${data.leadId}`} className="chip bg-tan/10 text-tan hover:bg-tan/15">
+                Ver negociação
+              </Link>
+            ) : null}
+            {acceptedBadge ? (
+              <button type="button" className="chip bg-sage/15 font-semibold text-sage hover:bg-sage/20" onClick={() => setShareOpen(true)}>
+                {acceptedBadge}
+              </button>
+            ) : null}
             {shareBadge ? (
               <button type="button" className="chip bg-sage/10 text-sage hover:bg-sage/15" onClick={() => setShareOpen(true)}>
                 {shareBadge}
@@ -263,11 +289,23 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
                 >
                   <span className={`tabular-nums ${active ? "text-white/70" : "opacity-60"}`}>{String(n).padStart(2, "0")}</span>
                   {item.title}
+                  {item.essential ? (
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${missingSteps.has(n) ? "bg-gold" : active ? "bg-white" : "bg-sage"}`}
+                      title={missingSteps.has(n) ? "Essencial: falta preencher" : "Essencial: preenchido"}
+                      aria-hidden
+                    />
+                  ) : null}
                 </button>
               </li>
             );
           })}
         </ol>
+        <p className="mt-2 px-1 text-xs text-charcoal/50">
+          Pule para qualquer etapa. Só <strong className="font-semibold text-charcoal/70">Cliente</strong> e{" "}
+          <strong className="font-semibold text-charcoal/70">Investimento</strong> são essenciais
+          {missing.length ? ` — falta: ${missing.map((item) => item.label).join(" e ")}.` : " — prontos, já dá para gerar."}
+        </p>
       </nav>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_440px] 2xl:grid-cols-[minmax(0,1fr)_560px]">
@@ -278,7 +316,14 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
                 <p className="eyebrow">
                   Etapa {String(step).padStart(2, "0")} de {STEPS.length}
                 </p>
-                <h2 className="mt-1 text-lg font-semibold text-charcoal">{current.title}</h2>
+                <h2 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-semibold text-charcoal">
+                  {current.title}
+                  {current.essential ? (
+                    <span className="chip bg-tan/10 text-tan">Essencial</span>
+                  ) : current.final ? null : (
+                    <span className="chip bg-charcoal/[0.06] text-charcoal/55">Opcional</span>
+                  )}
+                </h2>
                 <p className="mt-0.5 text-sm text-charcoal/55">{current.description}</p>
               </div>
               <div className="h-1.5 w-28 overflow-hidden rounded-full bg-charcoal/[0.08]" aria-hidden>

@@ -1,4 +1,4 @@
-import type { ProposalViewSession } from "@/types";
+import type { ProposalEvent, ProposalEventType, ProposalViewSession } from "@/types";
 
 /* Formatação das visualizações do link público da proposta. */
 
@@ -37,4 +37,24 @@ export function deviceLabel(session: Pick<ProposalViewSession, "device" | "os" |
 
 export function proposalLinkUrl(token: string) {
   return `${typeof window !== "undefined" ? window.location.origin : ""}/p/${token}`;
+}
+
+const EVENT_LABEL: Record<ProposalEventType, string> = {
+  link_created: "Link criado",
+  link_enabled: "Link reativado",
+  link_disabled: "Link desativado",
+  link_regenerated: "Novo link gerado",
+  viewed: "Cliente abriu a proposta",
+  accepted: "Proposta aceita",
+};
+
+/** Texto de um item do histórico: "Link criado por Ana", "Cliente abriu a proposta · Celular · iOS". */
+export function eventLabel(event: ProposalEvent) {
+  const base = EVENT_LABEL[event.type] || event.type;
+  if (event.type === "viewed") return base;
+  return event.actorName ? `${base} por ${event.actorName}` : base;
+}
+
+export function eventDevice(event: ProposalEvent) {
+  return event.device ? deviceLabel({ device: event.device, os: event.os, browser: event.browser }) : "";
 }

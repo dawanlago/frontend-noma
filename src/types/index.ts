@@ -1,7 +1,7 @@
 export type UserRole = "admin" | "manager" | "seller";
 export type TransactionType = "income" | "expense";
 export type FinanceStatus = "received" | "pending" | "paid" | "planned";
-export type ToolKey = "proposal" | "contract" | "budget" | "briefing";
+export type ToolKey = "proposal" | "contract" | "budget" | "briefing" | "script";
 export type StageKind = "open" | "won" | "lost";
 export type LeadStatus = StageKind;
 export type LeadTemperature = "cold" | "warm" | "hot";
@@ -41,6 +41,80 @@ export interface OrgSummary {
   color: string;
   role?: UserRole;
   isActive?: boolean;
+}
+
+/** Janela semanal de atendimento (0 = domingo). */
+export interface WeeklyWindow {
+  weekday: number;
+  start: string;
+  end: string;
+}
+
+/** Link de agendamento externo (o lead escolhe um horário livre). */
+export interface SchedulingLink extends Owned {
+  _id: string;
+  slug: string;
+  title: string;
+  description: string;
+  location: string;
+  durationMinutes: number;
+  bufferMinutes: number;
+  minNoticeHours: number;
+  horizonDays: number;
+  windows: WeeklyWindow[];
+  blocks: { _id?: string; start: string; end: string; note: string }[];
+  confirmationMessage: string;
+  isActive: boolean;
+}
+
+export interface Booking extends Owned {
+  _id: string;
+  linkId: string;
+  start: string;
+  end: string;
+  name: string;
+  email: string;
+  phone: string;
+  notes: string;
+  status: "confirmed" | "cancelled";
+  taskId?: string;
+  leadId?: string;
+}
+
+/** Item ocupado na agenda (compromisso, reunião marcada, bloqueio ou Google Agenda). */
+export interface BusyItem {
+  start: string;
+  end: string;
+  source: "noma" | "reserva" | "bloqueio" | "google";
+  title: string;
+}
+
+export interface PublicSchedule {
+  title: string;
+  description: string;
+  location: string;
+  durationMinutes: number;
+  horizonDays: number;
+  ownerName: string;
+  brand: { companyName: string; logo: string; color: string };
+  from: string;
+  slots: string[];
+}
+
+export interface AppNotification {
+  _id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string;
+  readAt?: string;
+  createdAt: string;
+}
+
+export interface NotificationPrefs {
+  reminderMinutes: number;
+  emailReminders: boolean;
+  dailyDigest: boolean;
 }
 
 export interface UserMembership {
@@ -196,6 +270,8 @@ export interface Funnel {
   name: string;
   order: number;
   stages: FunnelStage[];
+  /** Etapa para onde vai a negociação aberta quando o contato responde um formulário de novo. */
+  qualifiedStageId?: string;
 }
 
 export interface LeadProduct {
@@ -264,6 +340,9 @@ export interface Lead extends Owned {
   /** Fechamento: valor oferecido e valor fechado (a diferença é o desconto). */
   offeredValue?: number;
   closedValue?: number;
+  /** Data do evento (do formulário) e se caiu num período sem atendimento. */
+  eventDate?: string;
+  eventUnavailable?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -305,10 +384,21 @@ export interface Note {
   ownerName: string;
   groupId?: string;
   title: string;
+  /** Markdown. */
   content: string;
+  /** Revisão do título/texto (trava contra edição simultânea). */
+  rev?: number;
   order: number;
-  shares: { userId: string; name: string }[];
+  shares: NoteShare[];
   updatedAt: string;
+}
+
+export type NotePermission = "view" | "edit";
+
+export interface NoteShare {
+  userId: string;
+  name: string;
+  permission: NotePermission;
 }
 
 export type FormFieldType =
@@ -320,7 +410,9 @@ export type FormFieldType =
   | "date"
   | "select"
   | "multiselect"
-  | "checkbox";
+  | "checkbox"
+  /** A data do evento: mostra a antecedência e confere a regra de disponibilidade. */
+  | "eventDate";
 export type FormFieldTarget = "" | "name" | "email" | "phone" | "company" | "instagram";
 
 export interface FormField {
@@ -341,15 +433,29 @@ export interface CaptureForm extends Owned {
   isActive: boolean;
   fields: FormField[];
   successMessage: string;
+  /** Link de agendamento oferecido ao terminar. */
+  schedulingLinkId?: string;
   /** Aparência própria do link (vazio = identidade da produtora). */
   logo?: string;
   accentColor?: string;
   createLead: boolean;
   funnelId?: string;
   stageId?: string;
+  /** Regra da pergunta "Data do evento". */
+  availability?: FormAvailability;
   responsesCount?: number;
+  /** Preenchimentos que pararam no meio. */
+  partialCount?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FormAvailability {
+  /** Antecedência mínima em dias (0 = sem limite). */
+  minNoticeDays: number;
+  /** Datas/períodos sem atendimento (YYYY-MM-DD, `to` inclusive). */
+  blockedDates: { from: string; to: string }[];
+  message: string;
 }
 
 export interface FormResponse {
@@ -358,7 +464,18 @@ export interface FormResponse {
   answers: Record<string, string | string[] | boolean>;
   contactId?: string;
   leadId?: string;
+  /** partial = parou no meio (salvo a cada pergunta). Sem campo = completa. */
+  status?: "partial" | "complete";
+  lastStep?: number;
+  stepsAnswered?: number;
+  /** Histórico do preenchimento: cada pergunta respondida. */
+  events?: { at: string; fieldKey: string; value: string }[];
+  completedAt?: string;
+  eventDate?: string;
+  daysUntilEvent?: number;
+  unavailable?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface FinanceEntry extends Owned {
@@ -382,6 +499,14 @@ export interface FinanceEntry extends Owned {
   companyId?: string;
   /** Já distribuída nas caixas de distribuição (só na listagem do mês). */
   distributed?: boolean;
+  /** Data em que foi recebida/paga (YYYY-MM-DD); `date` é o vencimento. */
+  paidAt?: string;
+  /** Juros/multa cobrados por receber depois do vencimento (somam no recebido). */
+  lateCharge?: LateCharge;
+  /** Atraso perdoado: recebida depois do vencimento sem juros/multa. */
+  lateChargeWaived?: boolean;
+  /** A receber vencida: juros/multa se for paga hoje (só na listagem do mês). */
+  projectedLateCharge?: LateCharge;
   createdAt: string;
   updatedAt: string;
 }
@@ -436,6 +561,7 @@ export interface ProposalShareSummary {
   isActive: boolean;
   viewsCount: number;
   lastViewedAt: string | null;
+  acceptedAt?: string | null;
 }
 
 /** Sessão de visualização do link público de uma proposta. */
@@ -449,10 +575,32 @@ export interface ProposalViewSession {
   browser: string;
 }
 
+export type ProposalEventType = "link_created" | "link_enabled" | "link_disabled" | "link_regenerated" | "viewed" | "accepted";
+
+/** Item do histórico do link público (ações da equipe, aberturas e aceite do cliente). */
+export interface ProposalEvent {
+  _id: string;
+  type: ProposalEventType;
+  at: string;
+  actorName: string;
+  comment: string;
+  device: ProposalViewSession["device"] | "";
+  os: string;
+  browser: string;
+}
+
+export interface ProposalAcceptance {
+  at: string;
+  name: string;
+  comment?: string;
+}
+
 export interface ProposalShare {
   link: { token: string; isActive: boolean; createdAt: string } | null;
   stats: { views: number; totalSeconds: number; firstViewedAt: string | null; lastViewedAt: string | null };
   sessions: ProposalViewSession[];
+  accepted?: ProposalAcceptance | null;
+  events?: ProposalEvent[];
 }
 
 export interface BrandColor {
@@ -460,7 +608,35 @@ export interface BrandColor {
   hex: string;
 }
 
+export interface LateCharge {
+  days: number;
+  fee: number;
+  interest: number;
+  total: number;
+}
+
+/** Juros/multa por atraso de recebimentos (0 = não cobra). */
+export interface LateChargeRules {
+  /** Multa em % do valor. */
+  lateFee: number;
+  /** Juros ao mês em % (pro rata die). */
+  monthlyInterest: number;
+  graceDays: number;
+}
+
+export interface WeeklyReportSettings {
+  enabled: boolean;
+  recipients: string[];
+  /** 0 = domingo ... 6 = sábado */
+  weekday: number;
+  /** Hora de Brasília (0–23). */
+  hour: number;
+  lastSentAt?: string;
+}
+
 export interface AppSettings {
+  finance?: LateChargeRules;
+  weeklyReport?: WeeklyReportSettings;
   companyName: string;
   welcomeEyebrow: string;
   welcomeTitle: string;
@@ -616,6 +792,8 @@ export interface FormInvite {
 }
 
 export interface PublicFormData {
+  /** Link de agendamento oferecido no fim (vazio = não oferece). */
+  schedulingSlug?: string;
   /** Identidade da produtora (logo e nome) no topo do formulário. */
   brand?: { logo: string; companyName: string; color: string };
   name: string;
@@ -625,7 +803,10 @@ export interface PublicFormData {
   /** Só nos formulários enviados pela negociação. */
   status?: "pending" | "submitted";
   contactFirstName?: string;
-  prefill?: Record<string, string>;
+  prefill?: Record<string, string | string[] | boolean>;
+  /** Pergunta em que a pessoa parou (progresso salvo). */
+  lastStep?: number;
+  availability?: FormAvailability;
   answers?: { label: string; value: string }[];
 }
 

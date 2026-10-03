@@ -13,6 +13,7 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import AddRounded from "@mui/icons-material/AddRounded";
 import LockOutlined from "@mui/icons-material/LockOutlined";
+import NotificationsActiveOutlined from "@mui/icons-material/NotificationsActiveOutlined";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import MenuRounded from "@mui/icons-material/MenuRounded";
 import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
@@ -31,6 +32,8 @@ import type { ModuleKey } from "@/types";
 import LogoMark from "@/components/ui/LogoMark";
 import ChangePasswordDialog from "@/components/auth/ChangePasswordDialog";
 import AppearancePicker from "./AppearancePicker";
+import NotificationBell from "./NotificationBell";
+import NotificationPrefsDialog from "./NotificationPrefsDialog";
 import OrgSwitcher from "./OrgSwitcher";
 import { useAuth } from "@/contexts/AuthContext";
 import { USER_ROLE_LABELS } from "@/lib/constants";
@@ -72,6 +75,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
   const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null);
   const [createAnchor, setCreateAnchor] = useState<null | HTMLElement>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
   const createItems = CREATE_ITEMS.filter((item) => can(item.module));
 
   function handleLogout() {
@@ -114,6 +118,8 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
             Criar
           </Button>
         ) : null}
+
+        <NotificationBell />
 
         {can("configuracoes") ? (
           <IconButton aria-label="Configurações" onClick={() => router.push("/configuracoes")}>
@@ -182,6 +188,17 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
           </ListItemIcon>
           Alterar senha
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setUserAnchor(null);
+            setPrefsOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <NotificationsActiveOutlined fontSize="small" />
+          </ListItemIcon>
+          Lembretes e avisos
+        </MenuItem>
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <LogoutRounded fontSize="small" color="error" />
@@ -191,6 +208,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
       </Menu>
 
       <ChangePasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)} />
+      <NotificationPrefsDialog open={prefsOpen} onClose={() => setPrefsOpen(false)} />
     </AppBar>
   );
 }

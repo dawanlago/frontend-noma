@@ -54,6 +54,16 @@ export function buildBriefing(data: BriefingData): BriefingSummary {
         item(field.label, field.kind === "date" ? formatDateOnly(specific[field.key]) : specific[field.key] || "", field.kind === "textarea"),
       ),
     },
+    ...(data.customFields.length
+      ? [
+          {
+            title: "Campos adicionais",
+            items: data.customFields.map((field) =>
+              item(field.label.trim() || "Campo sem nome", field.type === "date" ? formatDateOnly(field.value) : field.value, field.type === "textarea"),
+            ),
+          },
+        ]
+      : []),
     {
       title: "Produção",
       items: [
