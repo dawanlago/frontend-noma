@@ -1,4 +1,5 @@
 /** Modelo de dados da Calculadora de Orçamento (documento salvo no servidor). */
+import type { CustomValues } from "@/types";
 
 /** Tipos iniciais; a lista real é configurável (Configurações → Listas de opções). */
 export const PROJECT_TYPES = [
@@ -86,6 +87,8 @@ export interface BudgetData {
   /** Operação e margem (percentuais inteiros) */
   operationalPercent: number;
   marginPercent: number;
+  /** Campos personalizados (Configurações → Campos personalizados → Orçamentos). */
+  custom: CustomValues;
 }
 
 export function newCostId() {
@@ -120,6 +123,7 @@ export function defaultData(): BudgetData {
     hiddenFields: [],
     operationalPercent: 5,
     marginPercent: 40,
+    custom: {},
   };
 }
 
@@ -176,6 +180,7 @@ export function normalize(partial: Partial<BudgetData>): BudgetData {
     hiddenFields,
     operationalPercent: num(source.operationalPercent, base.operationalPercent),
     marginPercent: num(source.marginPercent, base.marginPercent),
+    custom: source.custom && typeof source.custom === "object" && !Array.isArray(source.custom) ? (source.custom as CustomValues) : {},
   };
 }
 

@@ -1,4 +1,5 @@
 import { maskCurrencyBRL, todayISO } from "@/utils/format";
+import { isUploadedVideoUrl } from "./video";
 
 export type ProposalTemplate = "dark" | "light" | "editorial" | "studio" | "bold";
 export type InvestmentMode = "single" | "packages";
@@ -10,11 +11,21 @@ export interface Metric {
   label: string;
 }
 
+/** De onde vem o vídeo: link do Google Drive ou arquivo enviado ao servidor (Cloudinary). */
+export type PortfolioSource = "drive" | "upload";
+
 export interface PortfolioItem {
   id: string;
+  /** Link do Drive ou, quando enviado, o link original do vídeo no Cloudinary. */
   url: string;
   title: string;
   description: string;
+  /** Itens antigos não têm: vale "drive". */
+  source?: PortfolioSource;
+  /** Id do vídeo no Cloudinary (só nos enviados). */
+  publicId?: string;
+  /** Tamanho do arquivo enviado, em bytes. */
+  bytes?: number;
 }
 
 export interface ProposalPackage {
@@ -323,11 +334,17 @@ export function normalize(partial: Partial<ProposalData>): ProposalData {
     portfolio: Array.isArray(p.portfolio)
       ? p.portfolio.map((raw) => {
           const item = obj(raw);
+          const url = str(item.url, "");
+          // Só conta como enviado se o link for um vídeo do Cloudinary; o resto segue como Drive.
+          const uploaded = isUploadedVideoUrl(url);
           return {
             id: str(item.id, "") || uid(),
-            url: str(item.url, ""),
+            url,
             title: str(item.title, ""),
             description: str(item.description, ""),
+            source: uploaded ? ("upload" as const) : ("drive" as const),
+            publicId: uploaded ? str(item.publicId, "") : "",
+            bytes: uploaded && typeof item.bytes === "number" ? item.bytes : 0,
           };
         })
       : [],

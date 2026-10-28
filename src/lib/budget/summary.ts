@@ -7,9 +7,10 @@ function hours(value: number) {
 }
 
 /** Resumo em texto do orçamento (para copiar e colar em proposta, WhatsApp, e-mail...). */
-export function budgetSummaryText(data: BudgetData, result: BudgetResult) {
+/** `extras`: campos personalizados já formatados (rótulo e valor). */
+export function budgetSummaryText(data: BudgetData, result: BudgetResult, extras: { label: string; value: string }[] = []) {
   const hidden = new Set(data.hiddenFields);
-  const lines = [`Orçamento — ${titleOf(data)}`, `Tipo de projeto: ${data.projectType}`, ""];
+  const lines = [`Orçamento — ${titleOf(data)}`, `Tipo de projeto: ${data.projectType}`, ...extras.map((item) => `${item.label}: ${item.value}`), ""];
 
   if (!hidden.has("production")) {
     lines.push(

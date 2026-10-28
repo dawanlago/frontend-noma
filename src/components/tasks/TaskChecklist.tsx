@@ -37,7 +37,7 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
   const [dueDate, setDueDate] = useState("");
   const [type, setType] = useState("");
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState<{ id: string; title: string; dueDate: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; title: string; dueDate: string; type: string } | null>(null);
   const today = todayISO();
 
   async function run(action: () => Promise<void>) {
@@ -67,14 +67,14 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
     });
   }
 
-  /** Renomeia a atividade (e ajusta o prazo) sem sair da lista. */
+  /** Renomeia a atividade (e ajusta tipo e prazo) sem sair da lista. */
   function saveEdit() {
     if (!editing || !editing.title.trim()) return;
-    const { id, title: nextTitle, dueDate: nextDate } = editing;
-    onChange(tasks.map((item) => (item._id === id ? { ...item, title: nextTitle.trim(), dueDate: nextDate } : item)));
+    const { id, title: nextTitle, dueDate: nextDate, type: nextType } = editing;
+    onChange(tasks.map((item) => (item._id === id ? { ...item, title: nextTitle.trim(), dueDate: nextDate, type: nextType } : item)));
     setEditing(null);
     void run(async () => {
-      const saved = await resources.tasks.update(id, { title: nextTitle.trim(), dueDate: nextDate });
+      const saved = await resources.tasks.update(id, { title: nextTitle.trim(), dueDate: nextDate, type: nextType });
       onChange(tasks.map((item) => (item._id === id ? { ...item, ...saved, ownerName: item.ownerName } : item)));
     });
   }
@@ -127,6 +127,9 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
                     saveEdit();
                   }}
                 >
+                  <div className="w-[140px]">
+                    <OptionSelect list="taskType" value={editing.type} onChange={(next) => setEditing({ ...editing, type: next })} emptyLabel="Tipo" />
+                  </div>
                   <input
                     className="input-search !py-1.5 min-w-[160px] flex-1"
                     value={editing.title}
@@ -153,7 +156,7 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
               <div className="min-w-0 flex-1">
                 <p
                   className={`text-sm ${task.done ? "text-charcoal/40 line-through" : "text-charcoal"} ${readOnly ? "" : "cursor-text"}`}
-                  onDoubleClick={() => !readOnly && setEditing({ id: task._id, title: task.title, dueDate: task.dueDate })}
+                  onDoubleClick={() => !readOnly && setEditing({ id: task._id, title: task.title, dueDate: task.dueDate, type: task.type || "" })}
                   title={readOnly ? undefined : "Clique duas vezes para renomear"}
                 >
                   {task.title}
@@ -175,7 +178,7 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
                   type="button"
                   className="btn-ghost h-8 w-8 opacity-0 transition group-hover:opacity-100 focus:opacity-100"
                   aria-label="Renomear atividade"
-                  onClick={() => setEditing({ id: task._id, title: task.title, dueDate: task.dueDate })}
+                  onClick={() => setEditing({ id: task._id, title: task.title, dueDate: task.dueDate, type: task.type || "" })}
                 >
                   <HiOutlinePencilSquare className="h-4 w-4" />
                 </button>

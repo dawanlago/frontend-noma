@@ -3,9 +3,32 @@ import Head from "next/head";
 import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineBars3 } from "react-icons/hi2";
 import FunnelEditor from "@/components/crm/FunnelEditor";
 import SettingsHeader from "@/components/settings/SettingsHeader";
+import Select from "@/components/ui/Select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { apiError } from "@/lib/errors";
 import { resources } from "@/lib/resources";
+import type { Funnel } from "@/types";
+
+/** Quem criou o funil e o responsável (pode ser trocado). */
+function FunnelPeople({ funnel, onChange }: { funnel: Funnel; onChange: (ownerId: string) => void }) {
+  const { data: users } = useAsyncData(() => resources.users.list(), []);
+  const options = (users || []).filter((user) => user.isActive !== false || user._id === funnel.ownerId).map((user) => ({ value: user._id, label: user.name }));
+  if (funnel.ownerId && !options.some((option) => option.value === funnel.ownerId)) options.unshift({ value: funnel.ownerId, label: funnel.ownerName || "Responsável" });
+  return (
+    <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-beige/60 px-3 py-2.5 text-sm">
+      <span className="text-charcoal/60">
+        Criado por <strong className="font-semibold text-charcoal">{funnel.createdByName || "—"}</strong>
+      </span>
+      <span className="flex items-center gap-2 text-charcoal/60">
+        Responsável
+        <span className="w-48">
+          <Select value={funnel.ownerId || ""} placeholder="Sem responsável" options={options} onChange={(ownerId) => ownerId !== funnel.ownerId && onChange(ownerId)} />
+        </span>
+      </span>
+    </div>
+  );
+}
 
 export default function FunnelsSettingsPage() {
   const { funnels, setFunnels, reload } = useWorkspace();
@@ -26,6 +49,16 @@ export default function FunnelsSettingsPage() {
       setFunnels(previous);
       setError(apiError(err, "Não foi possível salvar a ordem dos funis."));
       void reload("funnels");
+    }
+  }
+
+  async function saveOwner(id: string, ownerId: string) {
+    setError("");
+    try {
+      const saved = await resources.funnels.update(id, { ownerId });
+      setFunnels(funnels.map((item) => (item._id === id ? { ...item, ...saved } : item)));
+    } catch (err) {
+      setError(apiError(err, "Não foi possível trocar o responsável."));
     }
   }
 
@@ -112,6 +145,7 @@ export default function FunnelsSettingsPage() {
           {error ? <p className="mt-2 px-1 text-xs text-burgundy">{error}</p> : null}
         </nav>
         <section className="card p-5 sm:p-6">
+          {!creating && current ? <FunnelPeople funnel={current} onChange={(ownerId) => void saveOwner(current._id, ownerId)} /> : null}
           <FunnelEditor
             key={creating ? "new" : current?._id}
             funnel={creating ? null : current}

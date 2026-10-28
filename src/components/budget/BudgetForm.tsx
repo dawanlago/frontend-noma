@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { HiOutlineXMark } from "react-icons/hi2";
+import CustomFieldsInputs from "@/components/options/CustomFieldsInputs";
 import OptionSelect from "@/components/options/OptionSelect";
 import Field from "@/components/tools/Field";
 import ToolSection from "@/components/tools/ToolSection";
@@ -116,6 +117,7 @@ export default function BudgetForm({ data, result, onChange }: BudgetFormProps) 
               onChange={(event) => onChange({ projectName: event.target.value })}
             />
           </Field>
+          <CustomFieldsInputs entity="budget" value={data.custom} onChange={(custom) => onChange({ custom })} />
         </div>
       </ToolSection>
 

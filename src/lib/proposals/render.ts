@@ -1,5 +1,6 @@
 import { escapeHtml, slugify } from "@/utils/document";
 import { driveThumbnail } from "./drive";
+import { isUploadedVideoUrl, videoPlaybackUrl, videoPosterUrl } from "./video";
 import {
   BILLING_SUFFIX,
   BODY_FONTS,
@@ -62,7 +63,10 @@ const SECTION_LABEL: Record<ProposalPage["kind"], string> = {
 
 const CHECK_SVG =
   '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const PLAY_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor"/></svg>';
+/** Player de vídeo enviado ao servidor (no lugar do iframe do Drive). */
+const PLAYER_VIDEO_CSS =
+  ".pl-box video{display:none;width:100%;height:100%;border-radius:12px;background:#000;object-fit:contain}.pl-box.is-upload video{display:block}.pl-box.is-upload iframe{display:none}";
+const PLAY_SVG ='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor"/></svg>';
 
 // ——— utilidades ———
 
@@ -264,14 +268,19 @@ ${portfolioIntro.text.trim() ? `<p class="lead">${nl(portfolioIntro.text)}</p>` 
 ${total
     ? `<p class="pi-count"><i>${PLAY_SVG}</i>${total} ${total === 1 ? "trabalho" : "trabalhos"} a seguir</p>`
     : ctx.embed
-      ? '<p class="hint">Adicione links de vídeos do Google Drive na etapa 06.</p>'
+      ? '<p class="hint">Adicione vídeos (link do Google Drive ou arquivo enviado) na etapa 06.</p>'
       : ""}
 </div>`;
 }
 
 function videoCard(video: PortfolioVideo) {
-  const thumb = driveThumbnail(video.driveId);
-  return `<button type="button" class="video" data-video="${e(video.driveId)}" aria-label="Assistir ${e(video.title || `trabalho ${video.number}`)}">
+  // Enviado ao servidor: toca no <video> do player (mp4 otimizado, com o original como reserva).
+  const uploaded = !video.driveId && isUploadedVideoUrl(video.url);
+  const thumb = uploaded ? videoPosterUrl(video.url) : driveThumbnail(video.driveId);
+  const target = uploaded
+    ? `data-upload="${e(videoPlaybackUrl(video.url))}" data-original="${e(video.url)}" data-poster="${e(thumb)}"`
+    : `data-video="${e(video.driveId)}"`;
+  return `<button type="button" class="video" ${target} aria-label="Assistir ${e(video.title || `trabalho ${video.number}`)}">
 <div class="thumb"><img class="tb" src="${e(thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"><img class="tf" src="${e(thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"><span class="vnum">${pad(video.number)}</span><span class="play">${PLAY_SVG}</span></div>
 <div class="vmeta"><strong>${e(video.title || `Trabalho ${pad(video.number)}`)}</strong>${video.description.trim() ? `<p>${e(video.description)}</p>` : ""}</div>
 </button>`;
@@ -418,9 +427,16 @@ function go(k,silent){i=Math.max(0,Math.min(n-1,k));for(var j=0;j<n;j++){slides[
 if(cnt)cnt.textContent=pad(i+1)+' / '+pad(n);if(prev)prev.disabled=i===0;if(next)next.disabled=i===n-1;
 if(EMBED){if(!silent)try{parent.postMessage({type:'noma-proposal-slide',index:i,total:n},'*')}catch(e){}}
 else{try{history.replaceState(null,'','#'+(i+1))}catch(e){}}}
-function openVideo(id){frameEl.src='https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview';openLink.href='https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view';player.classList.add('open')}
-function closeVideo(){player.classList.remove('open');frameEl.src='about:blank'}
-document.addEventListener('click',function(ev){var t=ev.target;var v=t&&t.closest?t.closest('[data-video]'):null;if(v){ev.preventDefault();openVideo(v.getAttribute('data-video'));return}
+var vid=player.querySelector('video'),plBox=player.querySelector('.pl-box');
+function srcEl(u,t){var s=document.createElement('source');s.src=u;if(t)s.type=t;return s}
+function openUpload(el){closeVideo();var u=el.getAttribute('data-upload'),o=el.getAttribute('data-original');
+vid.poster=el.getAttribute('data-poster')||'';vid.appendChild(srcEl(u,'video/mp4'));if(o&&o!==u)vid.appendChild(srcEl(o));vid.load();
+openLink.href=o||u;openLink.textContent='Abrir vídeo em nova aba ↗';plBox.classList.add('is-upload');player.classList.add('open');
+try{var pr=vid.play();if(pr&&pr.catch)pr.catch(function(){})}catch(e){}}
+function openVideo(id){plBox.classList.remove('is-upload');openLink.textContent='Abrir no Google Drive ↗';frameEl.src='https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview';openLink.href='https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view';player.classList.add('open')}
+function closeVideo(){player.classList.remove('open');frameEl.src='about:blank';vid.pause();while(vid.firstChild)vid.removeChild(vid.firstChild);vid.removeAttribute('poster');vid.load()}
+document.addEventListener('click',function(ev){var t=ev.target;var up=t&&t.closest?t.closest('[data-upload]'):null;if(up){ev.preventDefault();openUpload(up);return}
+var v=t&&t.closest?t.closest('[data-video]'):null;if(v){ev.preventDefault();openVideo(v.getAttribute('data-video'));return}
 if(t===player||(t.closest&&t.closest('[data-close]'))){closeVideo()}});
 document.addEventListener('keydown',function(ev){if(player.classList.contains('open')){if(ev.key==='Escape')closeVideo();return}
 var k=ev.key;if(k==='ArrowRight'||k==='PageDown'||k===' '){ev.preventDefault();go(i+1)}else if(k==='ArrowLeft'||k==='PageUp'){ev.preventDefault();go(i-1)}else if(k==='Home'){go(0)}else if(k==='End'){go(n-1)}});
@@ -489,14 +505,14 @@ export function renderProposalHtml(data: ProposalData, options: RenderOptions = 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="${e(fontHref(titleFont, bodyFont))}">
-<style>${vars}${BASE_CSS}${TEMPLATE_CSS[template]}</style>
+<style>${vars}${BASE_CSS}${TEMPLATE_CSS[template]}${PLAYER_VIDEO_CSS}</style>
 </head>
 <body class="tpl-${template} noanim${embed ? " embed" : ""}${pageLight ? " page-light" : ""}">
 <div id="deck"><div id="stage">
 ${slides}
 </div></div>
 ${embed ? "" : `<nav id="nav"><button type="button" id="prev">← Anterior</button><span class="cnt" id="cnt"></span><button type="button" id="next">Próxima →</button><button type="button" class="fs" id="fs" title="Tela cheia">Tela cheia</button></nav>`}
-<div id="player" role="dialog" aria-modal="true" aria-label="Vídeo"><div class="pl-box"><div class="pl-bar"><a id="pl-open" href="#" target="_blank" rel="noopener">Abrir no Google Drive ↗</a><button type="button" data-close>Fechar ✕</button></div><iframe title="Vídeo do Google Drive" allow="autoplay; fullscreen" allowfullscreen></iframe></div></div>
+<div id="player" role="dialog" aria-modal="true" aria-label="Vídeo"><div class="pl-box"><div class="pl-bar"><a id="pl-open" href="#" target="_blank" rel="noopener">Abrir no Google Drive ↗</a><button type="button" data-close>Fechar ✕</button></div><iframe title="Vídeo do Google Drive" allow="autoplay; fullscreen" allowfullscreen></iframe><video controls playsinline preload="metadata"></video></div></div>
 <script>${script(embed, start)}</script>
 </body>
 </html>`;

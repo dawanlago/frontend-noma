@@ -10,9 +10,10 @@ import MoneyInput from "@/components/ui/MoneyInput";
 import PageHeader from "@/components/ui/PageHeader";
 import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToolDocument } from "@/hooks/useToolDocument";
 import { contractsApi } from "@/lib/contracts/api";
-import { buildContract, contractToHtml, contractToText, CONTRACT_PRINT_CSS } from "@/lib/contracts/clauses";
+import { buildContract, contractAccent, contractPrintCss, contractToHtml, contractToText } from "@/lib/contracts/clauses";
 import { buildFromTemplate } from "@/lib/contracts/template";
 import { resources } from "@/lib/resources";
 import type { ContractTemplate } from "@/types";
@@ -37,6 +38,7 @@ import { printDocument } from "@/utils/document";
 import ContractPreview from "./ContractPreview";
 import LogoUpload from "./LogoUpload";
 import PartyFields from "./PartyFields";
+import SignaturePanel from "./SignaturePanel";
 import { confirmDialog } from "@/components/ui/DialogHost";
 
 interface ContractEditorProps {
@@ -112,6 +114,8 @@ const textArea = (value: string, onChange: (value: string) => void, placeholder 
 
 export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: ContractEditorProps) {
   const { user, can } = useAuth();
+  // Títulos e filetes do contrato na cor padrão da marca (vermelho Noma se não houver).
+  const accent = contractAccent(useWorkspace().settings?.brand.defaultColor);
   const [templates, setTemplates] = useState<ContractTemplate[] | null>(null);
 
   useEffect(() => {
@@ -199,7 +203,7 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
 
   function handlePrint() {
     if (!doc || !data) return;
-    printDocument(titleOf(data), contractToHtml(doc, data.logo), CONTRACT_PRINT_CSS);
+    printDocument(titleOf(data), contractToHtml(doc, data.logo), contractPrintCss(accent));
   }
 
   const amountLabel = isRecurring ? "Valor mensal" : isImage ? "Valor da cessão" : "Valor total";
@@ -447,6 +451,16 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
               </div>
             </div>
           </ToolSection>
+
+          <SignaturePanel
+            step={8}
+            documentId={id}
+            data={data}
+            doc={doc}
+            title={titleOf(data)}
+            accent={accent}
+            flush={flush}
+          />
         </div>
 
         <aside className="min-w-0 space-y-3 self-start lg:sticky lg:top-20">
@@ -457,7 +471,11 @@ export default function ContractEditor({ id, onBack, onDuplicate, onDelete }: Co
             </div>
             <span className="chip bg-tan/10 text-tan">{doc.sections.length} {isCustom ? "seções" : "cláusulas"}</span>
           </div>
-          <ContractPreview doc={doc} logo={data.logo} />
+          {/* Cor da marca só nos títulos e filetes da folha; o corpo do texto continua neutro. */}
+          <style>{`.contract-accent .noma-paper h3,.contract-accent .noma-paper h4{color:${accent}}.contract-accent .noma-paper h3{padding-bottom:10px;border-bottom:1.5px solid ${accent}}`}</style>
+          <div className="contract-accent">
+            <ContractPreview doc={doc} logo={data.logo} />
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <CopyButton text={() => contractToText(doc)} label="Copiar texto" className="btn-secondary" />
             <button type="button" className="btn-primary" onClick={handlePrint}>

@@ -1,5 +1,6 @@
 import { extractDriveId } from "./drive";
 import type { PortfolioItem, ProposalData, ProposalPackage } from "./model";
+import { isUploadedVideoUrl } from "./video";
 
 export const VIDEOS_PER_PAGE = 3;
 export const PACKAGES_PER_PAGE = 3;
@@ -62,8 +63,9 @@ function chunk<T>(list: T[], size: number): T[][] {
 export function validVideos(data: ProposalData): PortfolioVideo[] {
   const out: PortfolioVideo[] = [];
   data.portfolio.forEach((item) => {
+    // Vídeo enviado ao servidor não tem driveId (fica "").
     const driveId = extractDriveId(item.url);
-    if (driveId) out.push({ ...item, driveId, number: out.length + 1 });
+    if (driveId || isUploadedVideoUrl(item.url)) out.push({ ...item, driveId: driveId || "", number: out.length + 1 });
   });
   return out;
 }

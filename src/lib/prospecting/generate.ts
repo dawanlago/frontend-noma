@@ -356,6 +356,8 @@ export interface ProspectSettings {
   metaOf: (list: string, value: string) => Record<string, unknown> | undefined;
   /** Respostas dos campos personalizados, prontas para exibir, por chave. */
   customText: Record<string, string>;
+  /** Produto do catálogo ligado a cada oportunidade (Configurações → Mensagens da prospecção). */
+  productOf?: (productId: string) => { name: string; description?: string } | undefined;
 }
 
 /** Troca {variavel} pelos valores; variáveis desconhecidas ficam como estão. */
@@ -403,6 +405,13 @@ export function generateProspecting(form: ProspectForm, settings: ProspectSettin
     produtora: settings.producer,
     oportunidade: lowerFirst(opportunityLabel),
   };
+  // {produto} e {descricao_produto}: produto ligado à oportunidade principal.
+  const productId = settings.metaOf("prospectOpportunity", primary)?.productId;
+  const product = typeof productId === "string" && productId ? settings.productOf?.(productId) : undefined;
+  if (product) {
+    vars.produto = product.name;
+    vars.descricao_produto = (product.description || "").trim();
+  }
   const fill = (texts: StyleTexts): StyleTexts => ({
     natural: fillTemplate(texts.natural, vars),
     direct: fillTemplate(texts.direct, vars),

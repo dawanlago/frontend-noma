@@ -19,6 +19,7 @@ const ENTITIES: { value: CustomFieldEntity; label: string; description: string }
     label: "Prospecção",
     description: "Aparecem no Gerador de Prospecção. Use {chave} nas mensagens para inserir a resposta.",
   },
+  { value: "budget", label: "Orçamentos", description: "Aparecem na Calculadora de Orçamento, no primeiro passo, e entram no resumo copiado." },
 ];
 
 const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [

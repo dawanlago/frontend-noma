@@ -272,6 +272,11 @@ export interface Funnel {
   stages: FunnelStage[];
   /** Etapa para onde vai a negociação aberta quando o contato responde um formulário de novo. */
   qualifiedStageId?: string;
+  /** Quem criou o funil e quem responde por ele. */
+  createdBy?: string;
+  createdByName?: string;
+  ownerId?: string;
+  ownerName?: string;
 }
 
 export interface LeadProduct {
@@ -497,6 +502,9 @@ export interface FinanceEntry extends Owned {
   bank: string;
   notes: string;
   installment?: { number: number; total: number };
+  /** Boleto da parcela: linha digitável e arquivo (PDF). */
+  boletoCode?: string;
+  boletoUrl?: string;
   recurringId?: string;
   leadId?: string;
   contactId?: string;
@@ -662,7 +670,7 @@ export interface OptionItem {
   meta: Record<string, unknown>;
 }
 
-export type CustomFieldEntity = "lead" | "contact" | "company" | "prospecting";
+export type CustomFieldEntity = "lead" | "contact" | "company" | "prospecting" | "budget";
 export type CustomFieldType = "text" | "textarea" | "number" | "date" | "select" | "multiselect";
 
 export interface CustomField {

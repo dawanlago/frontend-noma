@@ -113,6 +113,11 @@ export default function LeadCard({
             {lead.ownerName}
           </span>
         ) : null}
+        {lead.createdByName && lead.createdByName !== lead.ownerName ? (
+          <span className="chip bg-charcoal/[0.04] text-charcoal/50" title={`Criada por ${lead.createdByName}`}>
+            Criada por {lead.createdByName.split(" ")[0]}
+          </span>
+        ) : null}
       </div>
 
       {lead.eventDate ? (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCustomFieldDisplay } from "@/components/options/CustomFieldsInputs";
 import { itemTotal, type BudgetResult } from "@/lib/budget/calc";
 import { formatQuantity, type BudgetData } from "@/lib/budget/model";
 import { budgetSummaryText } from "@/lib/budget/summary";
@@ -30,6 +31,7 @@ function PriceRow({ label, hint, value }: { label: string; hint?: string; value:
 
 /** Resultado ao vivo da calculadora (coluna direita). */
 export default function BudgetResultPanel({ data, result, onUseValue }: BudgetResultPanelProps) {
+  const customDisplay = useCustomFieldDisplay("budget", data.custom);
   const { marginPercent, operationalPercent } = data;
   const hidden = new Set(data.hiddenFields);
   const [copied, setCopied] = useState(false);
@@ -55,7 +57,7 @@ export default function BudgetResultPanel({ data, result, onUseValue }: BudgetRe
   );
 
   async function copySummary() {
-    await copyText(budgetSummaryText(data, result));
+    await copyText(budgetSummaryText(data, result, customDisplay));
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
   }

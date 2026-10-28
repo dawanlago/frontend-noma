@@ -649,6 +649,34 @@ export function contractToHtml(doc: ContractDocument, logo?: string): string {
     }`;
 }
 
+/** Cor padrão da marca Noma (usada quando a empresa não definiu outra). */
+export const CONTRACT_DEFAULT_ACCENT = "#C8102E";
+
+/**
+ * Cor de destaque do contrato (títulos e filetes). Cores muito claras são escurecidas
+ * para continuarem legíveis sobre o papel branco; valor inválido volta ao vermelho Noma.
+ */
+export function contractAccent(color?: string | null): string {
+  const hex = (color || "").trim().replace(/^#/, "");
+  const full = /^[0-9a-f]{3}$/i.test(hex) ? hex.replace(/./g, "$&$&") : hex;
+  if (!/^[0-9a-f]{6}$/i.test(full)) return CONTRACT_DEFAULT_ACCENT;
+  const channels = [0, 2, 4].map((index) => parseInt(full.slice(index, index + 2), 16));
+  const luminance = (0.299 * channels[0] + 0.587 * channels[1] + 0.114 * channels[2]) / 255;
+  // Acima de ~55% de luminância o título some no branco: escurece mantendo o tom.
+  const factor = luminance > 0.55 ? 0.55 / luminance : 1;
+  return `#${channels.map((value) => Math.round(value * factor).toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+}
+
+/** CSS de impressão do contrato com a cor da marca nos títulos e filetes (o corpo continua preto). */
+export function contractPrintCss(accent: string = CONTRACT_DEFAULT_ACCENT) {
+  const color = contractAccent(accent);
+  return `${CONTRACT_PRINT_CSS}
+  h1 { color: ${color}; padding-bottom: 12px; border-bottom: 1.5px solid ${color}; }
+  h2 { color: ${color}; }
+  .sig .line { border-top-color: ${color}; }
+`;
+}
+
 export const CONTRACT_PRINT_CSS = `
   body { font-family: Georgia, "Times New Roman", serif; font-size: 12px; line-height: 1.65; }
   .logo { text-align: center; margin-bottom: 18px; }

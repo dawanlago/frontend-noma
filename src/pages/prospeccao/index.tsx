@@ -12,6 +12,7 @@ import ToolSection from "@/components/tools/ToolSection";
 import PageHeader from "@/components/ui/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanyName, useWorkspace } from "@/contexts/WorkspaceContext";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { useLocalDraft } from "@/hooks/useLocalDraft";
 import {
   generateProspecting,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/prospecting/generate";
 import { CHANNEL_OPTIONS, DEFAULT_PROSPECT, normalizeProspect, type ProspectForm } from "@/lib/prospecting/options";
 import { confirmDialog } from "@/components/ui/DialogHost";
+import { resources } from "@/lib/resources";
 
 const qualityBox: Record<BaseQuality, string> = {
   good: "border-sage/25 bg-sage/[0.06]",
@@ -47,6 +49,7 @@ export default function ProspectingPage() {
   const { user, can } = useAuth();
   const { labelOf, options, fieldsOf } = useWorkspace();
   const producer = useCompanyName();
+  const { data: products } = useAsyncData(() => resources.products.list(), []);
   const [draft, setForm, reset] = useLocalDraft<ProspectForm>("prospecting", DEFAULT_PROSPECT);
   const form = useMemo(() => normalizeProspect(draft), [draft]);
   // Respostas dos campos personalizados, para as variáveis {chave} das mensagens.
@@ -70,8 +73,9 @@ export default function ProspectingPage() {
         labelOf,
         metaOf: (list, value) => options.find((item) => item.list === list && item.value === value)?.meta,
         customText,
+        productOf: (id) => products?.find((item) => item._id === id),
       }),
-    [form, user?.name, producer, labelOf, options, customText],
+    [form, user?.name, producer, labelOf, options, customText, products],
   );
 
   function update(changes: Partial<ProspectForm>) {

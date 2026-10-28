@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { HiOutlineArrowRight, HiOutlineChartBar } from "react-icons/hi2";
 import BirthdayCard from "@/components/base/BirthdayCard";
+import { OrgBadge } from "@/components/layout/OrgSwitcher";
 import TaskChecklist from "@/components/tasks/TaskChecklist";
 import HideValuesToggle from "@/components/ui/HideValuesToggle";
 import MetricCard from "@/components/ui/MetricCard";
@@ -30,7 +31,8 @@ const startHere = [
 ];
 
 export default function HomePage() {
-  const { user, can } = useAuth();
+  const { user, can, switchOrg } = useAuth();
+  const orgs = user?.orgs || [];
   const { settings } = useWorkspace();
   const [ownerId, setOwnerId] = useState("");
   const { data } = useAsyncData(() => resources.dashboard({ ownerId }), [ownerId]);
@@ -80,6 +82,33 @@ export default function HomePage() {
           ) : null}
         </div>
       </section>
+
+      {orgs.length > 1 ? (
+        <section className="mb-6">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-charcoal/50">Seus CRMs</h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {orgs.map((item) => {
+              const active = item._id === user?.orgId;
+              return (
+                <button
+                  key={item._id}
+                  type="button"
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => !active && switchOrg(item._id)}
+                  className={`card flex items-center gap-3 p-4 text-left transition ${active ? "ring-2 ring-tan/40" : "hover:-translate-y-0.5 hover:shadow-lift"}`}
+                >
+                  <OrgBadge org={item} size={36} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold text-charcoal">{item.name}</span>
+                    <span className="block text-xs text-charcoal/50">{active ? "Aberto agora" : "Abrir este CRM"}</span>
+                  </span>
+                  {active ? null : <HiOutlineArrowRight className="h-4 w-4 text-charcoal/40" />}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-charcoal">Seu momento</h2>

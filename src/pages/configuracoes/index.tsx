@@ -3,6 +3,8 @@ import Link from "next/link";
 import {
   HiOutlineAdjustmentsHorizontal,
   HiOutlineClipboardDocumentList,
+  HiOutlineCodeBracket,
+  HiOutlinePuzzlePiece,
   HiOutlineFaceSmile,
   HiOutlineArrowRight,
   HiOutlineChartBar,
@@ -78,6 +80,20 @@ const settingsLinks = [
     title: "Usuários e acessos",
     description: "Cadastre a equipe e escolha o que cada pessoa pode acessar no sistema.",
     icon: HiOutlineUserGroup,
+    adminOnly: true,
+  },
+  {
+    href: "/configuracoes/integracoes",
+    title: "Integrações",
+    description: "WhatsApp (Z-API), assinatura de contratos (Assinafy) e inteligência artificial (Claude).",
+    icon: HiOutlinePuzzlePiece,
+    adminOnly: true,
+  },
+  {
+    href: "/configuracoes/automacao",
+    title: "Automação e API",
+    description: "Tokens de acesso, campos aceitos e exemplos para sistemas externos enviarem leads ao CRM.",
+    icon: HiOutlineCodeBracket,
     adminOnly: true,
   },
   {

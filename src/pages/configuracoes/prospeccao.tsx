@@ -6,6 +6,8 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
 import { DEFAULT_SEGMENTS, goalTexts, opportunityTexts, type SegmentCopy } from "@/lib/prospecting/generate";
 import { STYLES } from "@/lib/prospecting/options";
+import Select from "@/components/ui/Select";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { resources } from "@/lib/resources";
 import type { OptionItem } from "@/types";
 import { confirmDialog } from "@/components/ui/DialogHost";
@@ -35,6 +37,26 @@ const SEGMENT_FIELDS: { key: keyof SegmentCopy; label: string; hint: string }[] 
 
 function metaOf(options: OptionItem[]) {
   return (list: string, value: string) => options.find((item) => item.list === list && item.value === value)?.meta;
+}
+
+/** Produto do catálogo ligado à oportunidade: libera {produto} e {descricao_produto} nas mensagens. */
+function ProductLink({ item, onSave, busy }: { item: OptionItem; onSave: (productId: string) => void; busy: boolean }) {
+  const { data: products } = useAsyncData(() => resources.products.list(), []);
+  const value = typeof item.meta?.productId === "string" ? item.meta.productId : "";
+  return (
+    <label className="mb-3 block">
+      <span className="block text-[13px] font-semibold text-charcoal">Produto ligado</span>
+      <span className="mb-1 block text-xs text-charcoal/50">Opcional. Use {"{produto}"} e {"{descricao_produto}"} nas mensagens abaixo.</span>
+      <div className="max-w-sm">
+        <Select
+          value={value}
+          placeholder="Nenhum produto"
+          options={[{ value: "", label: "Nenhum produto" }, ...(products || []).map((product) => ({ value: product._id, label: product.name }))]}
+          onChange={(next) => !busy && next !== value && onSave(next)}
+        />
+      </div>
+    </label>
+  );
 }
 
 function MessageCard({ item }: { item: OptionItem }) {
@@ -105,6 +127,9 @@ function MessageCard({ item }: { item: OptionItem }) {
           </button>
         </div>
       </div>
+      {tab === "prospectOpportunity" ? (
+        <ProductLink item={item} busy={busy} onSave={(productId) => void save({ ...(item.meta || {}), productId }, "Produto ligado.")} />
+      ) : null}
       <div className="grid gap-3">
         {fields.map((field) => (
           <label key={field.key} className="block">

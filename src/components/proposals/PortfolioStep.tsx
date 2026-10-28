@@ -2,18 +2,20 @@ import { useState } from "react";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import Field from "@/components/tools/Field";
 import { driveThumbnail, extractDriveId, parseDriveLinks } from "@/lib/proposals/drive";
-import { uid } from "@/lib/proposals/model";
+import { uid, type PortfolioItem } from "@/lib/proposals/model";
 import { VIDEOS_PER_PAGE } from "@/lib/proposals/pages";
+import { formatBytes, isUploadedVideoUrl, videoPosterUrl, type UploadedVideo } from "@/lib/proposals/video";
 import { Callout, MoveControls, TextArea, TextInput, move, patchSection, type StepProps } from "./ui";
+import VideoUpload from "./VideoUpload";
 
-function Thumb({ id }: { id: string | null }) {
+function Thumb({ src, invalid }: { src: string; invalid: boolean }) {
   const [failed, setFailed] = useState(false);
   return (
     <div className="relative flex aspect-video w-full flex-none items-center justify-center overflow-hidden rounded-lg bg-charcoal/90 sm:w-40">
-      {id && !failed ? (
+      {src && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={driveThumbnail(id)}
+          src={src}
           alt=""
           referrerPolicy="no-referrer"
           className="absolute inset-0 h-full w-full object-cover"
@@ -23,13 +25,27 @@ function Thumb({ id }: { id: string | null }) {
       <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-charcoal">
         <PlayArrowRounded sx={{ fontSize: 20 }} />
       </span>
-      {!id ? (
+      {invalid ? (
         <span className="absolute inset-x-0 bottom-0 bg-burgundy/90 py-0.5 text-center text-[10px] font-semibold text-white">
           Link inválido
         </span>
       ) : null}
     </div>
   );
+}
+
+/** Vídeo enviado ao servidor (link do Cloudinary), em vez de link do Drive. */
+function isUploaded(item: PortfolioItem) {
+  return isUploadedVideoUrl(item.url);
+}
+
+function uploadedPatch(video: UploadedVideo) {
+  return { source: "upload" as const, url: video.url, publicId: video.publicId, bytes: video.bytes };
+}
+
+/** "meu-video_final.mp4" → "meu video final" (título inicial do trabalho). */
+function titleFromFile(name: string) {
+  return name.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim();
 }
 
 export default function PortfolioStep({ data, setData }: StepProps) {
@@ -56,6 +72,7 @@ export default function PortfolioStep({ data, setData }: StepProps) {
             url: link.url,
             title: `Trabalho ${String(list.length + index + 1).padStart(2, "0")}`,
             description: "",
+            source: "drive" as const,
           }));
         return [...list, ...fresh];
       });
@@ -63,7 +80,19 @@ export default function PortfolioStep({ data, setData }: StepProps) {
     setLinks(bad.join("\n"));
   }
 
-  const validCount = items.filter((item) => extractDriveId(item.url)).length;
+  function handleUploadedNew(video: UploadedVideo, file: File) {
+    setItems((list) => [
+      ...list,
+      {
+        id: uid(),
+        title: titleFromFile(file.name) || `Trabalho ${String(list.length + 1).padStart(2, "0")}`,
+        description: "",
+        ...uploadedPatch(video),
+      },
+    ]);
+  }
+
+  const validCount = items.filter((item) => extractDriveId(item.url) || isUploaded(item)).length;
   const pages = Math.ceil(validCount / VIDEOS_PER_PAGE);
 
   return (
@@ -108,10 +137,14 @@ export default function PortfolioStep({ data, setData }: StepProps) {
             <p className="mt-1 text-charcoal/60">Use o link de compartilhamento de um arquivo (…/file/d/ID/… ou …?id=ID).</p>
           </div>
         ) : null}
+        <div className="mt-4 border-t border-charcoal/10 pt-4">
+          <p className="mb-2 text-[13px] font-semibold text-charcoal">Ou envie o arquivo do vídeo</p>
+          <VideoUpload label="Enviar vídeo do computador" onUploaded={handleUploadedNew} />
+        </div>
         <div className="mt-3">
           <Callout>
             No Google Drive, deixe o arquivo como <strong>&quot;Qualquer pessoa com o link&quot; → Leitor</strong>. Sem isso o
-            cliente não consegue assistir nem ver a miniatura.
+            cliente não consegue assistir nem ver a miniatura. Vídeos enviados ficam no servidor e tocam direto na proposta.
           </Callout>
         </div>
       </div>
@@ -128,12 +161,14 @@ export default function PortfolioStep({ data, setData }: StepProps) {
         {items.length ? (
           <div className="space-y-3">
             {items.map((item, index) => {
-              const id = extractDriveId(item.url);
+              const uploaded = isUploaded(item);
+              const id = uploaded ? null : extractDriveId(item.url);
+              const thumb = uploaded ? videoPosterUrl(item.url) : id ? driveThumbnail(id) : "";
               const update = (patch: Partial<typeof item>) =>
                 setItems((list) => list.map((current) => (current.id === item.id ? { ...current, ...patch } : current)));
               return (
                 <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-charcoal/10 bg-surface p-3 sm:flex-row">
-                  <Thumb key={id || "invalid"} id={id} />
+                  <Thumb key={thumb || "invalid"} src={thumb} invalid={!uploaded && !id} />
                   <div className="min-w-0 flex-1 space-y-2">
                     <TextInput value={item.title} onChange={(title) => update({ title })} placeholder="Título do trabalho" />
                     <TextInput
@@ -141,12 +176,34 @@ export default function PortfolioStep({ data, setData }: StepProps) {
                       onChange={(description) => update({ description })}
                       placeholder="Descrição curta (opcional)"
                     />
-                    <input
-                      className={`input-search !py-1.5 text-xs ${id ? "text-charcoal/50" : "!border-burgundy/40 text-burgundy"}`}
-                      value={item.url}
-                      onChange={(event) => update({ url: event.target.value })}
-                      aria-label="Link do Google Drive"
-                    />
+                    {uploaded ? (
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                          <span className="chip bg-sage/10 text-sage">
+                            Vídeo enviado{item.bytes ? ` · ${formatBytes(item.bytes)}` : ""}
+                          </span>
+                          <button
+                            type="button"
+                            className="font-semibold text-charcoal/55 hover:text-charcoal hover:underline"
+                            onClick={() => update({ source: "drive", url: "", publicId: "", bytes: 0 })}
+                          >
+                            Usar link do Drive
+                          </button>
+                        </div>
+                        <VideoUpload label="Trocar vídeo" onUploaded={(video) => update(uploadedPatch(video))} />
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          className={`input-search !py-1.5 text-xs ${id ? "text-charcoal/50" : "!border-burgundy/40 text-burgundy"}`}
+                          value={item.url}
+                          onChange={(event) => update({ url: event.target.value, source: "drive" })}
+                          placeholder="Link do Google Drive"
+                          aria-label="Link do Google Drive"
+                        />
+                        <VideoUpload label="Enviar vídeo no lugar do link" onUploaded={(video) => update(uploadedPatch(video))} />
+                      </>
+                    )}
                   </div>
                   <div className="flex sm:flex-col">
                     <MoveControls
@@ -163,7 +220,7 @@ export default function PortfolioStep({ data, setData }: StepProps) {
           </div>
         ) : (
           <p className="rounded-xl border border-dashed border-charcoal/15 px-4 py-6 text-center text-sm text-charcoal/50">
-            Nenhum vídeo ainda. Cole os links acima para montar o portfólio.
+            Nenhum vídeo ainda. Cole os links ou envie um arquivo acima para montar o portfólio.
           </p>
         )}
       </div>

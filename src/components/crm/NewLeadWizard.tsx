@@ -9,6 +9,7 @@ import { resources } from "@/lib/resources";
 import type { Company, Contact, LeadProduct, LeadTemperature, Product } from "@/types";
 import { formatCurrencyBRL, maskPhone } from "@/utils/format";
 import DealProducts from "./DealProducts";
+import { LeadLabelPicker } from "./LeadLabels";
 import { TemperatureBadge, TemperaturePicker } from "./Temperature";
 
 interface NewLeadWizardProps {
@@ -138,6 +139,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
   const [products, setProducts] = useState<LeadProduct[]>([]);
   const [customValue, setCustomValue] = useState("");
   const [temperature, setTemperature] = useState<LeadTemperature>("warm");
+  const [labelIds, setLabelIds] = useState<string[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
@@ -161,6 +163,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
     setProducts([]);
     setCustomValue("");
     setTemperature("warm");
+    setLabelIds([]);
     setError("");
     created.current = {};
     void Promise.all([resources.contacts.list(), resources.companies.list(), resources.products.list()])
@@ -251,7 +254,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
         contactId = (await resources.contacts.createOrReuse({ name: contact.name.trim(), phone, kinds: ["lead"], companyId }))._id;
         created.current.contactId = contactId;
       }
-      await onSave({ ...draft, name: name.trim(), contactId, companyId, products, customValue, temperature });
+      await onSave({ ...draft, name: name.trim(), contactId, companyId, products, customValue, temperature, labelIds });
     } catch (err) {
       setError(apiError(err, "Não foi possível criar a negociação."));
     } finally {
@@ -510,6 +513,10 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
                     <div>
                       <Label>Termômetro</Label>
                       <TemperaturePicker value={temperature} onChange={setTemperature} />
+                    </div>
+                    <div>
+                      <Label>Etiquetas</Label>
+                      <LeadLabelPicker value={labelIds} onChange={setLabelIds} />
                     </div>
                     <Tip>Opcional. Você pode vincular produtos cadastrados, informar um valor ou deixar para depois.</Tip>
                   </>
