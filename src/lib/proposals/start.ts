@@ -22,15 +22,17 @@ async function getData(id: string) {
 
 /**
  * Proposta em branco já com "Sua empresa", contatos do fechamento e "Identidade visual"
- * da proposta mais recente do usuário (para não redigitar). Sem proposta anterior: padrão.
+ * da proposta mais recente do usuário (para não redigitar). Sem proposta anterior: padrão,
+ * com a logo da produtora (`logo`) já preenchida.
  */
-export async function newProposalData(userId?: string): Promise<ProposalData> {
+export async function newProposalData(userId?: string, logo = ""): Promise<ProposalData> {
   const data = defaultData();
+  data.company.logo = logo;
   try {
     const [last] = await proposals.list(userId ? { ownerId: userId } : undefined);
     if (!last) return data;
     const previous = await getData(last._id);
-    data.company = previous.company;
+    data.company = { ...previous.company, logo: previous.company.logo || logo };
     data.identity = previous.identity;
     data.closing = { ...data.closing, company: previous.closing.company, site: previous.closing.site, contact: previous.closing.contact };
     data.structure = previous.structure;

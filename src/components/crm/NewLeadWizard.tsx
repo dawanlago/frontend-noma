@@ -6,9 +6,10 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
 import { emptyLeadForm, formTotal, type LeadFormState } from "@/lib/crm/model";
 import { resources } from "@/lib/resources";
-import type { Company, Contact, LeadProduct, Product } from "@/types";
+import type { Company, Contact, LeadProduct, LeadTemperature, Product } from "@/types";
 import { formatCurrencyBRL, maskPhone } from "@/utils/format";
 import DealProducts from "./DealProducts";
+import { TemperatureBadge, TemperaturePicker } from "./Temperature";
 
 interface NewLeadWizardProps {
   open: boolean;
@@ -136,6 +137,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
   const [phone, setPhone] = useState("");
   const [products, setProducts] = useState<LeadProduct[]>([]);
   const [customValue, setCustomValue] = useState("");
+  const [temperature, setTemperature] = useState<LeadTemperature>("warm");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
@@ -158,6 +160,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
     setPhone("");
     setProducts([]);
     setCustomValue("");
+    setTemperature("warm");
     setError("");
     created.current = {};
     void Promise.all([resources.contacts.list(), resources.companies.list(), resources.products.list()])
@@ -248,7 +251,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
         contactId = (await resources.contacts.createOrReuse({ name: contact.name.trim(), phone, kinds: ["lead"], companyId }))._id;
         created.current.contactId = contactId;
       }
-      await onSave({ ...draft, name: name.trim(), contactId, companyId, products, customValue });
+      await onSave({ ...draft, name: name.trim(), contactId, companyId, products, customValue, temperature });
     } catch (err) {
       setError(apiError(err, "Não foi possível criar a negociação."));
     } finally {
@@ -273,6 +276,11 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
           ) : (
             <Bar className="mt-1.5 h-3 w-1/2" />
           )
+        ) : null}
+        {step === "value" ? (
+          <div className="mt-2">
+            <TemperatureBadge value={temperature} />
+          </div>
         ) : null}
         <div className="mt-3">
           {total > 0 ? (
@@ -499,6 +507,10 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
                       <Label>{products.length ? "Valor avulso (somado aos produtos)" : "Valor avulso"}</Label>
                       <MoneyInput value={customValue} onChange={setCustomValue} />
                     </label>
+                    <div>
+                      <Label>Termômetro</Label>
+                      <TemperaturePicker value={temperature} onChange={setTemperature} />
+                    </div>
                     <Tip>Opcional. Você pode vincular produtos cadastrados, informar um valor ou deixar para depois.</Tip>
                   </>
                 ) : null}

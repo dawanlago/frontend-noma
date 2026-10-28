@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Head from "next/head";
-import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineTrash } from "react-icons/hi2";
+import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlinePencilSquare, HiOutlineTrash } from "react-icons/hi2";
 import OptionListEditor from "@/components/options/OptionListEditor";
 import SettingsHeader from "@/components/settings/SettingsHeader";
 import Select from "@/components/ui/Select";
@@ -38,6 +38,7 @@ export default function CustomFieldsPage() {
   // Negociações: "" = campo de todos os funis.
   const [funnelId, setFunnelId] = useState("");
   const [openOptions, setOpenOptions] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; label: string } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const fields = fieldsOf(entity);
@@ -77,6 +78,14 @@ export default function CustomFieldsPage() {
         resources.customFields.update(target._id, { order: current.order }),
       ]),
     );
+  }
+
+  // A chave {key} não muda ao renomear: os valores preenchidos e as mensagens continuam valendo.
+  function saveRename(field: CustomField) {
+    const next = renaming?.label.trim() || "";
+    setRenaming(null);
+    if (!next || next === field.label) return;
+    void run(() => resources.customFields.update(field._id, { label: next }));
   }
 
   async function handleDelete(field: CustomField) {
@@ -142,7 +151,37 @@ export default function CustomFieldsPage() {
               <li key={field._id} className="rounded-lg border border-charcoal/[0.08]">
                 <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-charcoal">{field.label}</p>
+                    {renaming?.id === field._id ? (
+                      <input
+                        className="input-search !h-8 !py-1 text-sm font-semibold"
+                        autoFocus
+                        value={renaming.label}
+                        aria-label="Novo nome do campo"
+                        onChange={(event) => setRenaming({ id: field._id, label: event.target.value })}
+                        onBlur={() => saveRename(field)}
+                        onKeyDown={(event) => {
+                          // Enter salva pelo onBlur (evita salvar duas vezes).
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            event.currentTarget.blur();
+                          }
+                          if (event.key === "Escape") setRenaming(null);
+                        }}
+                      />
+                    ) : (
+                      <p className="flex items-center gap-1 text-sm font-semibold text-charcoal">
+                        {field.label}
+                        <button
+                          type="button"
+                          className="btn-ghost h-6 w-6"
+                          aria-label="Renomear"
+                          title="Renomear"
+                          onClick={() => setRenaming({ id: field._id, label: field.label })}
+                        >
+                          <HiOutlinePencilSquare className="h-3.5 w-3.5" />
+                        </button>
+                      </p>
+                    )}
                     <p className="text-xs text-charcoal/50">
                       {FIELD_TYPES.find((item) => item.value === field.type)?.label} · chave{" "}
                       <code className="rounded bg-beige px-1">{`{${field.key}}`}</code>

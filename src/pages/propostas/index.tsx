@@ -11,6 +11,7 @@ import Modal from "@/components/ui/Modal";
 import PageHeader from "@/components/ui/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
+import { useBrandLogo } from "@/hooks/useBrandLogo";
 import { titleOf, type ProposalData } from "@/lib/proposals/model";
 import { applyPrefill, newProposalData, startFromProposal, type ProposalPrefill } from "@/lib/proposals/start";
 import { timeAgo } from "@/lib/proposals/views";
@@ -58,6 +59,7 @@ function shareBadges(doc: Omit<ToolDocument, "data">) {
 export default function ProposalsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const brandLogo = useBrandLogo();
   const id = queryValue(router.query.id);
   const valor = queryValue(router.query.valor);
   const cliente = queryValue(router.query.cliente);
@@ -91,7 +93,7 @@ export default function ProposalsPage() {
     setCreating(true);
     setError("");
     try {
-      const data: ProposalData = applyPrefill(await newProposalData(user?._id), extra);
+      const data: ProposalData = applyPrefill(await newProposalData(user?._id, brandLogo), extra);
       const doc = await resources.tools.proposals.create({ title: titleOf(data), data });
       await openCreated(doc._id, replace);
     } catch (err) {

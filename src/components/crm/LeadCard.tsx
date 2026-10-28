@@ -14,6 +14,7 @@ import { daysSince, eventLabel, formatDays, isLeadOverdue } from "@/lib/crm/metr
 import { leadDateOnly, leadSubtitle } from "@/lib/crm/model";
 import type { FunnelStage, Lead } from "@/types";
 import { formatCurrencyBRL, formatDateOnly } from "@/utils/format";
+import { LeadLabelChips } from "./LeadLabels";
 import { TemperatureBadge } from "./Temperature";
 
 interface LeadCardProps {
@@ -100,6 +101,7 @@ export default function LeadCard({
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <TemperatureBadge value={lead.temperature} />
+        <LeadLabelChips ids={lead.labelIds} />
         {subStage ? (
           <span className="chip bg-charcoal/[0.06] text-charcoal/70" title="Microetapa">
             ↳ {subStage.name}

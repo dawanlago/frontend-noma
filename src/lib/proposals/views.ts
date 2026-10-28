@@ -23,7 +23,19 @@ export function timeAgo(date: string | Date, now = Date.now()) {
   return `há ${months} ${months === 1 ? "mês" : "meses"}`;
 }
 
-const DEVICE_LABEL: Record<ProposalViewSession["device"], string> = {
+/** O link manda sinal a cada 15 s; sem sinal há mais tempo que isso, a sessão já foi fechada. */
+const STILL_OPEN_MS = 45_000;
+
+/** "Aberta agora" ou "Fechada às 14:32" (mais "há 2h" quando não foi hoje). */
+export function closedLabel(session: Pick<ProposalViewSession, "lastSeenAt">, now = Date.now()) {
+  const last = new Date(session.lastSeenAt);
+  if (now - last.getTime() < STILL_OPEN_MS) return "Aberta agora";
+  const time = last.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const sameDay = last.toDateString() === new Date(now).toDateString();
+  return sameDay ? `Fechada às ${time}` : `Fechada às ${time} (${timeAgo(last, now)})`;
+}
+
+const DEVICE_LABEL:Record<ProposalViewSession["device"], string> = {
   mobile: "Celular",
   tablet: "Tablet",
   desktop: "Computador",

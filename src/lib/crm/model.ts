@@ -14,6 +14,7 @@ export interface LeadFormState {
   products: LeadProduct[];
   customValue: string;
   temperature: LeadTemperature;
+  labelIds: string[];
   nextActionDate: string;
   notes: string;
   custom: CustomValues;
@@ -31,6 +32,7 @@ export function emptyLeadForm(funnel?: Funnel): LeadFormState {
     products: [],
     customValue: "",
     temperature: "warm",
+    labelIds: [],
     nextActionDate: "",
     notes: "",
     custom: {},
@@ -53,6 +55,7 @@ export function leadToForm(lead: Lead): LeadFormState {
     products: lead.products || [],
     customValue: lead.customValue ? maskCurrencyBRL(lead.customValue) : "",
     temperature: lead.temperature || "warm",
+    labelIds: lead.labelIds || [],
     nextActionDate: leadDateOnly(lead),
     notes: lead.notes || "",
     custom: lead.custom || {},
@@ -72,6 +75,7 @@ export function formToPayload(form: LeadFormState): LeadPayload {
     products: form.products,
     customValue: parseCurrencyBRL(form.customValue),
     temperature: form.temperature,
+    labelIds: form.labelIds,
     nextActionDate: form.nextActionDate || null,
     notes: form.notes,
     custom: form.custom,

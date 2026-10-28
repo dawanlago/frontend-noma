@@ -1,15 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { resources } from "@/lib/resources";
-import type { AppSettings, CustomField, CustomFieldEntity, Funnel, OptionItem } from "@/types";
+import type { AppSettings, CustomField, CustomFieldEntity, Funnel, Label, OptionItem } from "@/types";
 
-type Part = "settings" | "options" | "customFields" | "funnels";
+type Part = "settings" | "options" | "customFields" | "funnels" | "labels";
 
 interface WorkspaceValue {
   settings: AppSettings | null;
   options: OptionItem[];
   customFields: CustomField[];
   funnels: Funnel[];
+  /** Etiquetas das negociações. */
+  labels: Label[];
   isReady: boolean;
   optionsOf: (list: string) => OptionItem[];
   /** Texto de exibição de um valor gravado (cai no próprio valor se a opção foi apagada). */
@@ -32,6 +34,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [options, setOptions] = useState<OptionItem[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [funnels, setFunnels] = useState<Funnel[]>([]);
+  const [labels, setLabels] = useState<Label[]>([]);
   const [isReady, setIsReady] = useState(false);
 
   const reload = useCallback(async (...parts: Part[]) => {
@@ -41,6 +44,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (all || parts.includes("options")) jobs.push(resources.options.list().then(setOptions));
     if (all || parts.includes("customFields")) jobs.push(resources.customFields.list().then(setCustomFields));
     if (all || parts.includes("funnels")) jobs.push(resources.funnels.list().then(setFunnels));
+    if (all || parts.includes("labels")) jobs.push(resources.labels.list().then(setLabels));
     await Promise.allSettled(jobs);
   }, []);
 
@@ -88,6 +92,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       options,
       customFields,
       funnels,
+      labels,
       isReady,
       optionsOf,
       labelOf,
@@ -98,7 +103,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setSettings,
       setFunnels,
     }),
-    [settings, options, customFields, funnels, isReady, optionsOf, labelOf, fieldsOf, reload, upsertOption, dropOption],
+    [settings, options, customFields, funnels, labels, isReady, optionsOf, labelOf, fieldsOf, reload, upsertOption, dropOption],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

@@ -10,6 +10,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanyName, useWorkspace } from "@/contexts/WorkspaceContext";
+import { useBrandLogo } from "@/hooks/useBrandLogo";
 import { useToolDocument } from "@/hooks/useToolDocument";
 import { briefingsApi } from "@/lib/briefing/api";
 import { briefingPrintCss, briefingToHtml, briefingToText, buildBriefing } from "@/lib/briefing/format";
@@ -142,13 +143,12 @@ function StylePicker({ data, onChange }: { data: BriefingData; onChange: (style:
           </button>
         ) : null}
       </div>
-      {brand?.logo ? (
-        <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-charcoal/70">
-          <input type="checkbox" checked={data.style.showLogo} onChange={(e) => onChange({ showLogo: e.target.checked })} />
-          Incluir o logo da produtora no PDF
-        </label>
-      ) : can("configuracoes") ? (
-        <p className="mt-3 text-xs text-charcoal/50">Envie o logo em Configurações → Geral e identidade visual.</p>
+      <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-charcoal/70">
+        <input type="checkbox" checked={data.style.showLogo} onChange={(e) => onChange({ showLogo: e.target.checked })} />
+        Incluir o logo da produtora no PDF
+      </label>
+      {!brand?.logo && can("configuracoes") ? (
+        <p className="mt-1 text-xs text-charcoal/50">Usando o logo da Noma. Para outro, envie em Configurações → Geral e identidade visual.</p>
       ) : null}
       {status ? <p className="mt-2 text-xs text-charcoal/60">{status}</p> : null}
     </section>
@@ -167,6 +167,7 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
   });
   const [busy, setBusy] = useState(false);
   const summary = useMemo(() => (data ? buildBriefing(data) : null), [data]);
+  const logo = useBrandLogo();
 
   if (isLoading) {
     return (
@@ -222,7 +223,7 @@ export default function BriefingEditor({ id, onBack, onDuplicate, onDelete }: Br
 
   function handlePrint() {
     if (!summary || !data) return;
-    const brand = { color, logo: data.style.showLogo ? settings?.brand.logo || "" : "", companyName };
+    const brand = { color, logo: data.style.showLogo ? logo : "", companyName };
     printDocument(`Briefing — ${titleOf(data)}`, briefingToHtml(summary, brand), briefingPrintCss(color));
   }
 

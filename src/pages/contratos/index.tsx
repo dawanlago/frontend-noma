@@ -9,6 +9,7 @@ import SavedDocuments from "@/components/tools/SavedDocuments";
 import PageHeader from "@/components/ui/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAsyncData } from "@/hooks/useAsyncData";
+import { useBrandLogo } from "@/hooks/useBrandLogo";
 import { contractsApi } from "@/lib/contracts/api";
 import { defaultData, titleOf } from "@/lib/contracts/model";
 import { resources } from "@/lib/resources";
@@ -20,6 +21,7 @@ function apiError(err: unknown, fallback: string) {
 
 function ContractList({ onOpen }: { onOpen: (id: string) => void }) {
   const { can } = useAuth();
+  const brandLogo = useBrandLogo();
   const [ownerId, setOwnerId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -30,6 +32,7 @@ function ContractList({ onOpen }: { onOpen: (id: string) => void }) {
     setActionError("");
     try {
       const initial = defaultData();
+      initial.logo = brandLogo;
       // Com o contrato da produtora cadastrado, ele é o ponto de partida.
       const templates = await resources.contractTemplates.list().catch(() => []);
       if (templates.length) initial.type = "custom";

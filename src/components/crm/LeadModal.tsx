@@ -18,6 +18,7 @@ import type { Company, Contact, Lead, Product } from "@/types";
 import { formatCurrencyBRL } from "@/utils/format";
 import DealProducts from "./DealProducts";
 import FunnelEditor from "./FunnelEditor";
+import { LeadLabelPicker } from "./LeadLabels";
 import NewLeadWizard from "./NewLeadWizard";
 import { TemperaturePicker } from "./Temperature";
 
@@ -239,6 +240,9 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
 
           <Field label="Termômetro" group>
             <TemperaturePicker value={form.temperature} onChange={(temperature) => set("temperature", temperature)} />
+          </Field>
+          <Field label="Etiquetas" group full>
+            <LeadLabelPicker value={form.labelIds} onChange={(labelIds) => set("labelIds", labelIds)} />
           </Field>
           <Field label="Próxima ação">
             <input type="date" className="input-search" value={form.nextActionDate} onChange={(e) => set("nextActionDate", e.target.value)} />

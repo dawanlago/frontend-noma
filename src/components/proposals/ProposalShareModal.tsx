@@ -7,7 +7,7 @@ import RefreshRounded from "@mui/icons-material/RefreshRounded";
 import { confirmDialog } from "@/components/ui/DialogHost";
 import Modal from "@/components/ui/Modal";
 import { apiError } from "@/lib/errors";
-import { deviceLabel, eventDevice, eventLabel, formatDuration, proposalLinkUrl, timeAgo } from "@/lib/proposals/views";
+import { closedLabel, deviceLabel, eventDevice, eventLabel, formatDuration, proposalLinkUrl, timeAgo } from "@/lib/proposals/views";
 import { resources } from "@/lib/resources";
 import type { ProposalShare } from "@/types";
 import { copyText } from "@/utils/document";
@@ -220,7 +220,10 @@ export default function ProposalShareModal({ id, open, onClose, onChange, before
               {share.sessions.map((session) => (
                 <li key={session._id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-charcoal">{formatDateTime(session.openedAt)}</p>
+                    <p className="text-sm font-medium text-charcoal">
+                      {formatDateTime(session.openedAt)}
+                      <span className="ml-2 text-xs font-normal text-charcoal/55">{closedLabel(session)}</span>
+                    </p>
                     <p className="flex items-center gap-1 text-xs text-charcoal/50">
                       <DevicesRounded sx={{ fontSize: 14 }} />
                       {deviceLabel(session)}

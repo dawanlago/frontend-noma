@@ -3,6 +3,7 @@ import { leadDateOnly } from "@/lib/crm/model";
 import type { Funnel, Lead } from "@/types";
 import { formatCurrencyBRL, formatDateOnly } from "@/utils/format";
 import StageChip from "./StageChip";
+import { LeadLabelChips } from "./LeadLabels";
 import { TemperatureBadge } from "./Temperature";
 
 interface LeadsTableProps {
@@ -42,7 +43,10 @@ export default function LeadsTable({ leads, funnels, today, showOwner, onOpen }:
                   <td className="px-4 py-3 text-charcoal/70">{[lead.contactName, lead.company].filter(Boolean).join(" · ") || "—"}</td>
                   <td className="px-4 py-3">{stage ? <StageChip kind={stage.kind} label={stage.name} /> : "—"}</td>
                   <td className="px-4 py-3">
-                    <TemperatureBadge value={lead.temperature} />
+                    <div className="flex flex-wrap gap-1">
+                      <TemperatureBadge value={lead.temperature} />
+                      <LeadLabelChips ids={lead.labelIds} />
+                    </div>
                   </td>
                   <td data-money className="px-4 py-3 text-right font-semibold tabular-nums text-charcoal">{formatCurrencyBRL(lead.value || 0)}</td>
                   <td className={`px-4 py-3 ${overdue ? "font-semibold text-burgundy" : "text-charcoal/70"}`}>

@@ -45,7 +45,7 @@ export default function CrmPage() {
   const { user, can, seesAll } = useAuth();
   // Quem tem o CRM no nível "todos" vê de quem é cada negociação e filtra por usuário.
   const isAdmin = seesAll("crm");
-  const { funnels, isReady, labelOf } = useWorkspace();
+  const { funnels, isReady, labelOf, labels } = useWorkspace();
   const [tab, setTab] = useState<CrmTab>("pipeline");
   const [funnelId, setFunnelId] = useState("");
   const [ownerId, setOwnerId] = useState("");
@@ -108,6 +108,13 @@ export default function CrmPage() {
           key: "temperature",
           label: LEAD_TEMPERATURES.find((item) => item.value === filters.temperature)?.label || filters.temperature,
           onRemove: () => setFilters((f) => ({ ...f, temperature: "" })),
+        }
+      : null,
+    filters.label
+      ? {
+          key: "label",
+          label: `Etiqueta: ${labels.find((item) => item._id === filters.label)?.name || "—"}`,
+          onRemove: () => setFilters((f) => ({ ...f, label: "" })),
         }
       : null,
     filters.month
@@ -391,6 +398,14 @@ export default function CrmPage() {
           placeholder="Termômetro"
           options={[{ value: "", label: "Todos os termômetros" }, ...LEAD_TEMPERATURES.map((item) => ({ value: item.value, label: item.label }))]}
         />
+        {labels.length ? (
+          <Select
+            value={filters.label}
+            onChange={(label) => setFilters({ ...filters, label })}
+            placeholder="Etiqueta"
+            options={[{ value: "", label: "Todas as etiquetas" }, ...labels.map((item) => ({ value: item._id, label: item.name }))]}
+          />
+        ) : null}
         <Select
           value={filters.month}
           onChange={(month) => setFilters({ ...filters, month })}

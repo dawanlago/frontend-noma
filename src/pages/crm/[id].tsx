@@ -19,6 +19,7 @@ import LeadOwnerField from "@/components/crm/LeadOwnerField";
 import { useLostReason } from "@/components/crm/LostReasonDialog";
 import SendNpsDialog from "@/components/nps/SendNpsDialog";
 import StageChip from "@/components/crm/StageChip";
+import { LeadLabelChips } from "@/components/crm/LeadLabels";
 import { TemperatureBadge } from "@/components/crm/Temperature";
 import LeadPayments from "@/components/crm/LeadPayments";
 import WonNotice from "@/components/crm/WonNotice";
@@ -34,6 +35,7 @@ import { resources } from "@/lib/resources";
 import type { Contact, FinanceEntry, Lead, LeadComment, LeadStatus, Task } from "@/types";
 import { formatCurrencyBRL, formatDateOnly, formatDateTime, instagramLink, whatsappLink } from "@/utils/format";
 import { confirmDialog } from "@/components/ui/DialogHost";
+import HideValuesToggle from "@/components/ui/HideValuesToggle";
 
 function Section({ title, children, actions }: { title: string; children: React.ReactNode; actions?: React.ReactNode }) {
   return (
@@ -314,6 +316,7 @@ export default function LeadDashboardPage() {
               {stage ? <StageChip kind={stage.kind} label={stage.name} /> : null}
               <span className="chip bg-charcoal/[0.06] text-charcoal/65">{LEAD_STATUS_LABELS[lead.status]}</span>
               <TemperatureBadge value={lead.temperature} />
+              <LeadLabelChips ids={lead.labelIds} />
               {lead.status === "lost" && lead.lostReason ? (
                 <span className="chip bg-burgundy/10 text-burgundy" title={lead.lostNote || undefined}>
                   Motivo: {labelOf("lostReason", lead.lostReason)}
@@ -457,8 +460,9 @@ export default function LeadDashboardPage() {
         </div>
 
         <aside className="space-y-6 self-start">
-          <Section title="Resumo">
-            <p className="text-3xl font-semibold tracking-tight text-charcoal">{formatCurrencyBRL(lead.value || 0)}</p>
+          <Section title="Resumo" actions={<HideValuesToggle />}>
+            <p data-money className="text-3xl font-semibold tracking-tight text-charcoal">{formatCurrencyBRL(lead.value || 0)}</p>
+            {lead.valueSetAt ? <p className="mt-1 text-xs text-charcoal/50">Valor lançado em {formatDateTime(lead.valueSetAt)}</p> : null}
             {lead.products.length ? (
               <ul className="mt-3 space-y-1 text-sm">
                 {lead.products.map((item, index) => (
@@ -473,7 +477,7 @@ export default function LeadDashboardPage() {
                 {lead.customValue ? (
                   <li className="flex justify-between gap-3">
                     <span className="text-charcoal/70">Valor avulso</span>
-                    <span className="tabular-nums text-charcoal">{formatCurrencyBRL(lead.customValue)}</span>
+                    <span data-money className="tabular-nums text-charcoal">{formatCurrencyBRL(lead.customValue)}</span>
                   </li>
                 ) : null}
               </ul>
@@ -527,10 +531,15 @@ export default function LeadDashboardPage() {
                 value={lead.lastContactAt ? `${formatDateTime(lead.lastContactAt)} (há ${formatDays(daysSince(lead.lastContactAt) ?? 0)})`.replace("(há hoje)", "(hoje)") : "Nenhum registrado"}
               />
               {lead.wonAt ? <Info label="Venda feita em" value={formatDateTime(lead.wonAt)} /> : null}
-              {lead.offeredValue ? <Info label="Valor oferecido" value={formatCurrencyBRL(lead.offeredValue)} /> : null}
-              {lead.closedValue !== undefined && lead.closedValue !== null ? <Info label="Valor fechado" value={formatCurrencyBRL(lead.closedValue)} /> : null}
+              {lead.offeredValue ? <Info label="Valor oferecido" value={<span data-money>{formatCurrencyBRL(lead.offeredValue)}</span>} /> : null}
+              {lead.closedValue !== undefined && lead.closedValue !== null ? (
+                <Info label="Valor fechado" value={<span data-money>{formatCurrencyBRL(lead.closedValue)}</span>} />
+              ) : null}
               {discount ? (
-                <Info label="Desconto" value={`${formatCurrencyBRL(discount.value)} (${(discount.percent * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%)`} />
+                <Info
+                  label="Desconto"
+                  value={<span data-money>{`${formatCurrencyBRL(discount.value)} (${(discount.percent * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%)`}</span>}
+                />
               ) : null}
               {customDisplay.map((item) => (
                 <Info key={item.label} label={item.label} value={item.value} />

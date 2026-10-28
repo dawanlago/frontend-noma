@@ -5,11 +5,13 @@ export interface LeadFilters {
   search: string;
   service: string;
   temperature: string;
+  /** Id da etiqueta ("" = todas). */
+  label: string;
   /** "" = todos; "1".."12" = mês de criação no ano corrente. */
   month: string;
 }
 
-export const EMPTY_LEAD_FILTERS: LeadFilters = { search: "", service: "", temperature: "", month: "" };
+export const EMPTY_LEAD_FILTERS: LeadFilters = { search: "", service: "", temperature: "", label: "", month: "" };
 
 function normalizeText(value: string) {
   return value
@@ -27,6 +29,7 @@ export function filterLeads(leads: Lead[], filters: LeadFilters, now = new Date(
     if (term && !normalizeText(`${lead.name} ${lead.contactName} ${lead.company}`).includes(term)) return false;
     if (filters.service && lead.service !== filters.service) return false;
     if (filters.temperature && lead.temperature !== filters.temperature) return false;
+    if (filters.label && !lead.labelIds?.includes(filters.label)) return false;
     if (month) {
       const created = new Date(lead.createdAt);
       if (created.getFullYear() !== year || created.getMonth() + 1 !== month) return false;

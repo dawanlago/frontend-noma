@@ -317,7 +317,11 @@ export interface Lead extends Owned {
   products: LeadProduct[];
   customValue: number;
   value: number;
+  /** Quando o valor foi lançado ou alterado pela última vez. */
+  valueSetAt?: string;
   temperature: LeadTemperature;
+  /** Etiquetas (Configurações → Etiquetas). */
+  labelIds?: string[];
   nextActionDate?: string;
   source: string;
   notes: string;
