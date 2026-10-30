@@ -39,7 +39,7 @@ export default function Modal({
         slotProps={{
           paper: {
             sx: {
-              width: { xs: "100%", sm: size === "md" ? 480 : 640 },
+              width: { xs: "100%", sm: size === "md" ? 480 : size === "xl" ? 800 : 640 },
               maxWidth: "100vw",
               display: "flex",
               flexDirection: "column",

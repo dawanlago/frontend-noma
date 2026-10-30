@@ -127,11 +127,11 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
                     saveEdit();
                   }}
                 >
-                  <div className="w-[140px]">
+                  <div className="w-full min-w-0 sm:w-[140px]">
                     <OptionSelect list="taskType" value={editing.type} onChange={(next) => setEditing({ ...editing, type: next })} emptyLabel="Tipo" />
                   </div>
                   <input
-                    className="input-search !py-1.5 min-w-[160px] flex-1"
+                    className="input-search !py-1.5 w-full min-w-0 flex-1 sm:min-w-[160px]"
                     value={editing.title}
                     autoFocus
                     aria-label="Nome da atividade"
@@ -139,7 +139,7 @@ export default function TaskChecklist({ tasks, onChange, leadId, showLead, showO
                     onKeyDown={(event) => event.key === "Escape" && setEditing(null)}
                   />
                   <input
-                    className="input-search !w-auto !py-1.5"
+                    className="input-search !w-full !py-1.5 sm:!w-auto"
                     type="date"
                     value={editing.dueDate}
                     aria-label="Prazo"

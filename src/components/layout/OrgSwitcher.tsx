@@ -33,7 +33,7 @@ export default function OrgSwitcher() {
   const canSwitch = orgs.length > 1 || user?.isSuperAdmin;
   const name = org?.name || companyName;
 
-  if (!canSwitch) return <span className="text-sm font-semibold text-charcoal">{name}</span>;
+  if (!canSwitch) return <span className="block max-w-[min(240px,46vw)] truncate text-sm font-semibold text-charcoal sm:max-w-[240px]">{name}</span>;
 
   return (
     <>
@@ -42,7 +42,7 @@ export default function OrgSwitcher() {
         aria-haspopup="menu"
         aria-expanded={Boolean(anchor)}
         onClick={(event) => setAnchor(event.currentTarget)}
-        className="-ml-1.5 flex max-w-[240px] items-center gap-2 rounded-lg px-1.5 py-1 text-left transition hover:bg-beige"
+        className="-ml-1.5 flex max-w-[min(240px,46vw)] items-center gap-1.5 rounded-lg px-1.5 py-1 text-left transition hover:bg-beige sm:max-w-[240px] sm:gap-2"
       >
         {org ? <OrgBadge org={org} size={24} /> : null}
         <span className="truncate text-sm font-semibold text-charcoal">{name}</span>

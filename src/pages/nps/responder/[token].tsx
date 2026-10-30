@@ -90,13 +90,13 @@ export default function NpsRespondPage() {
                 <p className="eyebrow">{data.survey.name}</p>
                 {data.contactFirstName ? <p className="mt-2 text-sm text-charcoal/55">Olá, {data.contactFirstName}!</p> : null}
                 <h1 className="mt-2 text-2xl font-semibold leading-snug text-charcoal">{data.survey.question}</h1>
-                <div className="mt-6 grid grid-cols-6 gap-1.5 sm:grid-cols-11">
+                <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:thin] sm:mx-0 sm:grid sm:grid-cols-11 sm:overflow-visible sm:px-0 sm:pb-0">
                   {Array.from({ length: 11 }, (_, value) => (
                     <button
                       key={value}
                       type="button"
                       onClick={() => setRating(value)}
-                      className={`h-10 rounded-xl border text-sm font-semibold transition ${
+                      className={`h-10 w-10 shrink-0 rounded-xl border text-sm font-semibold transition sm:h-10 sm:w-auto ${
                         rating === value ? "border-tan bg-tan text-white shadow-soft" : scoreTone(value)
                       }`}
                     >

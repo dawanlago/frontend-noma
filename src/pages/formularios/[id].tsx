@@ -135,10 +135,10 @@ function AvailabilitySettings({ value, onChange }: { value: FormAvailability; on
               ))}
             </ul>
           ) : null}
-          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
+          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <input type="date" className="input-search !px-2" aria-label="De" value={from} onChange={(e) => setFrom(e.target.value)} />
             <input type="date" className="input-search !px-2" aria-label="Até (opcional)" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
-            <button type="button" className="btn-secondary !px-3 !py-2" disabled={!from} onClick={addRange}>
+            <button type="button" className="btn-secondary !px-3 !py-2 w-full sm:w-auto" disabled={!from} onClick={addRange}>
               Bloquear
             </button>
           </div>

@@ -24,7 +24,7 @@ export default function FilterBar({ children, search, count, chips = [], aside }
     <div className="mb-4">
       <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
         {search ? (
-          <label className="relative block min-w-[220px] flex-1">
+          <label className="relative block w-full min-w-0 flex-1 lg:max-w-md">
             <span className="sr-only">{search.placeholder}</span>
             <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal/40" />
             <input
@@ -35,7 +35,11 @@ export default function FilterBar({ children, search, count, chips = [], aside }
             />
           </label>
         ) : null}
-        {children ? <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:[&>*]:!w-48">{children}</div> : null}
+        {children ? (
+          <div className="grid w-full min-w-0 gap-2 sm:grid-cols-2 lg:flex lg:w-auto lg:flex-wrap lg:items-center lg:[&>*]:w-auto lg:[&>*]:min-w-[10rem] lg:[&>*]:max-w-[14rem]">
+            {children}
+          </div>
+        ) : null}
       </div>
       {count || chips.length || aside ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -43,12 +47,12 @@ export default function FilterBar({ children, search, count, chips = [], aside }
           {chips.map((chip) => (
             <span
               key={chip.key}
-              className="inline-flex items-center gap-1 rounded-md border border-charcoal/10 bg-surface py-0.5 pl-2 pr-1 text-xs font-medium text-charcoal/75"
+              className="inline-flex max-w-full items-center gap-1 rounded-md border border-charcoal/10 bg-surface py-0.5 pl-2 pr-1 text-xs font-medium text-charcoal/75"
             >
-              {chip.label}
+              <span className="truncate">{chip.label}</span>
               <button
                 type="button"
-                className="flex h-5 w-5 items-center justify-center rounded text-charcoal/45 transition hover:bg-charcoal/[0.06] hover:text-charcoal"
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-charcoal/45 transition hover:bg-charcoal/[0.06] hover:text-charcoal"
                 aria-label={`Remover filtro ${chip.label}`}
                 onClick={chip.onRemove}
               >
@@ -65,7 +69,7 @@ export default function FilterBar({ children, search, count, chips = [], aside }
               Limpar tudo
             </button>
           ) : null}
-          {aside ? <div className="ml-auto">{aside}</div> : null}
+          {aside ? <div className="w-full sm:ml-auto sm:w-auto">{aside}</div> : null}
         </div>
       ) : null}
     </div>

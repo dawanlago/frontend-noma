@@ -134,8 +134,8 @@ export default function NpsPage() {
         ) : !surveysData.data?.length ? (
           <p className="px-5 py-6 text-sm text-charcoal/50">Crie a primeira pesquisa NPS. Depois é só enviar o link ao cliente.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="data-table min-w-[640px] text-sm">
+          <div className="overflow-x-auto [scrollbar-width:thin]">
+            <table className="data-table min-w-[520px] text-sm sm:min-w-[640px]">
               <thead>
                 <tr>
                   <th className="px-5 py-3 text-left">Pesquisa</th>
@@ -208,7 +208,7 @@ export default function NpsPage() {
           <p className="px-5 py-6 text-sm text-charcoal/50">As respostas aparecem aqui quando o cliente preenche o link.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="data-table min-w-[760px] text-sm">
+            <table className="data-table min-w-[560px] text-sm sm:min-w-[760px]">
               <thead>
                 <tr>
                   <th className="px-5 py-3 text-left">Contato</th>

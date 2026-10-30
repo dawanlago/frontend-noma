@@ -92,14 +92,19 @@ export default function ListWorkspace({
             ) : null}
           </Stack>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", width: { xs: "100%", md: "auto" } }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            useFlexGap
+            sx={{ alignItems: { sm: "center" }, flexWrap: "wrap", width: { xs: "100%", md: "auto" }, minWidth: 0 }}
+          >
             {filters}
             <TextField
               size="small"
               value={searchValue}
               onChange={(event) => onSearchChange?.(event.target.value)}
               placeholder={searchPlaceholder}
-              sx={{ minWidth: { md: 240 }, flex: 1 }}
+              sx={{ minWidth: 0, width: { xs: "100%", sm: "auto" }, flex: { sm: 1 }, maxWidth: { md: 320 } }}
               slotProps={{
                 input: {
                   startAdornment: (
@@ -111,7 +116,12 @@ export default function ListWorkspace({
               }}
             />
             {actionLabel ? (
-              <Button variant="contained" startIcon={<AddRounded />} onClick={onAction}>
+              <Button
+                variant="contained"
+                startIcon={<AddRounded />}
+                onClick={onAction}
+                sx={{ width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
+              >
                 {actionLabel}
               </Button>
             ) : null}

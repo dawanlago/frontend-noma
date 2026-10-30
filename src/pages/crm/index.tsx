@@ -246,9 +246,9 @@ export default function CrmPage() {
   function renderContent() {
     if (isLoading || !isReady) {
       return (
-        <div className="flex gap-3 overflow-hidden">
+        <div className="flex gap-2 overflow-hidden sm:gap-3">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="skeleton h-72 w-[272px] shrink-0" />
+            <div key={index} className="skeleton h-72 w-[min(260px,82vw)] shrink-0 sm:w-[272px]" />
           ))}
         </div>
       );
@@ -320,7 +320,7 @@ export default function CrmPage() {
         }
         actions={
           <>
-          <div role="tablist" className="inline-flex gap-0.5 rounded-lg bg-beige p-0.5">
+          <div role="tablist" className="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-lg bg-beige p-0.5 [scrollbar-width:none]">
             {TABS.map((item) => {
               const active = item.value === tab;
               return (
@@ -330,7 +330,7 @@ export default function CrmPage() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setTab(item.value)}
-                  className={`rounded-md px-3 py-1.5 text-sm font-semibold transition duration-150 ${
+                  className={`shrink-0 rounded-md px-2.5 py-1.5 text-sm font-semibold transition duration-150 sm:px-3 ${
                     active ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
                   }`}
                 >
@@ -346,7 +346,9 @@ export default function CrmPage() {
             </Link>
           ) : null}
           <button type="button" className="btn-primary" onClick={openNew}>
-            <HiOutlinePlus className="h-4 w-4" /> Nova negociação
+            <HiOutlinePlus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nova negociação</span>
+            <span className="sm:hidden">Nova</span>
           </button>
           </>
         }

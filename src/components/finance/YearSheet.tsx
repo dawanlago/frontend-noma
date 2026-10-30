@@ -175,8 +175,8 @@ export default function YearSheet({ year, ownerId, cashbox = "", onEdit, version
         {isLoading ? (
           <div className="skeleton m-5 h-64" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="data-table min-w-[1100px] text-xs">
+          <div className="overflow-x-auto [scrollbar-width:thin]">
+            <table className="data-table min-w-[920px] text-xs sm:min-w-[1100px]">
               <thead>
                 <tr>
                   <th className="sticky left-0 bg-beige px-4 py-2 text-left">Categoria</th>
@@ -254,8 +254,8 @@ export default function YearSheet({ year, ownerId, cashbox = "", onEdit, version
             {filtered.length} lançamento(s) · saldo {formatCurrencyBRL(filteredTotal)}
           </p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="data-table min-w-[900px] text-sm">
+        <div className="overflow-x-auto [scrollbar-width:thin]">
+          <table className="data-table min-w-[640px] text-sm sm:min-w-[900px]">
             <thead>
               <tr>
                 <th className="px-4 py-3 text-left">Data</th>

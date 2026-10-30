@@ -37,28 +37,47 @@ export default function OptionListsPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <nav className="card self-start p-3">
-          {AREAS.map((area) => (
-            <div key={area} className="mb-3 last:mb-0">
-              <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-charcoal/40">{area}</p>
-              {OPTION_LISTS.filter((item) => item.area === area).map((item) => {
-                const active = item.key === selected.key;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => select(item.key)}
-                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition ${
-                      active ? "bg-tan/10 font-semibold text-tan" : "text-charcoal/70 hover:bg-beige"
-                    }`}
-                  >
-                    <span className="truncate">{item.title}</span>
-                    <span className="text-xs text-charcoal/40">{optionsOf(item.key).length}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        <nav className="card self-start p-3 max-lg:overflow-x-auto max-lg:[scrollbar-width:thin]">
+          <div className="flex min-w-max gap-1 lg:hidden">
+            {OPTION_LISTS.map((item) => {
+              const active = item.key === selected.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => select(item.key)}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-sm transition ${
+                    active ? "bg-tan/10 font-semibold text-tan" : "text-charcoal/70 hover:bg-beige"
+                  }`}
+                >
+                  {item.title}
+                </button>
+              );
+            })}
+          </div>
+          <div className="hidden lg:block">
+            {AREAS.map((area) => (
+              <div key={area} className="mb-3 last:mb-0">
+                <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-charcoal/40">{area}</p>
+                {OPTION_LISTS.filter((item) => item.area === area).map((item) => {
+                  const active = item.key === selected.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => select(item.key)}
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition ${
+                        active ? "bg-tan/10 font-semibold text-tan" : "text-charcoal/70 hover:bg-beige"
+                      }`}
+                    >
+                      <span className="truncate">{item.title}</span>
+                      <span className="text-xs text-charcoal/40">{optionsOf(item.key).length}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </nav>
 
         <section className="card p-5 sm:p-6">

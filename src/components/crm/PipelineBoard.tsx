@@ -62,8 +62,8 @@ export default function PipelineBoard({
   }
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
-      <div className="noma-stagger flex min-w-full gap-3">
+    <div className="-mx-4 overflow-x-auto px-4 pb-3 [scrollbar-width:thin] sm:mx-0 sm:px-0">
+      <div className="noma-stagger flex min-w-full snap-x snap-mandatory gap-2 sm:gap-3 sm:snap-none">
         {columns.map((column) => {
           const isOver = overStage === column.stage._id && draggingId !== null;
           return (
@@ -78,7 +78,7 @@ export default function PipelineBoard({
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOverStage(null);
               }}
               onDrop={(event) => handleDrop(event, column.stage._id)}
-              className={`flex min-h-[calc(100vh-240px)] w-[300px] min-w-[300px] flex-1 flex-col rounded-2xl border p-3 transition duration-150 ${
+              className={`flex min-h-[calc(100vh-240px)] w-[min(280px,82vw)] min-w-[min(280px,82vw)] shrink-0 snap-center flex-col rounded-2xl border p-2.5 transition duration-150 sm:w-[300px] sm:min-w-[300px] sm:flex-1 sm:snap-align-none sm:p-3 ${
                 isOver ? "border-tan bg-tan/[0.05] ring-2 ring-tan/15" : "border-charcoal/[0.06] bg-beige"
               }`}
             >

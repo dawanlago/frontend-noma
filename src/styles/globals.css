@@ -51,6 +51,14 @@ body,
   font-family: var(--font-sans), Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
+html {
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
+}
+
 @layer components {
   .btn-primary,
   .btn-gold {

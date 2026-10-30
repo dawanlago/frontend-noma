@@ -131,7 +131,7 @@ export default function DealProducts({ value, onChange, catalog, onCatalogAdd, c
             const listPrice = source ? productPrice(source) : null;
             return (
               <li key={`${item.productId || "avulso"}-${index}`}>
-                <div className="flex items-center gap-2 px-3 py-2">
+                <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center">
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-tan/30"
@@ -145,12 +145,14 @@ export default function DealProducts({ value, onChange, catalog, onCatalogAdd, c
                       {!open && item.description ? <span className="block truncate text-xs text-charcoal/50">{item.description}</span> : null}
                     </span>
                   </button>
-                  <div className={`${priceWidth} shrink-0`}>
-                    <MoneyInput value={item.price ? maskCurrencyBRL(item.price) : ""} onChange={(price) => patch(index, { price: parseCurrencyBRL(price) })} />
+                  <div className="flex items-center gap-2 sm:contents">
+                    <div className={`min-w-0 flex-1 sm:flex-none ${priceWidth} sm:shrink-0`}>
+                      <MoneyInput value={item.price ? maskCurrencyBRL(item.price) : ""} onChange={(price) => patch(index, { price: parseCurrencyBRL(price) })} />
+                    </div>
+                    <button type="button" className="btn-ghost h-8 w-8 shrink-0 hover:text-burgundy" aria-label={`Remover ${item.name}`} onClick={() => remove(index)}>
+                      <HiOutlineTrash className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button type="button" className="btn-ghost h-8 w-8 shrink-0 hover:text-burgundy" aria-label={`Remover ${item.name}`} onClick={() => remove(index)}>
-                    <HiOutlineTrash className="h-4 w-4" />
-                  </button>
                 </div>
                 {open ? (
                   <div className="space-y-2 bg-beige/50 px-3 pb-3 pt-2">

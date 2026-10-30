@@ -267,19 +267,19 @@ export default function AgendaPage() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="card p-5">
+        <section className="card p-3 sm:p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="eyebrow">Calendário</p>
-              <h2 className="text-lg font-semibold capitalize">{monthStart.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</h2>
+              <h2 className="truncate text-base font-semibold capitalize sm:text-lg">{monthStart.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</h2>
             </div>
-            <div className="flex gap-2">
-              <button type="button" className="btn-secondary !py-1.5" onClick={() => goToMonth(-1)}>
+            <div className="flex gap-1.5 sm:gap-2">
+              <button type="button" className="btn-secondary !px-2.5 !py-1.5 text-xs sm:!px-4 sm:text-sm" onClick={() => goToMonth(-1)}>
                 Anterior
               </button>
               <button
                 type="button"
-                className="btn-secondary !py-1.5"
+                className="btn-secondary !px-2.5 !py-1.5 text-xs sm:!px-4 sm:text-sm"
                 onClick={() => {
                   setCursor(today.slice(0, 7));
                   setSelectedDate(today);
@@ -287,25 +287,28 @@ export default function AgendaPage() {
               >
                 Hoje
               </button>
-              <button type="button" className="btn-secondary !py-1.5" onClick={() => goToMonth(1)}>
+              <button type="button" className="btn-secondary !px-2.5 !py-1.5 text-xs sm:!px-4 sm:text-sm" onClick={() => goToMonth(1)}>
                 Próximo
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-charcoal/40">
+          <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-charcoal/40 sm:gap-2 sm:text-[11px] sm:tracking-[0.12em]">
             {WEEKDAYS.map((day) => (
-              <div key={day}>{day}</div>
+              <div key={day}>
+                <span className="sm:hidden">{day.charAt(0)}</span>
+                <span className="hidden sm:inline">{day}</span>
+              </div>
             ))}
           </div>
           {isLoading ? (
-            <div className="mt-2 grid grid-cols-7 gap-2">
+            <div className="mt-2 grid grid-cols-7 gap-0.5 sm:gap-2">
               {Array.from({ length: 35 }).map((_, index) => (
-                <div key={index} className="skeleton h-[92px]" />
+                <div key={index} className="skeleton h-11 sm:h-[92px]" />
               ))}
             </div>
           ) : (
-            <div className="mt-2 grid grid-cols-7 gap-2">
+            <div className="mt-2 grid grid-cols-7 gap-0.5 sm:gap-2">
               {Array.from({ length: blanks }).map((_, index) => (
                 <div key={`blank-${index}`} />
               ))}
@@ -315,6 +318,7 @@ export default function AgendaPage() {
                 const birthdays = birthdaysOn(date);
                 const isToday = date === today;
                 const isSelected = date === selectedDate;
+                const dayMarkers = items.length + birthdays.length;
                 return (
                   <button
                     key={date}
@@ -324,7 +328,7 @@ export default function AgendaPage() {
                       setSelectedDate(date);
                       openCreate(date);
                     }}
-                    className={`min-h-[92px] rounded-xl border p-2 text-left transition ${
+                    className={`min-h-11 rounded-lg border p-1 text-left transition sm:min-h-[92px] sm:rounded-xl sm:p-2 ${
                       isSelected
                         ? "border-tan bg-tan/[0.08] shadow-soft"
                         : isToday
@@ -332,13 +336,15 @@ export default function AgendaPage() {
                           : "border-charcoal/[0.06] bg-surface hover:border-tan/30"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1">
-                      <p className={`text-xs font-semibold ${isToday || isSelected ? "text-tan" : "text-charcoal"}`}>{index + 1}</p>
-                      {items.length ? (
-                        <span className="rounded-full bg-charcoal/5 px-1.5 text-[10px] font-semibold text-charcoal/50">{items.length}</span>
+                    <div className="flex items-center justify-between gap-0.5">
+                      <p className={`text-[11px] font-semibold sm:text-xs ${isToday || isSelected ? "text-tan" : "text-charcoal"}`}>{index + 1}</p>
+                      {dayMarkers ? (
+                        <span className="rounded-full bg-charcoal/5 px-1 text-[9px] font-semibold text-charcoal/50 sm:px-1.5 sm:text-[10px]">
+                          {dayMarkers}
+                        </span>
                       ) : null}
                     </div>
-                    <div className="mt-1 space-y-1">
+                    <div className="mt-1 hidden space-y-1 sm:block">
                       {birthdays.slice(0, 1).map((person) => (
                         <p key={person._id} className="truncate rounded-full bg-burgundy/10 px-2 py-0.5 text-[11px] text-burgundy">
                           🎂 {person.name.split(" ")[0]}
@@ -353,6 +359,13 @@ export default function AgendaPage() {
                       ))}
                       {items.length > 2 ? <p className="text-[10px] text-tan">+{items.length - 2}</p> : null}
                     </div>
+                    {dayMarkers ? (
+                      <div className="mt-1 flex justify-center gap-0.5 sm:hidden" aria-hidden>
+                        {Array.from({ length: Math.min(dayMarkers, 3) }).map((_, dot) => (
+                          <span key={dot} className="h-1 w-1 rounded-full bg-tan" />
+                        ))}
+                      </div>
+                    ) : null}
                   </button>
                 );
               })}

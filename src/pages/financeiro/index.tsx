@@ -288,12 +288,12 @@ export default function FinancePage() {
       ) : null}
 
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-1">
-          <button type="button" className="btn-ghost" aria-label="Anterior" onClick={() => step(-1)}>
+        <div className="flex min-w-0 items-center gap-1">
+          <button type="button" className="btn-ghost shrink-0" aria-label="Anterior" onClick={() => step(-1)}>
             <HiOutlineChevronLeft className="h-5 w-5" />
           </button>
-          <span className="min-w-[160px] text-center text-lg font-semibold capitalize text-charcoal">{navLabel}</span>
-          <button type="button" className="btn-ghost" aria-label="Próximo" onClick={() => step(1)}>
+          <span className="min-w-0 flex-1 truncate text-center text-base font-semibold capitalize text-charcoal sm:min-w-[160px] sm:flex-none sm:text-lg">{navLabel}</span>
+          <button type="button" className="btn-ghost shrink-0" aria-label="Próximo" onClick={() => step(1)}>
             <HiOutlineChevronRight className="h-5 w-5" />
           </button>
           {view === "month" && month !== currentMonthISO() ? (
@@ -303,28 +303,35 @@ export default function FinancePage() {
           ) : null}
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div role="tablist" className="inline-flex gap-1 self-start rounded-xl bg-beige p-1">
-            {(
-              [
-                { value: "month", label: "Visão do mês" },
-                { value: "year", label: "Visão do ano" },
-                { value: "sheet", label: "Planilha" },
-                { value: "distribution", label: "Distribuição" },
-              ] as { value: View; label: string }[]
-            ).map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                role="tab"
-                aria-selected={view === item.value}
-                onClick={() => switchView(item.value)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  view === item.value ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div
+            role="tablist"
+            className="-mx-1 max-w-full self-stretch overflow-x-auto px-1 [scrollbar-width:thin] sm:mx-0 sm:self-start sm:px-0"
+          >
+            <div className="inline-flex min-w-max gap-1 rounded-xl bg-beige p-1">
+              {(
+                [
+                  { value: "month", label: "Mês", full: "Visão do mês" },
+                  { value: "year", label: "Ano", full: "Visão do ano" },
+                  { value: "sheet", label: "Planilha", full: "Planilha" },
+                  { value: "distribution", label: "Distribuição", full: "Distribuição" },
+                ] as { value: View; label: string; full: string }[]
+              ).map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === item.value}
+                  aria-label={item.full}
+                  onClick={() => switchView(item.value)}
+                  className={`shrink-0 rounded-lg px-2.5 py-2 text-sm font-semibold transition sm:px-4 ${
+                    view === item.value ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+                  }`}
+                >
+                  <span className="sm:hidden">{item.label}</span>
+                  <span className="hidden sm:inline">{item.full}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <OwnerFilter module="financeiro" value={ownerId} onChange={setOwnerId} />
         </div>

@@ -342,10 +342,20 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
         open={open}
         onClose={onClose}
         maxWidth={false}
-        slotProps={{ paper: { sx: { width: "min(780px, calc(100% - 32px))", borderRadius: "24px", overflow: "hidden", m: 2 } } }}
+        slotProps={{
+          paper: {
+            sx: {
+              width: "min(780px, calc(100% - 24px))",
+              maxHeight: "calc(100dvh - 24px)",
+              borderRadius: { xs: "16px", sm: "24px" },
+              overflow: "hidden",
+              m: 1.5,
+            },
+          },
+        }}
       >
         {step === "done" ? (
-          <div className="flex min-h-[520px] flex-col bg-beige px-6 py-8 sm:px-8">
+          <div className="flex min-h-0 flex-col bg-beige px-6 py-8 sm:min-h-[520px] sm:px-8">
             <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight text-charcoal">Sua negociação está pronta!</h2>
@@ -363,7 +373,7 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
             </div>
           </div>
         ) : (
-          <div className="grid min-h-[520px] md:grid-cols-2">
+          <div className="grid min-h-0 md:min-h-[520px] md:grid-cols-2">
             <form
               id="new-lead-step"
               className="flex flex-col px-6 py-7 sm:px-7"

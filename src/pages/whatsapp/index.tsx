@@ -163,7 +163,7 @@ export default function WhatsAppPage() {
           ) : null}
           {listError ? <p className="mt-4 rounded-lg bg-burgundy/10 px-4 py-3 text-sm text-burgundy">{listError}</p> : null}
 
-          <div className="card mt-6 flex h-[calc(100dvh-13rem)] min-h-[480px] overflow-hidden">
+          <div className="card mt-6 flex h-[calc(100dvh-11rem)] min-h-[360px] overflow-hidden sm:min-h-[480px]">
             {/* No celular, lista e conversa se alternam; a partir do md ficam lado a lado. */}
             <aside className={`min-h-0 w-full border-charcoal/[0.08] md:flex md:w-80 md:shrink-0 md:border-r lg:w-96 ${selectedId ? "hidden" : "flex"} flex-col`}>
               <ChatList

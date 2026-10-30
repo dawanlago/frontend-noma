@@ -198,8 +198,8 @@ export default function BaseDirectory({
       </FilterBar>
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table min-w-[820px] text-sm">
+        <div className="-mx-0 overflow-x-auto [scrollbar-width:thin]">
+          <table className="data-table min-w-[640px] text-sm sm:min-w-[820px]">
             <thead>
               <tr>
                 <th className="px-4 py-3 text-left">Nome</th>

@@ -29,7 +29,6 @@ import {
   HiOutlineUser,
 } from "react-icons/hi2";
 import type { ModuleKey } from "@/types";
-import LogoMark from "@/components/ui/LogoMark";
 import ChangePasswordDialog from "@/components/auth/ChangePasswordDialog";
 import AppearancePicker from "./AppearancePicker";
 import NotificationBell from "./NotificationBell";
@@ -85,7 +84,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
 
   return (
     <AppBar position="sticky" color="inherit">
-      <Toolbar sx={{ gap: 1.5, minHeight: { xs: 64, sm: 64 } }}>
+      <Toolbar sx={{ gap: { xs: 0.75, sm: 1.5 }, minHeight: { xs: 56, sm: 64 }, px: { xs: 1, sm: 2 } }}>
         <IconButton
           edge="start"
           onClick={onMenuClick}
@@ -94,10 +93,10 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
         >
           <MenuRounded />
         </IconButton>
-        <Box sx={{ display: { xs: "block", sm: "none" } }}>
-          <LogoMark size="sm" />
+        <Box sx={{ display: { xs: "block", sm: "none" }, minWidth: 0 }}>
+          <OrgSwitcher />
         </Box>
-        <Box sx={{ display: { xs: "none", sm: "block" } }}>
+        <Box sx={{ display: { xs: "none", sm: "block" }, minWidth: 0 }}>
           <Typography variant="caption" color="text.secondary" sx={{ textTransform: "capitalize", display: "block" }}>
             {todayLabel()}
           </Typography>
@@ -107,22 +106,45 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
         <Box sx={{ flexGrow: 1 }} />
 
         {createItems.length ? (
-          <Button
-            variant="contained"
-            startIcon={<AddRounded />}
-            endIcon={<KeyboardArrowDownRounded />}
-            aria-haspopup="menu"
-            aria-expanded={Boolean(createAnchor)}
-            onClick={(event) => setCreateAnchor(event.currentTarget)}
-          >
-            Criar
-          </Button>
+          <>
+            <Button
+              variant="contained"
+              startIcon={<AddRounded />}
+              endIcon={<KeyboardArrowDownRounded />}
+              aria-haspopup="menu"
+              aria-expanded={Boolean(createAnchor)}
+              onClick={(event) => setCreateAnchor(event.currentTarget)}
+              sx={{ display: { xs: "none", sm: "inline-flex" } }}
+            >
+              Criar
+            </Button>
+            <IconButton
+              color="primary"
+              aria-label="Criar"
+              aria-haspopup="menu"
+              aria-expanded={Boolean(createAnchor)}
+              onClick={(event) => setCreateAnchor(event.currentTarget)}
+              sx={{
+                display: { xs: "inline-flex", sm: "none" },
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+                borderRadius: 2,
+                "&:hover": { bgcolor: "primary.dark" },
+              }}
+            >
+              <AddRounded />
+            </IconButton>
+          </>
         ) : null}
 
         <NotificationBell />
 
         {can("configuracoes") ? (
-          <IconButton aria-label="Configurações" onClick={() => router.push("/configuracoes")}>
+          <IconButton
+            aria-label="Configurações"
+            onClick={() => router.push("/configuracoes")}
+            sx={{ display: { xs: "none", md: "inline-flex" } }}
+          >
             <SettingsOutlined />
           </IconButton>
         ) : null}

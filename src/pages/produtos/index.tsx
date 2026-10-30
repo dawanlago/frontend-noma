@@ -44,7 +44,7 @@ export default function ProductsPage() {
         countLabel={`Existem ${filtered.length} produtos na sua base`}
         columns={["Produto", "Categoria", "Custo operacional", "Lucro", "Preço de venda", "Ações"]}
         filters={
-          <div className="w-48 shrink-0">
+          <div className="w-full min-w-0 sm:w-48 sm:shrink-0">
             <OptionSelect list={PRODUCT_CATEGORY_LIST} noAdd value={category} emptyLabel="Todas as categorias" onChange={setCategory} />
           </div>
         }

@@ -12,22 +12,65 @@ interface HeroProps {
 }
 
 export default function Hero({ eyebrow, title, description, actions, compact }: HeroProps) {
+  if (compact) {
+    return (
+      <Box sx={{ width: "100%", mb: 3, minWidth: 0 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          useFlexGap
+          sx={{ alignItems: { sm: "flex-start" }, justifyContent: "space-between" }}
+        >
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            {eyebrow ? (
+              <Typography variant="overline" sx={{ color: "primary.main", letterSpacing: 1.2, fontWeight: 700 }}>
+                {eyebrow}
+              </Typography>
+            ) : null}
+            <Typography
+              component="h1"
+              sx={{
+                fontSize: { xs: "1.6rem", sm: "2.25rem" },
+                fontWeight: 600,
+                letterSpacing: -0.6,
+                lineHeight: 1.15,
+                textWrap: "balance",
+              }}
+            >
+              {title}
+            </Typography>
+            {description ? (
+              <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 15, lineHeight: 1.7, maxWidth: 560 }}>
+                {description}
+              </Typography>
+            ) : null}
+          </Box>
+          {actions ? (
+            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", flexShrink: 0, pt: { sm: 0.5 } }}>
+              {actions}
+            </Stack>
+          ) : null}
+        </Stack>
+      </Box>
+    );
+  }
+
   return (
     <Box
       sx={{
         width: "100%",
-        mb: compact ? 3 : 4,
-        px: compact ? { xs: 0, sm: 0 } : { xs: 1, sm: 2 },
-        py: compact ? { xs: 1, sm: 2 } : { xs: 3, sm: 6 },
-        textAlign: compact ? "left" : "center",
+        mb: 4,
+        px: { xs: 1, sm: 2 },
+        py: { xs: 3, sm: 6 },
+        textAlign: "center",
       }}
     >
       <Stack
-        spacing={compact ? 1.25 : 2}
+        spacing={2}
         sx={{
-          alignItems: compact ? "flex-start" : "center",
-          maxWidth: compact ? 720 : 760,
-          mx: compact ? 0 : "auto",
+          alignItems: "center",
+          maxWidth: 760,
+          mx: "auto",
         }}
       >
         {eyebrow ? (
@@ -41,9 +84,7 @@ export default function Hero({ eyebrow, title, description, actions, compact }: 
         <Typography
           component="h1"
           sx={{
-            fontSize: compact
-              ? { xs: "1.85rem", sm: "2.25rem" }
-              : { xs: "2.4rem", sm: "3.5rem" },
+            fontSize: { xs: "2.4rem", sm: "3.5rem" },
             fontWeight: 600,
             letterSpacing: -0.6,
             lineHeight: 1.15,
@@ -56,7 +97,7 @@ export default function Hero({ eyebrow, title, description, actions, compact }: 
           <Typography
             color="text.secondary"
             sx={{
-              fontSize: compact ? 15 : 16,
+              fontSize: 16,
               lineHeight: 1.7,
               maxWidth: 560,
             }}
@@ -65,7 +106,7 @@ export default function Hero({ eyebrow, title, description, actions, compact }: 
           </Typography>
         ) : null}
         {actions ? (
-          <Stack direction="row" spacing={1.5} useFlexGap sx={{ flexWrap: "wrap", pt: 0.5 }}>
+          <Stack direction="row" spacing={1.5} useFlexGap sx={{ flexWrap: "wrap", pt: 0.5, justifyContent: "center" }}>
             {actions}
           </Stack>
         ) : null}
