@@ -165,6 +165,18 @@ img{display:block}
 .cl-brand{margin-top:48px}
 .cl-brand img{height:40px;width:auto;max-width:220px;object-fit:contain;object-position:left center}
 
+/* Blocos livres */
+.cu-text{display:grid;grid-template-columns:.85fr 1.15fr;gap:72px;align-items:center}
+.cu-prose{display:grid;gap:18px;font-size:calc(20px * var(--fitt,1));line-height:1.65;color:var(--muted);max-width:640px}
+.cu-prose p:first-child{color:var(--fg)}
+.cu-hl{max-width:1020px}
+.cu-hl blockquote{font-family:var(--tf);font-weight:var(--tw);letter-spacing:-.03em;line-height:1.05;text-wrap:balance}
+.cu-by{margin-top:34px;font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink)}
+.cu-img{display:grid;grid-template-columns:340px 1fr;gap:56px;height:100%}
+.cu-img .cu-copy{align-self:end}
+.cu-img .ph{height:100%}
+.cu-img .ph.empty{display:flex;align-items:center;justify-content:center}
+
 /* Player do Google Drive */
 #player{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:56px 4vw 4vh;background:rgba(0,0,0,.88);backdrop-filter:blur(6px)}
 #player.open{display:flex}
@@ -187,6 +199,83 @@ img{display:block}
 body.page-light #nav{color:rgba(0,0,0,.75)}
 body.page-light #nav button{border-color:rgba(0,0,0,.14);background:rgba(255,255,255,.6)}
 body.page-light #nav button:hover:not(:disabled){background:#fff}
+
+/*
+ * Celular e tablet em pé: a proposta vira uma landing page (as páginas uma embaixo da outra,
+ * em largura total, com rolagem) em vez de slides 16:9 encolhidos. Não vale na prévia do editor.
+ */
+@media (max-width:900px),(orientation:portrait) and (max-width:1100px){
+body:not(.embed){height:auto;overflow-x:hidden;overflow-y:auto;background:var(--page)}
+body:not(.embed) #deck{position:static}
+body:not(.embed) #stage{position:static;width:auto;height:auto;transform:none!important;box-shadow:none}
+body:not(.embed) #nav{display:none}
+body:not(.embed) .slide{position:relative;inset:auto;visibility:visible;animation:none}
+body:not(.embed) .frame{position:relative;inset:auto;padding:46px 22px 38px!important}
+body:not(.embed) .sh{position:static!important;width:auto!important;height:auto!important;flex-direction:row!important;align-items:center!important;border-right:0!important;font-size:11px;margin-bottom:6px}
+body:not(.embed) .sh-label{writing-mode:horizontal-tb!important;transform:none!important;font-size:12px!important}
+body:not(.embed) .sh-brand img{height:22px}
+body:not(.embed) .sf{display:none}
+body:not(.embed) .body{padding:22px 0 0!important;border:0!important;background:none!important}
+body:not(.embed) .body>.fill,body:not(.embed) .fill{flex:none;height:auto}
+body:not(.embed) .kicker{font-size:12px;margin-bottom:16px}
+body:not(.embed) .h2,body:not(.embed) .pk-head .h2{font-size:calc(clamp(30px,8.6vw,46px) * var(--fit,1))!important;line-height:1.05}
+body:not(.embed) .h-xl{font-size:calc(clamp(36px,10.5vw,60px) * var(--fit,1))!important}
+body:not(.embed) .lead{font-size:17px;margin-top:16px}
+body:not(.embed) .checks li{font-size:16px}
+body:not(.embed) .co,body:not(.embed) .st,body:not(.embed) .ex,body:not(.embed) .ob,body:not(.embed) .inv,body:not(.embed) .cl,body:not(.embed) .cu-text,body:not(.embed) .cu-img{grid-template-columns:1fr!important;gap:34px!important;height:auto;align-items:start}
+body:not(.embed) .co-head,body:not(.embed) .ex-stat,body:not(.embed) .ex-copy{padding:0!important;border:0!important}
+body.tpl-studio:not(.embed) .ex-stat{padding:26px!important;border:1px solid var(--fg)!important}
+body:not(.embed) .st-head{order:0!important;align-self:start}
+/* Capa: abre a página inteira, como o topo de uma landing page. */
+body:not(.embed) .k-cover{min-height:100vh;min-height:100svh;display:flex}
+body:not(.embed) .cv{position:relative!important;inset:auto;flex:1;display:flex!important;flex-direction:column;gap:28px;padding:34px 22px 30px!important}
+body:not(.embed) .cv-brand{padding:0!important;align-self:flex-start!important}
+body:not(.embed) .cv-brand img{height:36px}
+body:not(.embed) .cv-doc{display:none!important}
+body:not(.embed) .cv-main{flex:1;display:flex!important;flex-direction:column;justify-content:center;padding:0!important;border:0!important;background:none!important}
+body:not(.embed) .cv-main h1{font-size:calc(clamp(42px,13vw,76px) * var(--fit,1))!important}
+body:not(.embed) .cv-side{display:flex!important;flex-direction:column!important;align-items:flex-start!important;text-align:left!important;gap:20px!important;margin:0 -22px -30px!important;padding:24px 22px 28px!important}
+body:not(.embed) .cv-meta{flex-direction:row!important;flex-wrap:wrap;gap:24px!important;border:0!important;padding:0!important}
+body:not(.embed) .cv-meta>div{padding:0!important;border:0!important}
+body.tpl-studio:not(.embed) .cv-side{margin:0!important;padding:0!important;gap:0!important;align-items:stretch!important}
+body.tpl-studio:not(.embed) .cv-for{padding:20px!important}
+body.tpl-studio:not(.embed) .cv-meta{padding:18px 20px!important}
+body:not(.embed) .cv-for strong{font-size:26px!important}
+/* Empresa, estrutura, experiência */
+body:not(.embed) .metrics,body:not(.embed) .metrics[class*="m-"]{grid-template-columns:1fr 1fr!important;grid-auto-flow:row!important;gap:10px!important;padding:0!important}
+body:not(.embed) .metric{padding:18px!important;border-left:1px solid var(--line)}
+body:not(.embed) .metric strong{font-size:clamp(28px,8vw,40px)!important}
+body:not(.embed) .metric span{font-size:14px}
+body:not(.embed) .gallery{grid-template-columns:1fr 1fr!important;grid-template-rows:none!important;grid-auto-rows:clamp(120px,34vw,220px);height:auto}
+body:not(.embed) .gallery .ph{grid-row:auto!important}
+body:not(.embed) .gallery .ph:first-child{grid-column:span 2}
+body:not(.embed) .gallery.g-1{grid-auto-rows:clamp(200px,60vw,360px)}
+body:not(.embed) .ex-num{font-size:calc(clamp(96px,32vw,170px) * var(--fitn,1))!important}
+body:not(.embed) .ex-desc{font-size:20px!important;margin-top:12px!important}
+body:not(.embed) .ob-list{grid-template-columns:1fr!important}
+body:not(.embed) .ob-list li{font-size:16px;padding:14px 0}
+/* Portfólio */
+body:not(.embed) .pi-count{margin-top:28px}
+body:not(.embed) .pf-head{flex-direction:column;align-items:flex-start;gap:6px}
+body:not(.embed) .pf-head h3{font-size:24px}
+body:not(.embed) .videos{grid-template-columns:1fr!important;grid-auto-rows:auto;gap:28px}
+body:not(.embed) .thumb{flex:none;aspect-ratio:16/9}
+body:not(.embed) .vmeta p{-webkit-line-clamp:4}
+/* Investimento */
+body:not(.embed) .price{padding:26px!important}
+body:not(.embed) .price-value{font-size:calc(clamp(38px,12vw,58px) * var(--fitp,1))!important;white-space:normal}
+body:not(.embed) .pk-head{flex-direction:column;align-items:flex-start;gap:8px}
+body:not(.embed) .pk-grid{grid-template-columns:1fr!important}
+body:not(.embed) .pkg{overflow:visible}
+body:not(.embed) .pkg-price{margin-top:22px!important}
+/* Fechamento e blocos livres */
+body:not(.embed) .contacts{border-left:0!important;padding:22px 0 0!important;border-top:1px solid var(--line)!important;background:none!important}
+body.tpl-studio:not(.embed) .contacts{padding:22px!important;border:1px solid var(--fg)!important;background:var(--card)!important}
+body:not(.embed) .cl-brand{margin-top:28px}
+body:not(.embed) .cu-prose{font-size:17px}
+body:not(.embed) .cu-img .ph{height:auto;aspect-ratio:4/3}
+body:not(.embed) .k-closing{padding-bottom:84px}
+}
 
 @media print{
   @page{size:1280px 720px;margin:0}

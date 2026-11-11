@@ -13,8 +13,11 @@ import { FINANCE_STATUS_OPTIONS } from "@/lib/constants";
 import { apiError } from "@/lib/errors";
 import { computeLateCharge, hasLateRules, lateDaysLabel } from "@/lib/finance/lateCharge";
 import {
+  addMonths,
   emptyEntryForm,
   entryToForm,
+  formInterest,
+  installmentCount,
   isSettledStatus,
   switchEntryType,
   validateEntryForm,
@@ -23,7 +26,7 @@ import {
 } from "@/lib/finance/model";
 import { resources } from "@/lib/resources";
 import type { Company, Contact, FinanceEntry, FinanceStatus, Lead, TransactionType } from "@/types";
-import { formatCurrencyBRL, maskCurrencyBRL, parseCurrencyBRL, todayISO } from "@/utils/format";
+import { formatCurrencyBRL, formatDateOnly, maskCurrencyBRL, parseCurrencyBRL, todayISO } from "@/utils/format";
 
 interface EntryModalProps {
   open: boolean;
@@ -164,6 +167,14 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
   }, [isIncome, settled, form.value, form.date, form.paidAt, form.status, form.lateChargeWaived, entry, lateRules]);
   const lateValue = parseCurrencyBRL(form.value);
 
+  // Parcelamento: só na criação (cada parcela vira uma movimentação no seu mês).
+  const count = entry ? 1 : installmentCount(form);
+  const interestTotal = formInterest(form);
+  const principal = parseCurrencyBRL(form.value);
+  const perInstallment = count > 0 ? (principal + interestTotal) / count : 0;
+  const lastDate = count > 1 && /^\d{4}-\d{2}-\d{2}$/.test(form.date) ? addMonths(form.date, count - 1) : "";
+  const isCard = /cart/i.test(form.payment);
+
   function changeStatus(status: FinanceStatus) {
     // Ao marcar como recebida/paga, a data do recebimento começa em hoje.
     setForm((current) => ({ ...current, status, paidAt: isSettledStatus(status) ? current.paidAt || todayISO() : "" }));
@@ -244,10 +255,10 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
                 onChange={(value) => update("category", value)}
               />
             </Field>
-            <Field label="Valor *">
+            <Field label={count > 1 ? "Valor total (sem juros) *" : "Valor *"}>
               <MoneyInput value={form.value} onChange={(value) => update("value", value)} required />
             </Field>
-            <Field label={isIncome ? "Vencimento *" : "Data *"}>
+            <Field label={count > 1 ? (isIncome ? "Vencimento da 1ª parcela *" : "Data da 1ª parcela *") : isIncome ? "Vencimento *" : "Data *"}>
               <input type="date" className="input-search" value={form.date} onChange={(event) => update("date", event.target.value)} />
             </Field>
             <Field label="Status">
@@ -280,6 +291,83 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
               />
             </Field>
           </div>
+
+          <section className="rounded-xl border border-charcoal/10 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-sm font-semibold text-charcoal">{entry ? "Juros" : "Parcelas e juros"}</h3>
+              {!entry && isCard && count === 1 ? (
+                <span className="text-[13px] text-charcoal/55">Compra no cartão parcelada? Informe as parcelas.</span>
+              ) : null}
+            </div>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              {!entry ? (
+                <Field label="Parcelas" hint="1 = à vista. Cada parcela vai para o mês seguinte.">
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    inputMode="numeric"
+                    className="input-search"
+                    value={form.installments}
+                    onChange={(event) => update("installments", event.target.value.replace(/\D/g, "").slice(0, 2))}
+                  />
+                </Field>
+              ) : null}
+              <Field label={entry ? "Juros desta movimentação" : "Juros"} hint={entry ? "Somam no total do mês." : "Total de juros da compra/venda, ou a taxa ao mês."}>
+                <div className="flex gap-2">
+                  {!entry ? (
+                    <div className="w-28 shrink-0">
+                      <Select
+                        value={form.interestMode}
+                        onChange={(value) => update("interestMode", value as EntryForm["interestMode"])}
+                        options={[
+                          { value: "amount", label: "R$" },
+                          { value: "rate", label: "% a.m." },
+                        ]}
+                      />
+                    </div>
+                  ) : null}
+                  {form.interestMode === "rate" && !entry ? (
+                    <label className="relative flex-1">
+                      <input
+                        className="input-search pr-[4.5rem] text-right"
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={form.interestRate}
+                        aria-label="Taxa de juros ao mês"
+                        onChange={(event) => update("interestRate", event.target.value.replace(/[^\d.,]/g, ""))}
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-charcoal/45">% a.m.</span>
+                    </label>
+                  ) : (
+                    <div className="flex-1">
+                      <MoneyInput value={form.interest} onChange={(value) => update("interest", value)} />
+                    </div>
+                  )}
+                </div>
+              </Field>
+            </div>
+            {principal > 0 && (count > 1 || interestTotal > 0) ? (
+              <p className="mt-3 rounded-lg bg-beige/70 px-3 py-2 text-[13px] text-charcoal/70">
+                {count > 1 ? (
+                  <>
+                    <strong className="text-charcoal">
+                      {count}x de <span data-money>{formatCurrencyBRL(perInstallment)}</span>
+                    </strong>{" "}
+                    · de {formatDateOnly(form.date)} a {formatDateOnly(lastDate)} ·{" "}
+                  </>
+                ) : null}
+                total <strong data-money className="text-charcoal">{formatCurrencyBRL(principal + interestTotal)}</strong>
+                {interestTotal > 0 ? (
+                  <>
+                    {" "}
+                    (<span data-money>{formatCurrencyBRL(interestTotal)}</span> de juros)
+                  </>
+                ) : null}
+                {count > 1 ? ". A 1ª parcela fica com a situação escolhida; as próximas entram como " + (isIncome ? "a receber." : "previstas.") : "."}
+              </p>
+            ) : null}
+          </section>
 
           {isIncome && lateCharge ? (
             <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 text-sm">
@@ -321,7 +409,7 @@ export default function EntryModal({ open, month, initialType, entry, preset, ca
             </p>
           ) : null}
 
-          {!isIncome ? (
+          {!isIncome && count === 1 ? (
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-charcoal/10 p-4 transition hover:border-charcoal/25">
               <input
                 type="checkbox"

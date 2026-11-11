@@ -138,6 +138,11 @@ export default function EntryList({
                           Parcela {entry.installment.number}/{entry.installment.total}
                         </span>
                       ) : null}
+                      {entry.interest ? (
+                        <span className="chip bg-gold/10 text-gold" title={`Valor ${formatCurrencyBRL(entry.value)} + juros`}>
+                          + <span data-money>{formatCurrencyBRL(entry.interest)}</span> de juros
+                        </span>
+                      ) : null}
                       {showCashbox && entry.cashbox ? (
                         <span className="chip bg-gold/10 text-gold">{entry.cashbox}</span>
                       ) : null}

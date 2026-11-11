@@ -311,6 +311,9 @@ export function PreviewStep({ data, pages, onGoToSlide, onDownload, onOpenFull }
                 </span>
               ) : null}
               {page.kind === "package" ? <span className="truncate text-xs text-charcoal/45">{page.pkg.name}</span> : null}
+              {page.kind === "custom" ? (
+                <span className="truncate text-xs text-charcoal/45">{page.block.title || page.block.kicker}</span>
+              ) : null}
             </button>
           </li>
         ))}

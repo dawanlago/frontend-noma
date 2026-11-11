@@ -26,7 +26,17 @@ export interface EntryForm {
   paidAt: string;
   /** Recebida com atraso sem cobrar juros/multa. */
   lateChargeWaived: boolean;
+  /** Número de parcelas (só na criação); "1" = à vista. */
+  installments: string;
+  /** Juros do parcelamento: valor total em R$ ou taxa ao mês. */
+  interestMode: InterestMode;
+  /** R$ (máscara) quando `interestMode` = "amount". */
+  interest: string;
+  /** % ao mês quando `interestMode` = "rate". */
+  interestRate: string;
 }
+
+export type InterestMode = "amount" | "rate";
 
 export function clientRefOf(entry: Pick<FinanceEntry, "contactId" | "companyId">) {
   if (entry.companyId) return `company:${entry.companyId}`;
@@ -73,6 +83,10 @@ export function emptyEntryForm(month: string, type: TransactionType = "income", 
     notes: "",
     paidAt: "",
     lateChargeWaived: false,
+    installments: "1",
+    interestMode: "amount",
+    interest: "",
+    interestRate: "",
   };
 }
 
@@ -107,6 +121,10 @@ export function entryToForm(entry: FinanceEntry): EntryForm {
     notes: entry.notes || "",
     paidAt: entry.paidAt || "",
     lateChargeWaived: Boolean(entry.lateChargeWaived),
+    installments: "1",
+    interestMode: "amount",
+    interest: entry.interest ? maskCurrencyBRL(entry.interest) : "",
+    interestRate: "",
   };
 }
 
@@ -139,16 +157,43 @@ export function formToEntryPayload(form: EntryForm): FinanceEntryPayload {
     bank: form.bank,
     notes: form.notes.trim(),
   };
-  if (form.type === "expense") base.recurring = form.recurring;
+  const count = installmentCount(form);
+  base.interest = formInterest(form);
+  if (count > 1) base.installments = count;
+  else if (form.type === "expense") base.recurring = form.recurring;
   if (isSettledStatus(form.status) && form.paidAt) base.paidAt = form.paidAt;
   if (form.type === "income") base.lateChargeWaived = form.lateChargeWaived;
   return base;
+}
+
+/** Parcelas pedidas no formulário (1 a 60). */
+export function installmentCount(form: Pick<EntryForm, "installments">): number {
+  return Math.min(60, Math.max(1, Math.floor(Number(form.installments) || 1)));
+}
+
+/** Juros totais do lançamento, em R$ (informados direto ou calculados pela taxa ao mês). */
+export function formInterest(form: Pick<EntryForm, "interestMode" | "interest" | "interestRate" | "value" | "installments">): number {
+  if (form.interestMode === "rate") {
+    const rate = Number(form.interestRate.replace(",", ".")) || 0;
+    return priceInterest(parseCurrencyBRL(form.value), rate, installmentCount(form));
+  }
+  return Math.max(0, parseCurrencyBRL(form.interest));
+}
+
+/** Juros totais de um parcelamento com taxa mensal (tabela Price: parcelas iguais). */
+export function priceInterest(value: number, monthlyRate: number, count: number): number {
+  const i = monthlyRate / 100;
+  if (!(value > 0) || !(i > 0) || count < 1) return 0;
+  const payment = (value * i) / (1 - Math.pow(1 + i, -count));
+  return Math.round((payment * count - value) * 100) / 100;
 }
 
 export function validateEntryForm(form: EntryForm): string {
   if (!form.description.trim()) return "Informe a descrição.";
   if (parseCurrencyBRL(form.value) <= 0) return "Informe um valor maior que zero.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return "Informe a data.";
+  const count = Number(form.installments) || 1;
+  if (count < 1 || count > 60) return "Use de 1 a 60 parcelas.";
   return "";
 }
 

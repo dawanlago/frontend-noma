@@ -39,6 +39,44 @@ export function printDocument(title: string, bodyHtml: string, extraCss = "") {
   win.document.close();
 }
 
+/**
+ * Imprime um documento HTML completo por um iframe escondido (não depende de pop-up),
+ * onde a pessoa escolhe "Salvar como PDF".
+ */
+export function printHtml(html: string) {
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc || !frame.contentWindow) {
+    frame.remove();
+    return;
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  const run = () => {
+    frame.contentWindow?.focus();
+    frame.contentWindow?.print();
+    // Remove depois que a janela de impressão fecha (ou após 1 min, se o navegador não avisar).
+    const cleanup = () => frame.remove();
+    frame.contentWindow?.addEventListener("afterprint", cleanup);
+    window.setTimeout(cleanup, 60_000);
+  };
+  // Espera imagens (logo) carregarem antes de imprimir.
+  const pending = Array.from(doc.images)
+    .filter((img) => !img.complete)
+    .map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          img.addEventListener("load", () => resolve());
+          img.addEventListener("error", () => resolve());
+        }),
+    );
+  void Promise.all(pending).then(() => window.setTimeout(run, 150));
+}
+
 export function downloadFile(fileName: string, content: string, type = "text/html;charset=utf-8") {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement("a");

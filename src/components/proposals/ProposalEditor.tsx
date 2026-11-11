@@ -15,7 +15,7 @@ import {
   titleOf,
   type ProposalData,
 } from "@/lib/proposals/model";
-import { buildPages, pageIndexForStep } from "@/lib/proposals/pages";
+import { buildPages, layoutKeyOf, pageIndexForStep } from "@/lib/proposals/pages";
 import { proposalFileName, renderProposalHtml } from "@/lib/proposals/render";
 import { resources } from "@/lib/resources";
 import { missingEssentials } from "@/lib/proposals/start";
@@ -24,6 +24,7 @@ import { formatDate } from "@/utils/format";
 import type { ProposalShare, ToolDocument } from "@/types";
 import { downloadFile } from "@/utils/document";
 import InvestmentStep from "./InvestmentStep";
+import LayoutStep from "./LayoutStep";
 import PortfolioStep from "./PortfolioStep";
 import ProposalPreview from "./ProposalPreview";
 import ProposalShareModal from "./ProposalShareModal";
@@ -42,6 +43,7 @@ const STEPS = [
   { title: "Portfólio", description: "Vídeos do Google Drive que o cliente assiste direto na proposta." },
   { title: "Investimento", description: "Valor fechado ou pacotes para o cliente escolher.", essential: true },
   { title: "Fechamento", description: "Chamada final e seus contatos." },
+  { title: "Páginas e blocos", description: "Ordem das páginas, o que aparece e blocos livres de texto, destaque, lista ou imagem." },
   { title: "Identidade visual", description: "Layout, cor e fontes da proposta. Vem da sua última proposta." },
   { title: "Preview", description: "Revise as páginas e baixe o arquivo final.", final: true },
 ] as { title: string; description: string; essential?: boolean; final?: boolean }[];
@@ -85,6 +87,9 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
   const formTop = useRef<HTMLDivElement>(null);
 
   const pages = useMemo(() => (data ? buildPages(data) : []), [data]);
+  // Para mostrar na prévia uma página recém-criada (o bloco novo só existe depois do próximo render).
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
   const size = useMemo(() => (data ? approximateSize(data) : 0), [data]);
 
   const goToStep = useCallback(
@@ -339,8 +344,17 @@ export default function ProposalEditor({ id, onBack, onOpen }: ProposalEditorPro
             {step === 6 ? <PortfolioStep {...stepProps} /> : null}
             {step === 7 ? <InvestmentStep {...stepProps} /> : null}
             {step === 8 ? <ClosingStep {...stepProps} /> : null}
-            {step === 9 ? <IdentityStep {...stepProps} /> : null}
-            {step === 10 ? (
+            {step === 9 ? (
+              <LayoutStep
+                {...stepProps}
+                onShow={(key) => {
+                  const index = pagesRef.current.findIndex((page) => layoutKeyOf(page) === key);
+                  if (index >= 0) setSlide(index);
+                }}
+              />
+            ) : null}
+            {step === 10 ? <IdentityStep {...stepProps} /> : null}
+            {step === 11 ? (
               <PreviewStep {...stepProps} pages={pages} onGoToSlide={setSlide} onDownload={download} onOpenFull={openFull} />
             ) : null}
           </section>

@@ -108,6 +108,9 @@ export interface AppNotification {
   body: string;
   link: string;
   readAt?: string;
+  /** Empresa do aviso (o sino junta os avisos de todas as empresas da pessoa). */
+  orgId?: string;
+  orgName?: string;
   createdAt: string;
 }
 
@@ -377,6 +380,9 @@ export interface Task extends Owned {
   duration?: number;
   /** Evento no Google Agenda do responsável, quando sincronizado. */
   googleEventId?: string;
+  /** Só na agenda: compromisso da pessoa em outra empresa (só leitura). */
+  orgId?: string;
+  orgName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -511,6 +517,10 @@ export interface FinanceEntry extends Owned {
   bank: string;
   notes: string;
   installment?: { number: number; total: number };
+  /** Liga as parcelas de uma mesma compra/venda parcelada. */
+  installmentGroupId?: string;
+  /** Juros do parcelamento/financiamento (R$): somam no total. */
+  interest?: number;
   /** Boleto da parcela: linha digitável e arquivo (PDF). */
   boletoCode?: string;
   boletoUrl?: string;

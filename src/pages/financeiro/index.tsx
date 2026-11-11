@@ -170,7 +170,10 @@ export default function FinancePage() {
     }
     closeEntryModal();
     const savedMonth = form.date.slice(0, 7);
-    if (view === "month" && savedMonth !== month) {
+    if (payload.installments && payload.installments > 1) {
+      const last = shiftMonth(savedMonth, payload.installments - 1);
+      setNotice(`${payload.installments} parcelas lançadas, de ${monthLabel(savedMonth)} a ${monthLabel(last)}.`);
+    } else if (view === "month" && savedMonth !== month) {
       setNotice(`Movimentação salva em ${monthLabel(savedMonth)}.`);
     }
     setSheetVersion((current) => current + 1);
@@ -200,7 +203,7 @@ export default function FinancePage() {
     }
   }
 
-  async function handleDelete(entry: FinanceEntry, scope?: "series") {
+  async function handleDelete(entry: FinanceEntry, scope?: "series" | "installments") {
     await resources.finance.removeEntry(entry._id, scope);
     setDeleting(null);
     setSheetVersion((current) => current + 1);
@@ -234,7 +237,9 @@ export default function FinancePage() {
   const pendingText =
     totals.pendingCount === 0
       ? "Nenhum recebimento pendente."
-      : `${totals.pendingCount} ${totals.pendingCount === 1 ? "recebimento pendente" : "recebimentos pendentes"}`;
+      : `${totals.pendingCount} ${totals.pendingCount === 1 ? "recebimento pendente" : "recebimentos pendentes"}${
+          totals.pendingLate > 0 ? `, com ${formatCurrencyBRL(totals.pendingLate)} de juros/multa se receber hoje` : ""
+        }.`;
 
   const navLabel = view === "month" ? monthLabel(month) : year;
 
@@ -380,7 +385,9 @@ export default function FinancePage() {
               value={formatCurrencyBRL(totals.paid)}
               text={
                 totals.received > 0
-                  ? `As despesas representam ${percentOf(totals.paid, totals.received)}% do valor recebido.`
+                  ? `As despesas representam ${percentOf(totals.paid, totals.received)}% do valor recebido.${
+                      totals.paidInterest > 0 ? ` Inclui ${formatCurrencyBRL(totals.paidInterest)} de juros.` : ""
+                    }`
                   : "Nenhum valor recebido para comparar ainda."
               }
               tone="burgundy"

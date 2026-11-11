@@ -5,6 +5,7 @@ import {
   BILLING_SUFFIX,
   BODY_FONTS,
   TITLE_FONTS,
+  type CustomBlock,
   type ProposalData,
   type ProposalPackage,
   type ProposalTemplate,
@@ -44,6 +45,7 @@ const SCHEME_BOLD: Record<ProposalPage["kind"], "a" | "k" | "w"> = {
   investmentSingle: "k",
   package: "k",
   packagesGrid: "w",
+  custom: "w",
   closing: "a",
 };
 
@@ -58,6 +60,7 @@ const SECTION_LABEL: Record<ProposalPage["kind"], string> = {
   investmentSingle: "Investimento",
   package: "Investimento",
   packagesGrid: "Investimento",
+  custom: "",
   closing: "Contato",
 };
 
@@ -106,8 +109,10 @@ function longDate(iso: string) {
   return `${d} de ${MONTHS[m - 1]} de ${y}`;
 }
 
+/** Imagem embutida (data URL) ou enviada ao servidor (https, ex.: Cloudinary); o resto é descartado. */
 function safeImage(src: string) {
-  return /^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(src || "") ? src : "";
+  if (/^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(src || "")) return src;
+  return /^https:\/\/[^\s"'<>\\]+$/i.test(src || "") ? e(src) : "";
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -173,7 +178,11 @@ function brand(data: ProposalData, large: boolean) {
 }
 
 function frame(ctx: Ctx, page: ProposalPage, index: number, body: string, bodyClass = "") {
-  const label = SECTION_LABEL[page.kind];
+  // Bloco livre: o texto pequeno do bloco (ou o título curto); o destaque fica sem rótulo para não repetir a frase.
+  const label =
+    page.kind === "custom"
+      ? page.block.kicker || (page.block.style === "highlight" || page.block.title.length > 40 ? "" : page.block.title)
+      : SECTION_LABEL[page.kind];
   return `<div class="frame">
 <header class="sh"><span class="sh-brand">${ctx.brandSmall}</span><span class="sh-label"><b>${pad(index + 1)}</b>${e(label)}</span></header>
 <div class="body ${bodyClass}">${body}</div>
@@ -370,6 +379,43 @@ ${contacts ? `<div class="contacts">${contacts}</div>` : ctx.embed ? '<p class="
 </div>`;
 }
 
+/** Bloco livre: texto, destaque (frase grande), lista ou imagem. */
+function customBody(ctx: Ctx, block: CustomBlock) {
+  const kicker = block.kicker.trim() ? `<p class="kicker">${e(block.kicker)}</p>` : "";
+  const title = block.title.trim() || (ctx.embed ? "Título do bloco" : "");
+  if (block.style === "highlight") {
+    return `<div class="cu cu-hl">${kicker}<blockquote class="h-xl"${styleVar("--fit", fit(title, 60, 0.4))}>${nl(title)}</blockquote>${
+      block.text.trim() ? `<p class="cu-by">${nl(block.text)}</p>` : ""
+    }</div>`;
+  }
+  if (block.style === "list") {
+    const items = block.items.map((item) => item.trim()).filter(Boolean).slice(0, 12);
+    const listClass = items.length <= 3 ? "few" : items.length > 8 ? "many" : "";
+    return `<div class="ob cu-list"><div class="ob-head">${kicker}<h2 class="h2"${styleVar("--fit", fit(title, 34))}>${e(title)}</h2>${
+      block.text.trim() ? `<p class="lead">${nl(block.text)}</p>` : ""
+    }</div><ol class="ob-list ${listClass}">${items.map((item, i) => `<li><span class="n">${pad(i + 1)}</span><span>${e(item)}</span></li>`).join("")}</ol></div>`;
+  }
+  if (block.style === "image") {
+    const src = safeImage(block.image);
+    const media = src
+      ? `<div class="ph"><img src="${src}" alt="${e(block.title)}"></div>`
+      : `<div class="ph empty">${ctx.embed ? '<p class="hint">Envie uma imagem em “Páginas e blocos”.</p>' : ""}</div>`;
+    return `<div class="cu cu-img fill"><div class="cu-copy">${kicker}<h2 class="h2"${styleVar("--fit", fit(title, 28))}>${e(title)}</h2>${
+      block.text.trim() ? `<p class="lead">${nl(block.text)}</p>` : ""
+    }</div>${media}</div>`;
+  }
+  const paragraphs = block.text
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => `<p>${nl(part)}</p>`)
+    .join("");
+  return `<div class="cu cu-text"><div>${kicker}<h2 class="h2"${styleVar("--fit", fit(title, 30))}>${e(title)}</h2></div><div class="cu-prose"${styleVar(
+    "--fitt",
+    fit(block.text, 700, 0.6),
+  )}>${paragraphs}</div></div>`;
+}
+
 function renderSlide(ctx: Ctx, page: ProposalPage, index: number, active: boolean) {
   const cls = `slide k-${page.kind} sch-${SCHEME_BOLD[page.kind]}${active ? " active" : ""}`;
   const deco = '<i class="deco deco-a"></i><i class="deco deco-b"></i>';
@@ -405,6 +451,9 @@ function renderSlide(ctx: Ctx, page: ProposalPage, index: number, active: boolea
     case "packagesGrid":
       inner = frame(ctx, page, index, packagesGridBody(ctx, page));
       break;
+    case "custom":
+      inner = frame(ctx, page, index, customBody(ctx, page.block));
+      break;
     case "closing":
       inner = frame(ctx, page, index, closingBody(ctx));
       break;
@@ -417,6 +466,8 @@ function renderSlide(ctx: Ctx, page: ProposalPage, index: number, active: boolea
 function script(embed: boolean, start: number) {
   return `(function(){
 var EMBED=${embed ? "true" : "false"},i=${start};
+var FLOWQ=window.matchMedia('(max-width:900px),(orientation:portrait) and (max-width:1100px)');
+function flow(){return !EMBED&&FLOWQ.matches}
 var slides=[].slice.call(document.querySelectorAll('.slide')),n=slides.length;
 var stage=document.getElementById('stage'),deck=document.getElementById('deck');
 var cnt=document.getElementById('cnt'),prev=document.getElementById('prev'),next=document.getElementById('next');
@@ -439,15 +490,16 @@ document.addEventListener('click',function(ev){var t=ev.target;var up=t&&t.close
 var v=t&&t.closest?t.closest('[data-video]'):null;if(v){ev.preventDefault();openVideo(v.getAttribute('data-video'));return}
 if(t===player||(t.closest&&t.closest('[data-close]'))){closeVideo()}});
 document.addEventListener('keydown',function(ev){if(player.classList.contains('open')){if(ev.key==='Escape')closeVideo();return}
-var k=ev.key;if(k==='ArrowRight'||k==='PageDown'||k===' '){ev.preventDefault();go(i+1)}else if(k==='ArrowLeft'||k==='PageUp'){ev.preventDefault();go(i-1)}else if(k==='Home'){go(0)}else if(k==='End'){go(n-1)}});
+if(flow())return;var k=ev.key;if(k==='ArrowRight'||k==='PageDown'||k===' '){ev.preventDefault();go(i+1)}else if(k==='ArrowLeft'||k==='PageUp'){ev.preventDefault();go(i-1)}else if(k==='Home'){go(0)}else if(k==='End'){go(n-1)}});
 var tx=null;document.addEventListener('touchstart',function(ev){tx=ev.touches[0].clientX},{passive:true});
-document.addEventListener('touchend',function(ev){if(tx===null)return;var dx=ev.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(i+(dx<0?1:-1));tx=null});
+document.addEventListener('touchend',function(ev){if(tx===null||flow())return;var dx=ev.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(i+(dx<0?1:-1));tx=null});
 if(prev)prev.onclick=function(){go(i-1)};if(next)next.onclick=function(){go(i+1)};
 var fs=document.getElementById('fs');if(fs)fs.onclick=function(){var d=document.documentElement;if(document.fullscreenElement){document.exitFullscreen()}else if(d.requestFullscreen){d.requestFullscreen()}};
 window.addEventListener('message',function(ev){var m=ev.data;if(m&&m.type==='noma-proposal-goto'&&typeof m.index==='number')go(m.index,true)});
 window.addEventListener('resize',fit);
 if(!EMBED&&location.hash){var h=parseInt(location.hash.slice(1),10);if(h>0)i=h-1}
 fit();go(i,false);
+if(flow()&&i>0&&slides[i])slides[i].scrollIntoView();
 requestAnimationFrame(function(){requestAnimationFrame(function(){document.body.classList.remove('noanim')})});
 })();`;
 }

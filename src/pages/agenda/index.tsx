@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HiOutlineLink } from "react-icons/hi2";
 import Head from "next/head";
 import Link from "next/link";
@@ -66,10 +66,22 @@ interface Draft {
 }
 
 export default function AgendaPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, switchOrg } = useAuth();
   const { labelOf } = useWorkspace();
   const [ownerId, setOwnerId] = useState("");
-  const { data, isLoading, error, setData } = useAsyncData(() => resources.tasks.list({ ownerId }), [ownerId]);
+  // Inclui os compromissos da pessoa nas outras empresas (ex.: reunião marcada pelo link de agendamento de outra empresa).
+  const { data, isLoading, error, setData, reload } = useAsyncData(
+    () => resources.tasks.list({ ownerId, otherOrgs: ownerId ? undefined : "1" }),
+    [ownerId],
+  );
+  // Reuniões marcadas pelo link chegam a qualquer momento: atualiza ao voltar para a aba.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [reload]);
   const leads = useAsyncData(() => resources.leads.list().catch(() => []));
   const contacts = useAsyncData(() => resources.contacts.list().catch(() => []));
   const today = iso(new Date());
@@ -419,7 +431,8 @@ export default function AgendaPage() {
                           {task.time || "Sem horário"}
                           {task.type ? ` · ${labelOf("taskType", task.type)}` : ""}
                           {task.leadName ? ` · ${task.leadName}` : ""}
-                          {isAdmin && task.ownerName ? ` · ${task.ownerName}` : ""}
+                          {isAdmin && task.ownerName && !task.orgName ? ` · ${task.ownerName}` : ""}
+                          {task.orgName ? ` · ${task.orgName}` : ""}
                         </p>
                       </div>
                       <span className={`chip shrink-0 ${status.tone}`}>{status.label}</span>
@@ -438,7 +451,11 @@ export default function AgendaPage() {
         description={openTask ? `${formatDateOnly(openTask.dueDate)}${openTask.time ? ` às ${openTask.time}` : ""}` : undefined}
         onClose={() => setOpenTaskId(null)}
         footer={
-          openTask ? (
+          openTask?.orgName ? (
+            <button type="button" className="btn-primary" onClick={() => switchOrg(openTask.orgId || "")}>
+              Abrir a empresa {openTask.orgName}
+            </button>
+          ) : openTask ? (
             <div className="flex w-full flex-wrap justify-between gap-2">
               <button type="button" className="btn-secondary !text-burgundy" onClick={() => void handleDelete(openTask)}>
                 Excluir
@@ -457,7 +474,14 @@ export default function AgendaPage() {
           ) : null
         }
       >
-        {openTask ? (
+        {openTask?.orgName ? (
+          <div className="space-y-3">
+            <p className="rounded-xl bg-gold/10 px-4 py-3 text-sm text-charcoal">
+              Este compromisso é da empresa <strong>{openTask.orgName}</strong>. Para editar ou mudar o status, abra essa empresa.
+            </p>
+            <p className="whitespace-pre-line text-sm leading-6 text-charcoal">{openTask.notes?.trim() || "Sem descrição."}</p>
+          </div>
+        ) : openTask ? (
           <div className="space-y-5">
             <dl className="space-y-3">
               {openTask.type ? (

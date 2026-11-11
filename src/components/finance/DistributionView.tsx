@@ -41,7 +41,7 @@ interface DistributionViewProps {
   onPendingDone: () => void;
 }
 
-/** Aba "Distribuição": caixas com porcentagem e saldo, lançamento manual e retiradas. */
+/** Aba "Distribuição": caixas com porcentagem e saldo, recebidos para distribuir e retiradas. */
 export default function DistributionView({ year, ownerId, cashbox, pending, onPendingDone }: DistributionViewProps) {
   const { data, isLoading, error, reload } = useAsyncData(
     () => resources.finance.distribution({ year, ownerId, cashbox }),
@@ -49,9 +49,13 @@ export default function DistributionView({ year, ownerId, cashbox, pending, onPe
   );
   const [configOpen, setConfigOpen] = useState(false);
   const [distributeOpen, setDistributeOpen] = useState(false);
+  /** Entrada escolhida na lista "Recebidos para distribuir". */
+  const [picked, setPicked] = useState<FinanceEntry | null>(null);
   const [withdrawFrom, setWithdrawFrom] = useState<DistributionBucket | null>(null);
   const buckets = useMemo(() => data?.buckets || [], [data]);
+  const undistributed = useMemo(() => data?.undistributed || [], [data]);
   const totalBalance = buckets.reduce((sum, bucket) => sum + (bucket.balance || 0), 0);
+  const undistributedTotal = undistributed.reduce((sum, entry) => sum + entryTotal(entry), 0);
 
   // Movimentos agrupados: cada distribuição vira uma linha com as partes de cada caixa.
   const rows = useMemo(() => {
@@ -77,23 +81,27 @@ export default function DistributionView({ year, ownerId, cashbox, pending, onPe
     await reload();
   }
 
-  const showDistribute = distributeOpen || Boolean(pending);
+  const source = pending || picked;
+  const showDistribute = distributeOpen || Boolean(source);
+
+  function closeDistribute() {
+    setDistributeOpen(false);
+    setPicked(null);
+    onPendingDone();
+  }
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-charcoal">Caixas de distribuição</h2>
-          <p className="text-sm text-charcoal/55">
-            Separe cada valor recebido pelas porcentagens de cada caixa. Saldo total:{" "}
-            <strong data-money className="text-charcoal">
-              {formatCurrencyBRL(totalBalance)}
-            </strong>
+          <p className="text-xs font-semibold uppercase tracking-wide text-charcoal/45">Saldo nas caixas</p>
+          <p data-money className="text-3xl font-semibold tabular-nums text-charcoal">
+            {formatCurrencyBRL(totalBalance)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-secondary" onClick={() => setConfigOpen(true)}>
-            <HiOutlineAdjustmentsHorizontal className="h-4 w-4" /> Configurar caixas e %
+            <HiOutlineAdjustmentsHorizontal className="h-4 w-4" /> Ajustar caixas
           </button>
           <button type="button" className="btn-primary" onClick={() => setDistributeOpen(true)} disabled={!buckets.length}>
             <HiOutlinePlus className="h-4 w-4" /> Distribuir valor
@@ -103,35 +111,90 @@ export default function DistributionView({ year, ownerId, cashbox, pending, onPe
 
       {error ? <p className="mb-4 rounded-lg bg-burgundy/[0.06] px-4 py-3 text-sm text-burgundy">{error}</p> : null}
 
+      {buckets.length ? (
+        <div className="mb-6">
+          <div className="flex h-3 w-full overflow-hidden rounded-full bg-charcoal/[0.06]" aria-hidden>
+            {buckets.map((bucket, index) => (
+              <span
+                key={bucket._id}
+                style={{ width: `${bucket.percentage}%`, backgroundColor: bucket.color || COLORS[index % COLORS.length] }}
+              />
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-charcoal/55">
+            Cada valor distribuído é dividido assim:{" "}
+            {buckets.map((bucket) => `${bucket.name} ${bucket.percentage}%`).join(" · ")}
+          </p>
+        </div>
+      ) : null}
+
       <section className="noma-stagger mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {isLoading && !data
           ? Array.from({ length: 3 }).map((_, index) => <div key={index} className="skeleton h-36" />)
-          : buckets.map((bucket) => (
-              <article key={bucket._id} className="card flex flex-col p-5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-charcoal">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: bucket.color || COLORS[0] }} />
-                    <span className="truncate">{bucket.name}</span>
-                  </span>
-                  <span className="chip bg-charcoal/[0.06] text-charcoal/65">{bucket.percentage}%</span>
-                </div>
-                <p data-money className="mt-3 text-2xl font-semibold tabular-nums text-charcoal">
-                  {formatCurrencyBRL(bucket.balance || 0)}
-                </p>
-                <p className="mt-1 text-xs text-charcoal/50">
-                  <span data-money>{formatCurrencyBRL(bucket.received || 0)}</span> distribuído ·{" "}
-                  <span data-money>{formatCurrencyBRL(bucket.withdrawn || 0)}</span> retirado
-                </p>
-                <button
-                  type="button"
-                  className="mt-4 inline-flex items-center gap-1.5 self-start text-xs font-semibold text-tan hover:underline"
-                  onClick={() => setWithdrawFrom(bucket)}
-                >
-                  <HiOutlineArrowUpTray className="h-3.5 w-3.5" /> Registrar retirada
-                </button>
-              </article>
-            ))}
+          : buckets.map((bucket, index) => {
+              const color = bucket.color || COLORS[index % COLORS.length];
+              const used = bucket.received ? Math.min(100, Math.round(((bucket.withdrawn || 0) / bucket.received) * 100)) : 0;
+              return (
+                <article key={bucket._id} className="card flex flex-col p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-charcoal">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                      <span className="truncate">{bucket.name}</span>
+                    </span>
+                    <span className="chip bg-charcoal/[0.06] text-charcoal/65">{bucket.percentage}%</span>
+                  </div>
+                  <p className="mt-3 text-xs text-charcoal/50">Disponível</p>
+                  <p data-money className={`text-2xl font-semibold tabular-nums ${(bucket.balance || 0) < 0 ? "text-burgundy" : "text-charcoal"}`}>
+                    {formatCurrencyBRL(bucket.balance || 0)}
+                  </p>
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-charcoal/[0.06]" title={`${used}% já retirado`}>
+                    <span className="block h-full rounded-full" style={{ width: `${used}%`, backgroundColor: color }} />
+                  </div>
+                  <p className="mt-1.5 text-xs text-charcoal/50">
+                    Entrou <span data-money>{formatCurrencyBRL(bucket.received || 0)}</span> · saiu{" "}
+                    <span data-money>{formatCurrencyBRL(bucket.withdrawn || 0)}</span>
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-secondary mt-4 self-start px-3 py-1.5 text-xs"
+                    onClick={() => setWithdrawFrom(bucket)}
+                  >
+                    <HiOutlineArrowUpTray className="h-3.5 w-3.5" /> Retirar
+                  </button>
+                </article>
+              );
+            })}
       </section>
+
+      {undistributed.length ? (
+        <section className="card mb-6 overflow-hidden">
+          <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-charcoal/[0.06] px-5 py-4">
+            <h3 className="text-base font-semibold text-charcoal">Recebidos para distribuir</h3>
+            <span className="text-sm text-charcoal/55">
+              {undistributed.length} {undistributed.length === 1 ? "entrada" : "entradas"} ·{" "}
+              <span data-money>{formatCurrencyBRL(undistributedTotal)}</span>
+            </span>
+          </header>
+          <ul className="divide-y divide-charcoal/[0.06]">
+            {undistributed.map((entry) => (
+              <li key={entry._id} className="flex items-center gap-3 px-5 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-charcoal">{entry.description}</p>
+                  <p className="truncate text-xs text-charcoal/50">
+                    {[formatDateOnly(entry.paidAt || entry.date), entry.client, entry.cashbox ? `Caixa ${entry.cashbox}` : ""].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                <span data-money className="text-sm font-semibold tabular-nums text-charcoal">
+                  {formatCurrencyBRL(entryTotal(entry))}
+                </span>
+                <button type="button" className="btn-secondary px-3 py-1.5 text-xs" disabled={!buckets.length} onClick={() => setPicked(entry)}>
+                  Distribuir
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="card overflow-hidden">
         <header className="border-b border-charcoal/[0.06] px-5 py-4">
@@ -199,15 +262,11 @@ export default function DistributionView({ year, ownerId, cashbox, pending, onPe
       <DistributeModal
         open={showDistribute}
         buckets={buckets}
-        cashbox={pending?.cashbox ?? cashbox}
-        entry={pending}
-        onClose={() => {
-          setDistributeOpen(false);
-          onPendingDone();
-        }}
+        cashbox={source?.cashbox ?? cashbox}
+        entry={source}
+        onClose={closeDistribute}
         onSaved={() => {
-          setDistributeOpen(false);
-          onPendingDone();
+          closeDistribute();
           void reload();
         }}
       />
@@ -256,6 +315,16 @@ function BucketsModal({
   }
   const total = round(drafts.reduce((sum, item) => sum + (Number(item.percentage.replace(",", ".")) || 0), 0));
 
+  /** Coloca a diferença para 100% na última caixa (sem deixar negativa). */
+  function completeLast() {
+    setDrafts((current) => {
+      if (!current.length) return current;
+      const others = round(current.slice(0, -1).reduce((sum, item) => sum + (Number(item.percentage.replace(",", ".")) || 0), 0));
+      const last = Math.max(0, round(100 - others));
+      return current.map((item, i) => (i === current.length - 1 ? { ...item, percentage: String(last) } : item));
+    });
+  }
+
   function patch(index: number, change: Partial<BucketDraft>) {
     setDrafts((current) => current.map((item, i) => (i === index ? { ...item, ...change } : item)));
   }
@@ -278,12 +347,19 @@ function BucketsModal({
   return (
     <Modal
       open={open}
-      title="Caixas de distribuição"
-      description="Defina as caixas e a porcentagem de cada uma. A soma precisa dar 100%."
+      title="Ajustar caixas"
+      description="Cada caixa recebe uma parte de todo valor distribuído (ex.: Imposto 6%, Operacional 30%, Lucro 64%). A soma precisa dar 100%."
       onClose={onClose}
       footer={
         <>
-          <span className={`mr-auto text-sm font-semibold ${total === 100 ? "text-sage" : "text-burgundy"}`}>Soma: {total}%</span>
+          <span className={`mr-auto text-sm font-semibold ${total === 100 ? "text-sage" : "text-burgundy"}`}>
+            {total === 100 ? "Soma: 100% ✓" : total < 100 ? `Faltam ${round(100 - total)}%` : `Passou ${round(total - 100)}%`}
+          </span>
+          {total !== 100 && drafts.length ? (
+            <button type="button" className="btn-secondary" onClick={completeLast}>
+              Ajustar a última para fechar 100%
+            </button>
+          ) : null}
           <button type="button" className="btn-primary" disabled={busy || total !== 100} onClick={() => void save()}>
             {busy ? "Salvando..." : "Salvar"}
           </button>

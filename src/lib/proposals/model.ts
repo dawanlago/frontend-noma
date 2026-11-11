@@ -39,6 +39,51 @@ export interface ProposalPackage {
   note: string;
 }
 
+/** Seções fixas da proposta que podem ser reordenadas e ligadas/desligadas (a capa é sempre a primeira). */
+export type SectionKey = "company" | "structure" | "experience" | "objectives" | "portfolio" | "investment" | "closing";
+
+export const SECTION_KEYS: SectionKey[] = ["company", "structure", "experience", "objectives", "portfolio", "investment", "closing"];
+
+export const SECTION_TITLES: Record<SectionKey, string> = {
+  company: "Sua empresa",
+  structure: "Estrutura",
+  experience: "Clientes/experiência",
+  objectives: "Objetivo",
+  portfolio: "Portfólio",
+  investment: "Investimento",
+  closing: "Fechamento",
+};
+
+/** Estilos de bloco livre (página extra criada pelo usuário). */
+export type CustomBlockStyle = "text" | "highlight" | "list" | "image";
+
+export const CUSTOM_BLOCK_STYLES: { value: CustomBlockStyle; title: string; description: string }[] = [
+  { value: "text", title: "Texto", description: "Título e parágrafos (ex.: sobre o projeto, metodologia)." },
+  { value: "highlight", title: "Destaque", description: "Uma frase grande, citação ou depoimento." },
+  { value: "list", title: "Lista", description: "Título e itens (ex.: etapas, entregáveis, cronograma)." },
+  { value: "image", title: "Imagem", description: "Foto grande com título e legenda." },
+];
+
+export interface CustomBlock {
+  id: string;
+  style: CustomBlockStyle;
+  /** Texto pequeno acima do título (ex.: "Metodologia"). */
+  kicker: string;
+  title: string;
+  text: string;
+  items: string[];
+  image: string;
+}
+
+/** Ordem das páginas depois da capa: chaves de `SectionKey` ou `custom:<id>` dos blocos livres. */
+export interface ProposalLayout {
+  order: string[];
+  /** Seções desligadas (Estrutura e Experiência também respeitam o `enabled` delas). */
+  hidden: SectionKey[];
+}
+
+export const customKey = (id: string) => `custom:${id}`;
+
 export interface ProposalData {
   company: {
     name: string;
@@ -71,6 +116,10 @@ export interface ProposalData {
   };
   closing: { call: string; company: string; site: string; contact: string };
   identity: { template: ProposalTemplate; color: string; titleFont: string; bodyFont: string };
+  /** Ordem e visibilidade das páginas. */
+  layout: ProposalLayout;
+  /** Páginas livres criadas pelo usuário (texto, destaque, lista, imagem). */
+  customBlocks: CustomBlock[];
   /** Negociação do CRM de onde a proposta saiu (vazio = avulsa). */
   leadId: string;
 }
@@ -246,8 +295,49 @@ export function defaultData(): ProposalData {
       contact: "",
     },
     identity: { template: "dark", color: "#F43700", titleFont: "Manrope", bodyFont: "Inter" },
+    layout: { order: [...SECTION_KEYS], hidden: [] },
+    customBlocks: [],
     leadId: "",
   };
+}
+
+export function newCustomBlock(style: CustomBlockStyle): CustomBlock {
+  const base = { id: uid(), style, kicker: "", title: "", text: "", items: [] as string[], image: "" };
+  if (style === "text") return { ...base, kicker: "Sobre o projeto", title: "Como vamos trabalhar", text: "Descreva aqui o projeto, a metodologia ou qualquer informação extra." };
+  if (style === "highlight") return { ...base, title: "“Uma frase que resume a parceria.”", text: "Nome do cliente · Empresa" };
+  if (style === "list") return { ...base, kicker: "Etapas", title: "Cronograma", items: ["Reunião de alinhamento", "Roteiro e pré-produção", "Gravação", "Edição e entrega"] };
+  return { ...base, kicker: "Bastidores", title: "Um título para a imagem", text: "" };
+}
+
+/** Ordem saneada: só chaves conhecidas, sem repetição; seções/blocos que faltarem entram no lugar padrão. */
+export function normalizeOrder(order: unknown, blocks: CustomBlock[]): string[] {
+  const valid = new Set<string>([...SECTION_KEYS, ...blocks.map((block) => customKey(block.id))]);
+  const out: string[] = [];
+  (Array.isArray(order) ? order : []).forEach((key) => {
+    if (typeof key === "string" && valid.has(key) && !out.includes(key)) out.push(key);
+  });
+  SECTION_KEYS.forEach((key, index) => {
+    if (out.includes(key)) return;
+    // Entra antes da próxima seção padrão que já está na lista.
+    const nextKnown = SECTION_KEYS.slice(index + 1).find((next) => out.includes(next));
+    const at = nextKnown ? out.indexOf(nextKnown) : out.length;
+    out.splice(at, 0, key);
+  });
+  blocks.forEach((block) => {
+    const key = customKey(block.id);
+    if (out.includes(key)) return;
+    const closing = out.indexOf("closing");
+    out.splice(closing >= 0 ? closing : out.length, 0, key);
+  });
+  return out;
+}
+
+/** A seção aparece na proposta? */
+export function sectionVisible(data: ProposalData, key: SectionKey): boolean {
+  if (data.layout.hidden.includes(key)) return false;
+  if (key === "structure") return data.structure.enabled;
+  if (key === "experience") return data.experience.enabled;
+  return true;
 }
 
 type Loose = Record<string, unknown>;
@@ -286,6 +376,21 @@ export function normalize(partial: Partial<ProposalData>): ProposalData {
   const single = obj(investment.single);
   const closing = obj(p.closing);
   const identity = obj(p.identity);
+
+  const layout = obj(p.layout);
+  const customBlocks: CustomBlock[] = (Array.isArray(p.customBlocks) ? p.customBlocks : []).slice(0, 30).map((raw) => {
+    const block = obj(raw);
+    return {
+      id: str(block.id, "") || uid(),
+      style: oneOf(block.style, CUSTOM_BLOCK_STYLES.map((item) => item.value), "text"),
+      kicker: str(block.kicker, ""),
+      title: str(block.title, ""),
+      text: str(block.text, ""),
+      items: strList(block.items, []),
+      image: str(block.image, ""),
+    };
+  });
+  const hidden = strList(layout.hidden, []).filter((key): key is SectionKey => (SECTION_KEYS as string[]).includes(key));
 
   const titleFont = oneOf(identity.titleFont, Object.keys(TITLE_FONTS), d.identity.titleFont);
   const allowedBody = bodyFontsFor(titleFont);
@@ -388,6 +493,8 @@ export function normalize(partial: Partial<ProposalData>): ProposalData {
       titleFont,
       bodyFont,
     },
+    layout: { order: normalizeOrder(layout.order, customBlocks), hidden },
+    customBlocks,
     leadId: /^[a-f0-9]{24}$/.test(str(p.leadId, "")) ? str(p.leadId, "") : "",
   };
 }

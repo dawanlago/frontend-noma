@@ -110,8 +110,8 @@ export default function PublicProposalPage() {
               </p>
             </div>
           ) : null}
-          {/* Acima da navegação dos slides (64px no rodapé do iframe). */}
-          <div className="fixed bottom-[76px] right-4 flex justify-end">
+          {/* Desktop: acima da navegação dos slides (64px no rodapé). Celular: a proposta rola como landing page e o botão fica fixo no rodapé. */}
+          <div className="fixed bottom-[76px] right-4 flex justify-end max-[900px]:inset-x-4 max-[900px]:bottom-[max(1rem,env(safe-area-inset-bottom))] max-[900px]:justify-center">
             {accepted ? (
               <p className="flex items-center gap-2 rounded-full border border-sage/30 bg-surface/95 px-4 py-2.5 text-sm font-semibold text-sage shadow-lg backdrop-blur">
                 <CheckCircleRounded sx={{ fontSize: 18 }} />
@@ -120,7 +120,7 @@ export default function PublicProposalPage() {
             ) : (
               <button
                 type="button"
-                className="btn-primary shadow-lg disabled:opacity-60"
+                className="btn-primary shadow-lg disabled:opacity-60 max-[900px]:w-full max-[900px]:justify-center max-[900px]:py-3"
                 disabled={teamMember}
                 title={teamMember ? "Só o cliente aceita a proposta (você está logado no Noma)." : undefined}
                 onClick={() => setAcceptOpen(true)}

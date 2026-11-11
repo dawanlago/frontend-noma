@@ -146,7 +146,11 @@ export interface DistributionPayload {
   items: { bucketId: string; value: number; percentage?: number }[];
 }
 
-export type FinanceEntryPayload = Partial<FinanceEntry> & { recurring?: boolean };
+export type FinanceEntryPayload = Partial<FinanceEntry> & {
+  recurring?: boolean;
+  /** Só na criação: divide o valor (e os juros) em N parcelas mensais. */
+  installments?: number;
+};
 
 export interface InstallmentsPayload {
   description: string;
@@ -378,11 +382,11 @@ export const resources = {
     createEntry: (payload: FinanceEntryPayload) => create<FinanceEntry>("/finance/entries", payload),
     updateEntry: (id: string, payload: FinanceEntryPayload) => update<FinanceEntry>(`/finance/entries/${id}`, payload),
     /** `scope: "series"` encerra a recorrência; sem ele, só pula o mês. */
-    removeEntry: (id: string, scope?: "series") => remove(`/finance/entries/${id}`, { scope }),
+    removeEntry: (id: string, scope?: "series" | "installments") => remove(`/finance/entries/${id}`, { scope }),
     summary: (year: string, params?: ListParams) =>
       getOne<{ year: string; months: FinanceMonthSummary[] }>("/finance/summary", { ...params, year }),
     distribution: (params?: ListParams) =>
-      getOne<{ buckets: DistributionBucket[]; movements: BucketMovement[] }>("/finance/distribution", params),
+      getOne<{ buckets: DistributionBucket[]; movements: BucketMovement[]; undistributed?: FinanceEntry[] }>("/finance/distribution", params),
     saveBuckets: async (buckets: (Pick<DistributionBucket, "name" | "percentage" | "color"> & { _id?: string })[]) => {
       const { data } = await api.put<ApiItemResponse<DistributionBucket[]>>("/finance/distribution/buckets", { buckets });
       return data.data;

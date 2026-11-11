@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineTrash } from "react-icons/hi2";
-import CopyButton from "@/components/tools/CopyButton";
 import Field from "@/components/tools/Field";
 import SaveStatus from "@/components/tools/SaveStatus";
 import ToolSection from "@/components/tools/ToolSection";
@@ -13,9 +12,8 @@ import { useAsyncData } from "@/hooks/useAsyncData";
 import { useToolDocument } from "@/hooks/useToolDocument";
 import { briefingsApi } from "@/lib/briefing/api";
 import { scriptsApi } from "@/lib/scripts/api";
-import { SCRIPT_PRINT_CSS, scriptToHtml, scriptToText } from "@/lib/scripts/format";
+import ExportScriptModal from "./ExportScriptModal";
 import { newScene, normalize, titleOf, totalDuration, type ScriptData, type ScriptScene } from "@/lib/scripts/model";
-import { printDocument } from "@/utils/document";
 
 interface ScriptEditorProps {
   id: string;
@@ -41,6 +39,7 @@ export default function ScriptEditor({ id, onBack, onDuplicate, onDelete }: Scri
   });
   const { data: briefings } = useAsyncData(() => briefingsApi.list(), []);
   const [busy, setBusy] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const total = useMemo(() => (data ? totalDuration(data.scenes) : null), [data]);
 
   if (isLoading) {
@@ -95,10 +94,6 @@ export default function ScriptEditor({ id, onBack, onDuplicate, onDelete }: Scri
     }
   }
 
-  function handlePrint() {
-    if (!data) return;
-    printDocument(`Roteiro — ${titleOf(data)}`, scriptToHtml(data, briefingTitle), SCRIPT_PRINT_CSS);
-  }
 
   return (
     <>
@@ -235,14 +230,13 @@ export default function ScriptEditor({ id, onBack, onDuplicate, onDelete }: Scri
             </dl>
             <p className="mt-2 text-xs text-charcoal/50">A duração soma as cenas escritas como “15s”, “0:15” ou “1min”.</p>
           </section>
-          <div className="grid grid-cols-2 gap-2">
-            <CopyButton text={() => scriptToText(data, briefingTitle)} label="Copiar texto" className="btn-secondary" />
-            <button type="button" className="btn-primary" onClick={handlePrint}>
-              Imprimir / PDF
-            </button>
-          </div>
+          <button type="button" className="btn-primary w-full justify-center" onClick={() => setExportOpen(true)}>
+            Exportar roteiro
+          </button>
+          <p className="text-xs text-charcoal/50">PDF, Word, texto ou WhatsApp — com prévia antes de gerar.</p>
         </aside>
       </div>
+      <ExportScriptModal open={exportOpen} data={data} briefingTitle={briefingTitle} onClose={() => setExportOpen(false)} />
     </>
   );
 }

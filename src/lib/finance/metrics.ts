@@ -24,6 +24,10 @@ export interface MonthTotals {
   result: number;
   pending: number;
   pendingCount: number;
+  /** Juros/multa das entradas vencidas se forem recebidas hoje (já somados em `pending`). */
+  pendingLate: number;
+  /** Juros de parcelamento das despesas pagas (já somados em `paid`). */
+  paidInterest: number;
   planned: number;
   /** Recebido na categoria "Contrato mensal". */
   recurringReceived: number;
@@ -32,20 +36,34 @@ export interface MonthTotals {
 export const RECURRING_INCOME_CATEGORY = "Contrato mensal";
 
 export function computeMonthTotals(entries: FinanceEntry[]): MonthTotals {
-  const totals: MonthTotals = { received: 0, paid: 0, result: 0, pending: 0, pendingCount: 0, planned: 0, recurringReceived: 0 };
+  const totals: MonthTotals = {
+    received: 0,
+    paid: 0,
+    result: 0,
+    pending: 0,
+    pendingCount: 0,
+    pendingLate: 0,
+    paidInterest: 0,
+    planned: 0,
+    recurringReceived: 0,
+  };
   for (const entry of entries) {
-    // Recebido/pago inclui juros e multa por atraso.
+    // Totais incluem os juros do parcelamento e juros/multa por atraso.
     const value = entryTotal(entry);
     if (entry.type === "income") {
       if (entry.status === "received") {
         totals.received += value;
         if (entry.category === RECURRING_INCOME_CATEGORY) totals.recurringReceived += value;
       } else if (entry.status === "pending") {
-        totals.pending += value;
+        // Vencida em aberto: conta quanto daria se fosse recebida hoje (com juros/multa).
+        const late = entry.projectedLateCharge?.total || 0;
+        totals.pending += value + late;
+        totals.pendingLate += late;
         totals.pendingCount += 1;
       }
     } else if (entry.status === "paid") {
       totals.paid += value;
+      totals.paidInterest += Number(entry.interest) || 0;
     } else if (entry.status === "planned") {
       totals.planned += value;
     }

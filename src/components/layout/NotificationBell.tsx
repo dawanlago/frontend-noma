@@ -4,6 +4,8 @@ import Badge from "@mui/material/Badge";
 import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
 import NotificationsNoneOutlined from "@mui/icons-material/NotificationsNoneOutlined";
+import { useAuth } from "@/contexts/AuthContext";
+import { ORG_KEY } from "@/lib/api";
 import { resources } from "@/lib/resources";
 import type { AppNotification } from "@/types";
 
@@ -22,6 +24,7 @@ function ago(iso: string) {
 /** Sino de avisos: consulta a cada minuto (o backend é serverless, sem conexão aberta). */
 export default function NotificationBell() {
   const router = useRouter();
+  const { user } = useAuth();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -50,6 +53,12 @@ export default function NotificationBell() {
       setItems((current) => current.map((entry) => (entry._id === item._id ? { ...entry, readAt: new Date().toISOString() } : entry)));
       setUnread((count) => Math.max(0, count - 1));
       void resources.notifications.read([item._id]);
+    }
+    // Aviso de outra empresa (ex.: reunião marcada pelo link dela): troca a empresa ativa e abre o link lá.
+    if (item.orgId && user?.orgId && item.orgId !== user.orgId) {
+      localStorage.setItem(ORG_KEY, item.orgId);
+      window.location.assign(item.link || "/");
+      return;
     }
     if (item.link) void router.push(item.link);
   }
@@ -98,7 +107,10 @@ export default function NotificationBell() {
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-charcoal">{item.title}</span>
                     {item.body ? <span className="mt-0.5 block whitespace-pre-line text-xs leading-5 text-charcoal/65">{item.body}</span> : null}
-                    <span className="mt-1 block text-[11px] text-charcoal/40">{ago(item.createdAt)}</span>
+                    <span className="mt-1 block text-[11px] text-charcoal/40">
+                      {ago(item.createdAt)}
+                      {item.orgName && item.orgId !== user?.orgId ? ` · ${item.orgName}` : ""}
+                    </span>
                   </span>
                 </button>
               </li>
