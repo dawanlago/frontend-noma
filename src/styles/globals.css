@@ -147,6 +147,36 @@ body {
   border-radius: 999px;
 }
 
+/* Barra de rolagem lateral presa ao rodapé da tela (quadros kanban). Estilizada para ficar sempre
+   visível, mesmo no macOS com "mostrar barras só ao rolar". */
+.sticky-scrollbar {
+  padding: 4px 0;
+  background: hsl(var(--c-canvas) / 0.85);
+  backdrop-filter: blur(6px);
+}
+/* No Chrome, scrollbar-width/scrollbar-color desligam o ::-webkit-scrollbar (e no macOS a barra padrão
+   some até rolar): as propriedades padrão ficam só para quem não tem ::-webkit-scrollbar (Firefox). */
+@supports not selector(::-webkit-scrollbar) {
+  .sticky-scrollbar {
+    scrollbar-width: auto;
+    scrollbar-color: hsl(var(--c-ink) / 0.28) hsl(var(--c-ink) / 0.06);
+  }
+}
+.sticky-scrollbar::-webkit-scrollbar {
+  height: 10px;
+}
+.sticky-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--c-ink) / 0.06);
+  border-radius: 999px;
+}
+.sticky-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--c-ink) / 0.28);
+  border-radius: 999px;
+}
+.sticky-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--c-ink) / 0.42);
+}
+
 
 /* -------------------------------------------------------------------------- */
 /* Movimento (desligado para quem pede "reduzir movimento" no sistema)          */

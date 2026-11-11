@@ -2,6 +2,7 @@ import { useState, type DragEvent } from "react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { groupByStage } from "@/lib/crm/metrics";
 import type { Funnel, Lead } from "@/types";
+import StickyHorizontalScroll from "@/components/ui/StickyHorizontalScroll";
 import { formatCurrencyBRL } from "@/utils/format";
 import LeadCard from "./LeadCard";
 
@@ -62,7 +63,8 @@ export default function PipelineBoard({
   }
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-3 [scrollbar-width:thin] sm:mx-0 sm:px-0">
+    // A barra de rolagem lateral fica presa ao rodapé da tela (e não só no fim da coluna mais comprida).
+    <StickyHorizontalScroll className="-mx-4 px-4 pb-3 sm:mx-0 sm:px-0">
       <div className="noma-stagger flex min-w-full snap-x snap-mandatory gap-2 sm:gap-3 sm:snap-none">
         {columns.map((column) => {
           const isOver = overStage === column.stage._id && draggingId !== null;
@@ -125,6 +127,6 @@ export default function PipelineBoard({
           );
         })}
       </div>
-    </div>
+    </StickyHorizontalScroll>
   );
 }
