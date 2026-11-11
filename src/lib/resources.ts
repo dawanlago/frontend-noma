@@ -309,6 +309,13 @@ export const resources = {
     removeRating: (id: string) => remove(`/nps/ratings/${id}`),
     invite: (payload: { surveyId: string; contactId: string; leadId?: string }) => create<NPSInvite>("/nps/invites", payload),
   },
+  assistant: {
+    /** Pergunta ao assistente (a última mensagem); as anteriores vão como histórico. */
+    chat: async (messages: { role: "user" | "assistant"; content: string }[]) => {
+      const { data } = await api.post<ApiItemResponse<{ reply: string; sources: string[] }>>("/assistant/chat", { messages });
+      return data.data;
+    },
+  },
   notifications: {
     list: () => getOne<{ items: AppNotification[]; unread: number }>("/notifications"),
     read: async (ids?: string[]) => {

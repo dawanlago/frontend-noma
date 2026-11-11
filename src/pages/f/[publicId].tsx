@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { apiError } from "@/lib/errors";
-import { eventAvailability, formatDateKey, isValidEmail, isValidPhone, todayKey, visibleFormFields } from "@/lib/forms";
+import { eventAvailability, formFontHref, formatDateKey, isValidEmail, isValidPhone, todayKey, visibleFormFields } from "@/lib/forms";
 import { isInviteCode, resources } from "@/lib/resources";
 import type { FormAvailability, FormField, PublicFormData } from "@/types";
 
@@ -101,7 +101,11 @@ function Logo({ form }: { form: PublicFormData | null }) {
     <img src={form.brand.logo} alt={form.brand.companyName || "Noma"} className="max-h-10 max-w-[160px] object-contain" />
   ) : (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/brand/noma-vermelho.png" alt={form?.brand?.companyName || "Noma"} className="h-7 w-auto" />
+    <img
+      src={form?.brand?.design?.theme === "dark" ? "/brand/noma-claro.png" : "/brand/noma-vermelho.png"}
+      alt={form?.brand?.companyName || "Noma"}
+      className="h-7 w-auto"
+    />
   );
 }
 
@@ -297,13 +301,32 @@ export default function PublicFormPage() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const style = { "--accent": accent } as CSSProperties;
+  // Visual do formulário: tema claro/escuro, fundo (cor ou imagem com véu), capa e fonte.
+  const design = form?.brand?.design;
+  const dark = design?.theme === "dark";
+  const baseBg = design?.background || (dark ? "#121214" : "#fbf9f7");
+  const veil = dark ? "rgba(10,10,12,.72)" : "rgba(251,249,247,.82)";
+  const style = {
+    "--accent": accent,
+    backgroundColor: baseBg,
+    ...(design?.backgroundImage
+      ? {
+          backgroundImage: `linear-gradient(${veil}, ${veil}), url("${design.backgroundImage.replace(/"/g, "")}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+        }
+      : {}),
+    ...(design?.font ? { fontFamily: `'${design.font}', system-ui, sans-serif` } : {}),
+  } as CSSProperties;
+  const fontHref = formFontHref(design?.font || "");
 
   return (
     <>
       <Head>
         <title>{form ? `${form.name} | Noma` : "Formulário | Noma"}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {fontHref ? <link rel="stylesheet" href={fontHref} /> : null}
       </Head>
       <style>{`
         @keyframes tf-in-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
@@ -313,7 +336,7 @@ export default function PublicFormPage() {
         @media (prefers-reduced-motion: reduce) { .tf-up, .tf-down { animation: none; } }
       `}</style>
 
-      <main style={style} className="relative flex min-h-[100dvh] flex-col bg-[#fbf9f7] text-charcoal">
+      <main style={style} data-theme={dark ? "dark" : undefined} className="relative flex min-h-[100dvh] flex-col text-charcoal">
         {/* Progresso */}
         <div className="fixed inset-x-0 top-0 z-10 h-1 bg-charcoal/[0.06]">
           <div className="h-full bg-[var(--accent)] transition-[width] duration-500 ease-out" style={{ width: `${progress}%` }} />
@@ -354,6 +377,10 @@ export default function PublicFormPage() {
             {/* Boas-vindas */}
             {form && form.status !== "submitted" && step === -1 ? (
               <div key="welcome" className={direction === "up" ? "tf-up" : "tf-down"}>
+                {design?.coverImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={design.coverImage} alt="" className="mb-8 aspect-[16/7] w-full max-w-2xl rounded-2xl object-cover shadow-lg shadow-black/10" />
+                ) : null}
                 {form.contactFirstName ? <p className="mb-3 text-lg text-charcoal/60">Olá, {form.contactFirstName}!</p> : null}
                 <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">{form.name}</h1>
                 {form.description ? <p className="mt-4 max-w-xl whitespace-pre-line text-lg text-charcoal/60 sm:text-xl">{form.description}</p> : null}
@@ -551,7 +578,7 @@ function QuestionInput({
               aria-checked={active}
               onClick={() => onChoose(option)}
               className={`flex items-center gap-3 rounded-xl border-2 px-3 py-3 text-left text-lg transition active:scale-[0.99] ${
-                active ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)]" : "border-charcoal/10 bg-surface hover:border-charcoal/25"
+                active ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)]" : "border-charcoal/10 bg-surface hover:border-charcoal/25"
               }`}
             >
               <span

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Dialog from "@mui/material/Dialog";
 import { HiOutlineInformationCircle, HiStar } from "react-icons/hi2";
 import MoneyInput from "@/components/ui/MoneyInput";
+import Select from "@/components/ui/Select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
 import { emptyLeadForm, formTotal, type LeadFormState } from "@/lib/crm/model";
@@ -150,13 +151,20 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
   // Cadastros criados numa tentativa que falhou: reaproveita em vez de duplicar.
   const created = useRef<{ contactId?: string; companyId?: string }>({});
 
-  const funnel = funnels.find((item) => item._id === funnelId) || funnels[0];
+  // Funil e etapa escolhidos no assistente (começa no funil aberto no CRM).
+  const [pickedFunnelId, setPickedFunnelId] = useState("");
+  const [pickedStageId, setPickedStageId] = useState("");
+  const funnel = funnels.find((item) => item._id === pickedFunnelId) || funnels.find((item) => item._id === funnelId) || funnels[0];
+  const openStages = funnel?.stages.filter((item) => item.kind === "open") || [];
   const draft = emptyLeadForm(funnel);
+  if (openStages.some((item) => item._id === pickedStageId)) draft.stageId = pickedStageId;
   const stage = funnel?.stages.find((item) => item._id === draft.stageId);
 
   useEffect(() => {
     if (!open) return;
     setStep("name");
+    setPickedFunnelId(funnelId || "");
+    setPickedStageId("");
     setName("");
     setParty("");
     setCompany(EMPTY_PICK);
@@ -412,6 +420,27 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
                         onChange={(event) => setName(event.target.value)}
                       />
                     </label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label>Funil</Label>
+                        <Select
+                          value={funnel?._id || ""}
+                          onChange={(value) => {
+                            setPickedFunnelId(value);
+                            setPickedStageId("");
+                          }}
+                          options={funnels.map((item) => ({ value: item._id, label: item.name }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Etapa</Label>
+                        <Select
+                          value={draft.stageId}
+                          onChange={setPickedStageId}
+                          options={openStages.map((item) => ({ value: item._id, label: item.name }))}
+                        />
+                      </div>
+                    </div>
                     {error ? <p className="text-xs font-medium text-burgundy">{error}</p> : null}
                     <div className="space-y-2 pt-1">
                       <Tip>Defina um nome que te ajude a identificar facilmente a negociação no funil de vendas.</Tip>

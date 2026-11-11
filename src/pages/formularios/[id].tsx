@@ -10,9 +10,9 @@ import Field from "@/components/tools/Field";
 import Select from "@/components/ui/Select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
-import { answerText, draftForm, FORM_FIELD_TARGETS, FORM_FIELD_TYPES, FORM_SHOW_IF_OPS, formatDateKey, newField, publicFormUrl } from "@/lib/forms";
+import { answerText, defaultFormDesign, draftForm, FORM_FIELD_TARGETS, FORM_FONTS, FORM_FIELD_TYPES, FORM_SHOW_IF_OPS, formatDateKey, newField, publicFormUrl } from "@/lib/forms";
 import { resources } from "@/lib/resources";
-import type { CaptureForm, FormAvailability, FormField, FormFieldShowIf, FormResponse } from "@/types";
+import type { CaptureForm, FormAvailability, FormDesign, FormField, FormFieldShowIf, FormResponse } from "@/types";
 import { normalizeHex } from "@/theme/appearance";
 import { downloadFile, slugify } from "@/utils/document";
 import { formatDateTime } from "@/utils/format";
@@ -426,6 +426,7 @@ export default function FormEditorPage() {
           schedulingLinkId: payload.schedulingLinkId,
           logo: payload.logo,
           accentColor: payload.accentColor,
+          design: payload.design,
           createLead: payload.createLead,
           funnelId: payload.funnelId,
           stageId: payload.stageId,
@@ -610,7 +611,7 @@ export default function FormEditorPage() {
             <section className="card space-y-4 p-5">
               <p className="text-sm font-semibold text-charcoal">Aparência do link</p>
               <Field label="Logo" hint="Sem logo, usa a de Configurações → Geral." group>
-                <LogoUpload folder="marca" value={form.logo || ""} onChange={(logo) => update({ logo })} />
+                <LogoUpload folder="marca" hint="Aparece no topo do formulário. PNG com fundo transparente é mantido." value={form.logo || ""} onChange={(logo) => update({ logo })} />
               </Field>
               <Field label="Cor" hint="Botões, barra de progresso e destaques. Em branco = cor padrão da marca.">
                 <div className="flex items-center gap-2">
@@ -636,6 +637,15 @@ export default function FormEditorPage() {
                   ) : null}
                 </div>
               </Field>
+              <FormDesignFields
+                value={{ ...defaultFormDesign(), ...(form.design || {}) }}
+                onChange={(design) => update({ design })}
+              />
+              {url ? (
+                <a href={url} target="_blank" rel="noreferrer" className="inline-block text-xs font-semibold text-tan hover:underline">
+                  Ver o link como o cliente vê ↗
+                </a>
+              ) : null}
             </section>
             <section className="card p-5">
               <p className="mb-1 text-xs font-semibold text-charcoal/60">Link público</p>
@@ -651,6 +661,81 @@ export default function FormEditorPage() {
           </aside>
         </div>
       )}
+    </>
+  );
+}
+
+/** Tema, fundo, capa e fonte do link do formulário. */
+function FormDesignFields({ value, onChange }: { value: FormDesign; onChange: (design: FormDesign) => void }) {
+  const set = (patch: Partial<FormDesign>) => onChange({ ...value, ...patch });
+  return (
+    <>
+      <Field label="Tema">
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tema">
+          {(
+            [
+              { value: "light", label: "Claro" },
+              { value: "dark", label: "Escuro" },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              role="radio"
+              aria-checked={value.theme === item.value}
+              onClick={() => set({ theme: item.value })}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                value.theme === item.value ? "border-tan bg-tan/[0.06] text-charcoal" : "border-charcoal/10 text-charcoal/60 hover:border-charcoal/25"
+              }`}
+            >
+              <span className={`h-4 w-4 rounded-full border border-charcoal/20 ${item.value === "dark" ? "bg-[#121214]" : "bg-[#fbf9f7]"}`} aria-hidden />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <Field label="Cor de fundo" hint="Em branco = padrão do tema.">
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            aria-label="Seletor da cor de fundo"
+            className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-charcoal/15 bg-surface p-1"
+            value={value.background || (value.theme === "dark" ? "#121214" : "#fbf9f7")}
+            onChange={(e) => set({ background: e.target.value })}
+          />
+          <span className="flex-1 font-mono text-xs uppercase text-charcoal/60">{value.background || "Padrão"}</span>
+          {value.background ? (
+            <button type="button" className="shrink-0 text-xs font-semibold text-tan hover:underline" onClick={() => set({ background: "" })}>
+              Padrão
+            </button>
+          ) : null}
+        </div>
+      </Field>
+      <Field label="Imagem de capa" group>
+        <LogoUpload
+          folder="marca"
+          maxWidth={1600}
+          title="Capa (opcional)"
+          hint="Aparece no topo da tela de boas-vindas. Use uma imagem horizontal."
+          emptyLabel="Sem capa"
+          value={value.coverImage}
+          onChange={(coverImage) => set({ coverImage })}
+        />
+      </Field>
+      <Field label="Imagem de fundo" group>
+        <LogoUpload
+          folder="marca"
+          maxWidth={1920}
+          title="Fundo (opcional)"
+          hint="Fica atrás das perguntas, com um véu do tema para manter a leitura."
+          emptyLabel="Sem fundo"
+          value={value.backgroundImage}
+          onChange={(backgroundImage) => set({ backgroundImage })}
+        />
+      </Field>
+      <Field label="Fonte">
+        <Select value={value.font} onChange={(font) => set({ font })} options={FORM_FONTS} placeholder="Padrão do sistema" />
+      </Field>
     </>
   );
 }

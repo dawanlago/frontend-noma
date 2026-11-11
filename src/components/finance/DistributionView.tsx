@@ -15,6 +15,9 @@ import { resources } from "@/lib/resources";
 import type { BucketMovement, DistributionBucket, FinanceEntry } from "@/types";
 import { formatCurrencyBRL, formatDateOnly, maskCurrencyBRL, parseCurrencyBRL, todayISO } from "@/utils/format";
 import { entryTotal } from "@/lib/finance/lateCharge";
+import { bucketSheet, type BucketSheetMode } from "@/lib/finance/buckets";
+import { MONTH_NAMES } from "@/lib/constants";
+import { downloadFile } from "@/utils/document";
 
 const COLORS = ["#3B82F6", "#F59E0B", "#22C55E", "#A855F7", "#EF4444", "#14B8A6", "#EC4899", "#64748B"];
 
@@ -195,6 +198,8 @@ export default function DistributionView({ year, ownerId, cashbox, pending, onPe
           </ul>
         </section>
       ) : null}
+
+      <BucketMonthSheet year={year} buckets={buckets} movements={data?.movements || []} />
 
       <section className="card overflow-hidden">
         <header className="border-b border-charcoal/[0.06] px-5 py-4">
@@ -611,5 +616,110 @@ function WithdrawModal({
       </div>
       {error ? <p className="mt-3 text-sm text-burgundy">{error}</p> : null}
     </Modal>
+  );
+}
+
+const MONTHS = MONTH_NAMES.map((name) => name.charAt(0).toUpperCase() + name.slice(1, 3));
+const SHEET_MODES: { value: BucketSheetMode; label: string }[] = [
+  { value: "in", label: "Distribuído" },
+  { value: "out", label: "Retirado" },
+  { value: "net", label: "Saldo do mês" },
+];
+
+/** Planilha do ano: caixas × meses com o que foi distribuído, retirado ou o saldo de cada mês. */
+function BucketMonthSheet({ year, buckets, movements }: { year: string; buckets: DistributionBucket[]; movements: BucketMovement[] }) {
+  const [mode, setMode] = useState<BucketSheetMode>("in");
+  const sheet = useMemo(() => bucketSheet(movements, buckets, mode), [movements, buckets, mode]);
+  const money = (value: number) => (value ? formatCurrencyBRL(value) : "—");
+
+  function exportCsv() {
+    const cell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+    const num = (value: number) => value.toFixed(2).replace(".", ",");
+    const label = SHEET_MODES.find((item) => item.value === mode)?.label || "";
+    const lines = [
+      ["Caixa", ...MONTHS, "Total"].map(cell).join(";"),
+      ...sheet.rows.map((row) => [row.name, ...row.months.map(num), num(row.total)].map(cell).join(";")),
+      ["Total", ...sheet.totals.months.map(num), num(sheet.totals.total)].map(cell).join(";"),
+    ];
+    downloadFile(`caixas-${year}-${label.toLowerCase().replace(/\s+/g, "-")}.csv`, `\ufeff${lines.join("\n")}`, "text/csv;charset=utf-8");
+  }
+
+  return (
+    <section className="card mb-6 overflow-hidden">
+      <header className="flex flex-col gap-3 border-b border-charcoal/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-charcoal">Caixas por mês · {year}</h3>
+          <p className="text-sm text-charcoal/55">Quanto cada caixa recebeu, quanto saiu e o saldo de cada mês.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex gap-1 rounded-lg bg-beige p-1" role="tablist">
+            {SHEET_MODES.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                role="tab"
+                aria-selected={mode === item.value}
+                onClick={() => setMode(item.value)}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  mode === item.value ? "bg-surface text-charcoal shadow-soft" : "text-charcoal/55 hover:text-charcoal"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="btn-secondary !py-1.5" onClick={exportCsv}>
+            Exportar (CSV)
+          </button>
+        </div>
+      </header>
+      <div className="overflow-x-auto [scrollbar-width:thin]">
+        <table className="data-table min-w-[920px] text-xs sm:min-w-[1100px]">
+          <thead>
+            <tr>
+              <th className="sticky left-0 bg-beige px-4 py-2 text-left">Caixa</th>
+              {MONTHS.map((name) => (
+                <th key={name} className="px-3 py-2 text-right">
+                  {name}
+                </th>
+              ))}
+              <th className="px-4 py-2 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sheet.rows.map((row, index) => (
+              <tr key={row.key}>
+                <td className="sticky left-0 bg-surface px-4 py-2 font-semibold text-charcoal">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color || COLORS[index % COLORS.length] }} />
+                    {row.name}
+                    {row.removed ? <span className="font-normal text-charcoal/40">(removida)</span> : null}
+                  </span>
+                </td>
+                {row.months.map((value, month) => (
+                  <td key={month} data-money className={`px-3 py-2 text-right tabular-nums ${value < 0 ? "text-burgundy" : value ? "text-charcoal" : "text-charcoal/30"}`}>
+                    {money(value)}
+                  </td>
+                ))}
+                <td data-money className="px-4 py-2 text-right font-semibold tabular-nums text-charcoal">
+                  {money(row.total)}
+                </td>
+              </tr>
+            ))}
+            <tr className="bg-beige/60 font-semibold">
+              <td className="sticky left-0 bg-beige px-4 py-2 text-charcoal">Total</td>
+              {sheet.totals.months.map((value, month) => (
+                <td key={month} data-money className={`px-3 py-2 text-right tabular-nums ${value < 0 ? "text-burgundy" : "text-charcoal"}`}>
+                  {money(value)}
+                </td>
+              ))}
+              <td data-money className="px-4 py-2 text-right tabular-nums text-charcoal">
+                {money(sheet.totals.total)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

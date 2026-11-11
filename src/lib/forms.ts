@@ -1,4 +1,4 @@
-import type { CaptureForm, FormAvailability, FormField, FormFieldShowIf, FormFieldTarget, FormFieldType } from "@/types";
+import type { FormDesign, CaptureForm, FormAvailability, FormField, FormFieldShowIf, FormFieldTarget, FormFieldType } from "@/types";
 
 type FormAnswer = string | string[] | boolean;
 
@@ -140,4 +140,29 @@ export function isValidPhone(value: string) {
 
 export function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+/* ---------- Visual do link ---------- */
+
+export const FORM_FONTS: { value: string; label: string }[] = [
+  { value: "", label: "Padrão do sistema" },
+  { value: "Inter", label: "Inter" },
+  { value: "Manrope", label: "Manrope" },
+  { value: "DM Sans", label: "DM Sans" },
+  { value: "Space Grotesk", label: "Space Grotesk" },
+  { value: "Playfair Display", label: "Playfair Display (serifada)" },
+  { value: "DM Serif Display", label: "DM Serif Display (serifada)" },
+  { value: "Lora", label: "Lora (serifada)" },
+];
+
+export function defaultFormDesign(): FormDesign {
+  return { theme: "light", background: "", backgroundImage: "", coverImage: "", font: "" };
+}
+
+/** Link do Google Fonts para a fonte escolhida (vazio = nenhuma). */
+export function formFontHref(font: string) {
+  if (!FORM_FONTS.some((item) => item.value === font) || !font) return "";
+  // Pedir um peso que a fonte não tem quebra o CSS inteiro: DM Serif Display só tem 400.
+  const weights = font === "DM Serif Display" ? "" : ":wght@400;500;600;700";
+  return `https://fonts.googleapis.com/css2?family=${font.replace(/ /g, "+")}${weights}&display=swap`;
 }

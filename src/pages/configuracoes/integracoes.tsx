@@ -62,7 +62,7 @@ const PROVIDERS: ProviderDef[] = [
     provider: "anthropic",
     title: "Inteligência artificial (Claude)",
     description:
-      "Escreve a mensagem de confirmação (WhatsApp e e-mail) quando um lead agenda uma reunião. Sem chave ou se a IA falhar, vai o texto padrão do link de agendamento.",
+      "Liga o Assistente (menu lateral), que responde perguntas consultando CRM, agenda, propostas, contatos e financeiro conforme o acesso de cada usuário, e escreve a mensagem de confirmação (WhatsApp e e-mail) quando um lead agenda uma reunião. Sem chave, o assistente fica indisponível e a confirmação usa o texto padrão.",
     fields: [
       { key: "apiKey", label: "Chave de API da Anthropic", kind: "secret", hint: "Vazio: usa a chave do servidor (ANTHROPIC_API_KEY), se houver." },
       {

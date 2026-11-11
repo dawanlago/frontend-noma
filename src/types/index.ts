@@ -449,6 +449,17 @@ export interface FormField {
   showIf?: FormFieldShowIf;
 }
 
+/** Visual do link do formulário: tema, fundo, capa e fonte. */
+export interface FormDesign {
+  theme: "light" | "dark";
+  /** #RRGGBB; vazio = padrão do tema. */
+  background: string;
+  backgroundImage: string;
+  coverImage: string;
+  /** Fonte do Google Fonts; vazio = a do sistema. */
+  font: string;
+}
+
 export interface CaptureForm extends Owned {
   _id: string;
   name: string;
@@ -462,6 +473,7 @@ export interface CaptureForm extends Owned {
   /** Aparência própria do link (vazio = identidade da produtora). */
   logo?: string;
   accentColor?: string;
+  design?: FormDesign;
   createLead: boolean;
   funnelId?: string;
   stageId?: string;
@@ -826,7 +838,7 @@ export interface PublicFormData {
   /** Link de agendamento oferecido no fim (vazio = não oferece). */
   schedulingSlug?: string;
   /** Identidade da produtora (logo e nome) no topo do formulário. */
-  brand?: { logo: string; companyName: string; color: string };
+  brand?: { logo: string; companyName: string; color: string; design?: FormDesign };
   name: string;
   description: string;
   fields: FormField[];

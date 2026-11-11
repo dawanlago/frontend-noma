@@ -8,10 +8,24 @@ interface LogoUploadProps {
   onChange: (url: string) => void;
   /** Pasta no Cloudinary. */
   folder?: UploadFolder;
+  /** Largura máxima em pixels (logos: 800; capas e fundos precisam de mais). */
+  maxWidth?: number;
+  /** Textos do cartão (padrão: logo do PDF). */
+  title?: string;
+  hint?: string;
+  emptyLabel?: string;
 }
 
 /** Envio opcional do logo que aparece no topo do PDF (PNG transparente é preservado; fica no Cloudinary). */
-export default function LogoUpload({ value, onChange, folder = "contratos" }: LogoUploadProps) {
+export default function LogoUpload({
+  value,
+  onChange,
+  folder = "contratos",
+  maxWidth = 800,
+  title = "Logo (opcional)",
+  hint = "Aparece no topo do PDF. PNG com fundo transparente é mantido.",
+  emptyLabel = "Sem logo",
+}: LogoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +42,7 @@ export default function LogoUpload({ value, onChange, folder = "contratos" }: Lo
     setError("");
     setIsLoading(true);
     try {
-      onChange(await uploadImage(file, folder, 800, 0.9));
+      onChange(await uploadImage(file, folder, maxWidth, 0.9));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar a imagem.");
     } finally {
@@ -52,12 +66,12 @@ export default function LogoUpload({ value, onChange, folder = "contratos" }: Lo
           // eslint-disable-next-line @next/next/no-img-element
           <img src={value} alt="Logo" className="max-h-14 max-w-[7.5rem] object-contain" />
         ) : (
-          <span className="text-xs text-charcoal/40">Sem logo</span>
+          <span className="text-xs text-charcoal/40">{emptyLabel}</span>
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-charcoal">Logo (opcional)</p>
-        <p className="text-xs text-charcoal/50">Aparece no topo do PDF. PNG com fundo transparente é mantido.</p>
+        <p className="text-sm font-semibold text-charcoal">{title}</p>
+        <p className="text-xs text-charcoal/50">{hint}</p>
         {error ? <p className="mt-1 text-xs text-burgundy">{error}</p> : null}
         {folder !== "marca" && !brandLogo ? (
           <p className="mt-1 text-xs text-charcoal/45">

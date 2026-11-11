@@ -16,6 +16,7 @@ import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
 import GavelOutlined from "@mui/icons-material/GavelOutlined";
 import GroupOutlined from "@mui/icons-material/GroupOutlined";
 import HomeOutlined from "@mui/icons-material/HomeOutlined";
+import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 import Inventory2Outlined from "@mui/icons-material/Inventory2Outlined";
 import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
 import SentimentSatisfiedAltOutlined from "@mui/icons-material/SentimentSatisfiedAltOutlined";
@@ -65,7 +66,10 @@ interface NavGroup {
 }
 
 /** Itens soltos no topo (sem grupo). */
-const topItems: NavItem[] = [{ href: "/", label: "Início", icon: HomeOutlined }];
+const topItems: NavItem[] = [
+  { href: "/", label: "Início", icon: HomeOutlined },
+  { href: "/assistente", label: "Assistente", icon: AutoAwesomeOutlined },
+];
 
 const groups: NavGroup[] = [
   {
