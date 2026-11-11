@@ -244,6 +244,15 @@ export default function LeadModal({ open, lead, funnelId, preset, onClose, onSav
           <Field label="Etiquetas" group full>
             <LeadLabelPicker value={form.labelIds} onChange={(labelIds) => set("labelIds", labelIds)} />
           </Field>
+          <Field label="Data do valor">
+            <input
+              type="date"
+              className="input-search"
+              value={form.valueSetAt}
+              disabled={formTotal(form) <= 0}
+              onChange={(e) => set("valueSetAt", e.target.value)}
+            />
+          </Field>
           <Field label="Próxima ação">
             <input type="date" className="input-search" value={form.nextActionDate} onChange={(e) => set("nextActionDate", e.target.value)} />
           </Field>

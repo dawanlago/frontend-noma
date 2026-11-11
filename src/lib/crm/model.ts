@@ -16,6 +16,8 @@ export interface LeadFormState {
   temperature: LeadTemperature;
   labelIds: string[];
   nextActionDate: string;
+  /** Data em que o valor foi lançado (YYYY-MM-DD); vazio = agora, ao salvar com valor. */
+  valueSetAt: string;
   notes: string;
   custom: CustomValues;
 }
@@ -34,6 +36,7 @@ export function emptyLeadForm(funnel?: Funnel): LeadFormState {
     temperature: "warm",
     labelIds: [],
     nextActionDate: "",
+    valueSetAt: "",
     notes: "",
     custom: {},
   };
@@ -57,6 +60,7 @@ export function leadToForm(lead: Lead): LeadFormState {
     temperature: lead.temperature || "warm",
     labelIds: lead.labelIds || [],
     nextActionDate: leadDateOnly(lead),
+    valueSetAt: lead.valueSetAt ? lead.valueSetAt.slice(0, 10) : "",
     notes: lead.notes || "",
     custom: lead.custom || {},
   };
@@ -77,6 +81,7 @@ export function formToPayload(form: LeadFormState): LeadPayload {
     temperature: form.temperature,
     labelIds: form.labelIds,
     nextActionDate: form.nextActionDate || null,
+    valueSetAt: form.valueSetAt || null,
     notes: form.notes,
     custom: form.custom,
   };

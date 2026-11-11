@@ -1,4 +1,6 @@
-import type { CaptureForm, FormAvailability, FormField, FormFieldTarget, FormFieldType } from "@/types";
+import type { CaptureForm, FormAvailability, FormField, FormFieldShowIf, FormFieldTarget, FormFieldType } from "@/types";
+
+type FormAnswer = string | string[] | boolean;
 
 export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: "text", label: "Texto curto" },
@@ -22,10 +24,15 @@ export const FORM_FIELD_TARGETS: { value: FormFieldTarget; label: string }[] = [
   { value: "instagram", label: "Instagram" },
 ];
 
+/** Chave estável no construtor (o servidor mantém se já vier preenchida). */
+function newFieldKey() {
+  return `campo_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
 /** Rascunho de formulário novo: só é gravado ao clicar em "Salvar". */
 export function draftForm(): CaptureForm {
   const field = (label: string, type: FormField["type"], target: FormField["target"], required = false): FormField => ({
-    key: "",
+    key: newFieldKey(),
     label,
     type,
     required,
@@ -56,7 +63,35 @@ export function draftForm(): CaptureForm {
 }
 
 export function newField(): FormField {
-  return { key: "", label: "", type: "text", required: false, options: [], placeholder: "", target: "" };
+  return { key: newFieldKey(), label: "", type: "text", required: false, options: [], placeholder: "", target: "" };
+}
+
+export const FORM_SHOW_IF_OPS: { value: FormFieldShowIf["op"]; label: string }[] = [
+  { value: "eq", label: "for igual a" },
+  { value: "neq", label: "for diferente de" },
+  { value: "includes", label: "incluir" },
+  { value: "answered", label: "tiver qualquer resposta" },
+];
+
+/** A pergunta aparece com as respostas atuais? Sem regra = sempre. */
+export function fieldMatchesShowIf(field: Pick<FormField, "showIf">, answers: Record<string, FormAnswer | undefined>): boolean {
+  const rule = field.showIf;
+  if (!rule?.fieldKey) return true;
+  const raw = answers[rule.fieldKey];
+  const text = answerText(raw).trim();
+  const answered = Array.isArray(raw) ? raw.length > 0 : typeof raw === "boolean" ? true : Boolean(text);
+  if (rule.op === "answered") return answered;
+  if (rule.op === "eq") return Array.isArray(raw) ? raw.includes(rule.value || "") : text === (rule.value || "");
+  if (rule.op === "neq") return Array.isArray(raw) ? !raw.includes(rule.value || "") : text !== (rule.value || "");
+  if (rule.op === "includes") {
+    if (Array.isArray(raw)) return raw.includes(rule.value || "");
+    return text.toLowerCase().includes((rule.value || "").toLowerCase());
+  }
+  return true;
+}
+
+export function visibleFormFields(fields: FormField[], answers: Record<string, FormAnswer | undefined>) {
+  return fields.filter((field) => fieldMatchesShowIf(field, answers));
 }
 
 export function publicFormUrl(publicId: string) {

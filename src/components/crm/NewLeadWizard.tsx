@@ -7,7 +7,7 @@ import { apiError } from "@/lib/errors";
 import { emptyLeadForm, formTotal, type LeadFormState } from "@/lib/crm/model";
 import { resources } from "@/lib/resources";
 import type { Company, Contact, LeadProduct, LeadTemperature, Product } from "@/types";
-import { formatCurrencyBRL, maskPhone } from "@/utils/format";
+import { formatCurrencyBRL, maskPhone, todayISO } from "@/utils/format";
 import DealProducts from "./DealProducts";
 import { LeadLabelPicker } from "./LeadLabels";
 import { TemperatureBadge, TemperaturePicker } from "./Temperature";
@@ -140,6 +140,8 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
   const [customValue, setCustomValue] = useState("");
   const [temperature, setTemperature] = useState<LeadTemperature>("warm");
   const [labelIds, setLabelIds] = useState<string[]>([]);
+  const [valueSetAt, setValueSetAt] = useState("");
+  const [nextActionDate, setNextActionDate] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
@@ -164,6 +166,8 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
     setCustomValue("");
     setTemperature("warm");
     setLabelIds([]);
+    setValueSetAt(todayISO());
+    setNextActionDate("");
     setError("");
     created.current = {};
     void Promise.all([resources.contacts.list(), resources.companies.list(), resources.products.list()])
@@ -254,7 +258,18 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
         contactId = (await resources.contacts.createOrReuse({ name: contact.name.trim(), phone, kinds: ["lead"], companyId }))._id;
         created.current.contactId = contactId;
       }
-      await onSave({ ...draft, name: name.trim(), contactId, companyId, products, customValue, temperature, labelIds });
+      await onSave({
+        ...draft,
+        name: name.trim(),
+        contactId,
+        companyId,
+        products,
+        customValue,
+        temperature,
+        labelIds,
+        valueSetAt: total > 0 ? valueSetAt || todayISO() : "",
+        nextActionDate,
+      });
     } catch (err) {
       setError(apiError(err, "Não foi possível criar a negociação."));
     } finally {
@@ -528,7 +543,23 @@ export default function NewLeadWizard({ open, funnelId, preset, onClose, onSave 
                       <Label>Etiquetas</Label>
                       <LeadLabelPicker value={labelIds} onChange={setLabelIds} />
                     </div>
-                    <Tip>Opcional. Você pode vincular produtos cadastrados, informar um valor ou deixar para depois.</Tip>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <Label>Data do valor</Label>
+                        <input
+                          type="date"
+                          className="input-search"
+                          value={valueSetAt}
+                          onChange={(event) => setValueSetAt(event.target.value)}
+                          disabled={total <= 0}
+                        />
+                      </label>
+                      <label className="block">
+                        <Label>Próxima ação</Label>
+                        <input type="date" className="input-search" value={nextActionDate} onChange={(event) => setNextActionDate(event.target.value)} />
+                      </label>
+                    </div>
+                    <Tip>Opcional. A data do valor marca quando o valor foi lançado; a próxima ação fica no cartão e no dashboard.</Tip>
                   </>
                 ) : null}
               </div>

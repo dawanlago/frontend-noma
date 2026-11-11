@@ -424,6 +424,14 @@ export type FormFieldType =
   | "eventDate";
 export type FormFieldTarget = "" | "name" | "email" | "phone" | "company" | "instagram";
 
+/** Quando mostrar a pergunta: depende da resposta de outra (que vem antes). */
+export interface FormFieldShowIf {
+  fieldKey: string;
+  /** eq = igual; neq = diferente; includes = contém / opção marcada; answered = qualquer resposta. */
+  op: "eq" | "neq" | "includes" | "answered";
+  value?: string;
+}
+
 export interface FormField {
   key: string;
   label: string;
@@ -432,6 +440,7 @@ export interface FormField {
   options: string[];
   placeholder: string;
   target: FormFieldTarget;
+  showIf?: FormFieldShowIf;
 }
 
 export interface CaptureForm extends Owned {

@@ -10,9 +10,9 @@ import Field from "@/components/tools/Field";
 import Select from "@/components/ui/Select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiError } from "@/lib/errors";
-import { answerText, draftForm, FORM_FIELD_TARGETS, FORM_FIELD_TYPES, formatDateKey, newField, publicFormUrl } from "@/lib/forms";
+import { answerText, draftForm, FORM_FIELD_TARGETS, FORM_FIELD_TYPES, FORM_SHOW_IF_OPS, formatDateKey, newField, publicFormUrl } from "@/lib/forms";
 import { resources } from "@/lib/resources";
-import type { CaptureForm, FormAvailability, FormField, FormResponse } from "@/types";
+import type { CaptureForm, FormAvailability, FormField, FormFieldShowIf, FormResponse } from "@/types";
 import { normalizeHex } from "@/theme/appearance";
 import { downloadFile, slugify } from "@/utils/document";
 import { formatDateTime } from "@/utils/format";
@@ -26,6 +26,7 @@ function FieldRow({
   field,
   index,
   total,
+  priorFields,
   onChange,
   onMove,
   onRemove,
@@ -33,11 +34,24 @@ function FieldRow({
   field: FormField;
   index: number;
   total: number;
+  priorFields: FormField[];
   onChange: (field: FormField) => void;
   onMove: (delta: number) => void;
   onRemove: () => void;
 }) {
   const hasOptions = field.type === "select" || field.type === "multiselect";
+  const showIf = field.showIf;
+  const dependsOn = priorFields.find((item) => item.key && item.key === showIf?.fieldKey);
+  const dependsOptions = dependsOn && (dependsOn.type === "select" || dependsOn.type === "multiselect" || dependsOn.type === "checkbox")
+    ? dependsOn.type === "checkbox"
+      ? ["Sim", "Não"]
+      : dependsOn.options.filter(Boolean)
+    : [];
+
+  function setShowIf(next: FormFieldShowIf | undefined) {
+    onChange({ ...field, showIf: next });
+  }
+
   return (
     <li className="rounded-xl border border-charcoal/[0.08] p-4">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_200px]">
@@ -76,6 +90,54 @@ function FieldRow({
           </button>
         </div>
       </div>
+      {priorFields.length ? (
+        <div className="mt-3 rounded-lg border border-dashed border-charcoal/10 bg-beige/40 p-3">
+          <label className="flex items-center gap-2 text-xs font-semibold text-charcoal/70">
+            <input
+              type="checkbox"
+              checked={Boolean(showIf?.fieldKey)}
+              onChange={(e) =>
+                setShowIf(
+                  e.target.checked
+                    ? { fieldKey: priorFields[0]?.key || "", op: "eq", value: "" }
+                    : undefined,
+                )
+              }
+            />
+            Mostrar só se…
+          </label>
+          {showIf?.fieldKey ? (
+            <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_minmax(0,1fr)]">
+              <Select
+                value={showIf.fieldKey}
+                onChange={(fieldKey) => setShowIf({ ...showIf, fieldKey, value: "" })}
+                options={priorFields.filter((item) => item.key).map((item) => ({ value: item.key, label: item.label || item.key }))}
+              />
+              <Select
+                value={showIf.op}
+                onChange={(op) => setShowIf({ ...showIf, op: op as FormFieldShowIf["op"] })}
+                options={FORM_SHOW_IF_OPS}
+              />
+              {showIf.op === "answered" ? (
+                <p className="self-center text-xs text-charcoal/50">Qualquer resposta nesta pergunta.</p>
+              ) : dependsOptions.length ? (
+                <Select
+                  value={showIf.value || ""}
+                  onChange={(value) => setShowIf({ ...showIf, value })}
+                  options={[{ value: "", label: "Escolha o valor" }, ...dependsOptions.map((option) => ({ value: option, label: option }))]}
+                />
+              ) : (
+                <input
+                  className="input-search"
+                  value={showIf.value || ""}
+                  placeholder="Valor esperado"
+                  onChange={(e) => setShowIf({ ...showIf, value: e.target.value })}
+                />
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -471,10 +533,11 @@ export default function FormEditorPage() {
             <ol className="space-y-3">
               {form.fields.map((field, index) => (
                 <FieldRow
-                  key={index}
+                  key={field.key || index}
                   field={field}
                   index={index}
                   total={form.fields.length}
+                  priorFields={form.fields.slice(0, index)}
                   onChange={(next) => setField(index, next)}
                   onMove={(delta) => moveField(index, delta)}
                   onRemove={() => update({ fields: form.fields.filter((_, i) => i !== index) })}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { apiError } from "@/lib/errors";
-import { eventAvailability, formatDateKey, isValidEmail, isValidPhone, todayKey } from "@/lib/forms";
+import { eventAvailability, formatDateKey, isValidEmail, isValidPhone, todayKey, visibleFormFields } from "@/lib/forms";
 import { isInviteCode, resources } from "@/lib/resources";
 import type { FormAvailability, FormField, PublicFormData } from "@/types";
 
@@ -171,11 +171,15 @@ export default function PublicFormPage() {
   );
 
   const fields = useMemo(() => form?.fields || [], [form]);
-  const total = fields.length;
-  const field = step >= 0 && step < total ? fields[step] : null;
+  // Perguntas visíveis com as respostas atuais (condicionais "mostrar se").
+  const visible = useMemo(() => visibleFormFields(fields, answers), [fields, answers]);
+  const total = visible.length;
+  const field = step >= 0 && step < total ? visible[step] : null;
   const accent = accentColor(form?.brand?.color);
-  const answered = fields.filter((item) => !isEmpty(item, answers[item.key])).length;
+  const answered = visible.filter((item) => !isEmpty(item, answers[item.key])).length;
   const progress = done ? 100 : total ? Math.round((answered / total) * 100) : 0;
+  // Índice no array original (para salvar progresso / retomar).
+  const fieldIndex = field ? fields.findIndex((item) => item.key === field.key) : -1;
 
   // Foca o campo de texto a cada pergunta nova.
   useEffect(() => {
@@ -219,9 +223,9 @@ export default function PublicFormPage() {
       return;
     }
     if (step === total - 1) return void submit();
-    persist(answers, step + 1);
+    persist(answers, fieldIndex >= 0 ? fieldIndex + 1 : step + 1);
     go(step + 1);
-  }, [answers, field, go, persist, step, submit, total]);
+  }, [answers, field, fieldIndex, go, persist, step, submit, total]);
 
   function setAnswer(value: Answer) {
     if (!field) return;
@@ -242,15 +246,32 @@ export default function PublicFormPage() {
     // Escolha única: confirma e avança sozinho, como no Typeform.
     window.clearTimeout(autoAdvance.current);
     const current = step;
+    const currentFieldIndex = fieldIndex;
     autoAdvance.current = window.setTimeout(() => {
       const message = validate(field, value);
       if (message) return setFieldError(message);
-      if (current === total - 1) return;
-      persist(nextAnswers, current + 1);
+      // Recalcula o caminho: a resposta pode liberar/esconder perguntas seguintes.
+      const nextVisible = visibleFormFields(fields, nextAnswers);
+      const at = nextVisible.findIndex((item) => item.key === field.key);
+      if (at < 0 || at >= nextVisible.length - 1) {
+        // Última visível: deixa o botão Enviar confirmar.
+        return;
+      }
+      persist(nextAnswers, currentFieldIndex >= 0 ? currentFieldIndex + 1 : current + 1);
       setDirection("up");
-      setStep(current + 1);
+      setStep(at + 1);
     }, 450);
   }
+
+  // Se a resposta atual escondeu a pergunta em que estávamos, volta para a última visível válida.
+  useEffect(() => {
+    if (step < 0 || done) return;
+    if (total === 0) {
+      setStep(-1);
+      return;
+    }
+    if (step >= total) setStep(total - 1);
+  }, [done, step, total]);
 
   // Atalhos: Enter avança; letras escolhem opções.
   useEffect(() => {
@@ -337,11 +358,15 @@ export default function PublicFormPage() {
                 <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">{form.name}</h1>
                 {form.description ? <p className="mt-4 max-w-xl whitespace-pre-line text-lg text-charcoal/60 sm:text-xl">{form.description}</p> : null}
                 <div className="mt-8 flex flex-wrap items-center gap-4">
-                  {resumeStep > 0 && resumeStep < total ? (
+                  {resumeStep > 0 && resumeStep < fields.length ? (
                     <>
                       <button
                         type="button"
-                        onClick={() => go(resumeStep)}
+                        onClick={() => {
+                          const key = fields[resumeStep]?.key;
+                          const at = key ? visible.findIndex((item) => item.key === key) : -1;
+                          go(at >= 0 ? at : 0);
+                        }}
                         className="rounded-xl bg-[var(--accent)] px-7 py-3.5 text-lg font-semibold text-white shadow-lg shadow-black/10 transition hover:brightness-110 active:scale-[0.98]"
                       >
                         Continuar de onde parei

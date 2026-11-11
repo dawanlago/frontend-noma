@@ -181,8 +181,9 @@ export function duplicateOf(err: unknown): ContactDuplicate | null {
   return duplicate ? { ...duplicate, field: response?.data?.field } : null;
 }
 
-export type LeadPayload = Partial<Omit<Lead, "nextActionDate" | "offeredValue" | "closedValue">> & {
+export type LeadPayload = Partial<Omit<Lead, "nextActionDate" | "valueSetAt" | "offeredValue" | "closedValue">> & {
   nextActionDate?: string | null;
+  valueSetAt?: string | null;
   offeredValue?: number | null;
   closedValue?: number | null;
 };
